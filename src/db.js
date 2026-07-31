@@ -188,11 +188,31 @@ export const db = {
   // ---- PERFIS / ROLES ----
   async getProfile(userId) {
     if (USING_SUPABASE) {
-      const { data, error } = await sb('profiles').select('id,nome,email,role').eq('id', userId).single();
+      const { data, error } = await sb('profiles').select('id,nome,email,role,avatar_url').eq('id', userId).single();
       if (error) return null;
       return data;
     }
-    return { id: 'dev', nome: 'Dev', email: 'dev@local', role: 'ADMIN' };
+    return { id: 'dev', nome: 'Dev', email: 'dev@local', role: 'ADMIN', avatar_url: null };
+  },
+  async updateProfile(userId, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('profiles').update(patch).eq('id', userId).select('id,nome,email,role,avatar_url').single();
+      if (error) throw error;
+      return data;
+    }
+    return { id: userId, nome: patch.nome || 'Dev', email: 'dev@local', role: 'ADMIN', avatar_url: patch.avatar_url || null };
+  },
+  async uploadAvatar(userId, file) {
+    if (!USING_SUPABASE) return { avatar_url: `mock://avatars/${userId}` };
+    const ext = (file.originalname || 'foto').split('.').pop().replace(/[^\w]/g, '') || 'jpg';
+    const path = `${userId}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('avatars')
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+    if (upErr) throw upErr;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const avatar_url = data.publicUrl;
+    await sb('profiles').update({ avatar_url }).eq('id', userId);
+    return { avatar_url };
   },
 
   // ---- ORÇAMENTOS & MEDIÇÕES ----

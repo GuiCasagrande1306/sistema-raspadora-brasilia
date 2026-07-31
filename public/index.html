@@ -435,6 +435,22 @@
     border-left:4px solid var(--laranja);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);max-width:460px;}
   .perfil-card .ini{width:52px;height:52px;border-radius:13px;font-size:18px;background:var(--laranja);}
   .perfil-card h3{margin:0;font-size:17px;} .perfil-card .role{color:var(--ink-2);font-size:13px;margin:1px 0 6px;}
+  .perfil-wrap{padding:18px 26px 96px;}
+  .perfil-form{max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:22px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px;}
+  .perfil-avatar{display:flex;align-items:center;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--line);}
+  .pa-pic{width:72px;height:72px;border-radius:50%;background:var(--laranja);color:#fff;display:grid;place-items:center;
+    font-weight:800;font-size:26px;overflow:hidden;flex-shrink:0;}
+  .pa-pic img{width:100%;height:100%;object-fit:cover;}
+  .pa-side{display:flex;flex-direction:column;gap:5px;}
+  .pa-upload{background:var(--laranja-50);color:var(--laranja-esc);border:1px solid var(--laranja-100);
+    padding:9px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;}
+  .pa-upload:hover{background:var(--laranja-100);}
+  .pa-hint{font-size:11px;color:var(--ink-3);}
+  .perfil-actions{display:flex;gap:10px;margin-top:4px;}
+  .perfil-actions .primary{justify-content:center;min-height:44px;}
+  .perfil-actions .btn-ghost{min-height:44px;}
+  .avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
 </style>
 
 <!-- Tela de Login -->
@@ -552,15 +568,28 @@
       <div id="vt-content" style="padding:18px 26px 96px;"></div>
     </section>
 
-    <!-- ===== PERFIL ===== -->
+    <!-- ===== PERFIL & CONFIGURAÇÕES ===== -->
     <section id="view-perfil" class="hidden">
-      <div class="modhead"><h1>Meu Perfil</h1><p>Sua conta e sessão neste dispositivo.</p></div>
-      <div style="padding:18px 26px 96px;">
-        <div class="perfil-card">
-          <div class="ini" id="perfil-ini">--</div>
-          <div><h3 id="perfil-nome">—</h3><div class="role" id="perfil-email"></div><span class="st" id="perfil-role"></span></div>
-        </div>
-        <button class="btn-ghost" id="btn-logout" style="margin-top:16px;min-height:44px;">Sair da conta</button>
+      <div class="modhead"><h1>Perfil &amp; Configurações</h1><p>Sua conta, foto e sessão neste dispositivo.</p></div>
+      <div class="perfil-wrap">
+        <form id="form-perfil" class="perfil-form">
+          <div class="perfil-avatar">
+            <div class="pa-pic" id="perfil-avatar"><span id="perfil-ini">--</span></div>
+            <div class="pa-side">
+              <label class="pa-upload">Trocar foto<input type="file" id="perfil-file" accept="image/*" hidden></label>
+              <span class="pa-hint">JPG ou PNG · até 10 MB</span>
+            </div>
+          </div>
+          <div class="field"><label>Nome</label><input name="nome" id="perfil-nome-inp" placeholder="Seu nome"></div>
+          <div class="grid2">
+            <div class="field"><label>E-mail</label><input id="perfil-email" disabled></div>
+            <div class="field"><label>Perfil de acesso</label><div style="padding:4px 0"><span class="st" id="perfil-role"></span></div></div>
+          </div>
+          <div class="perfil-actions">
+            <button type="submit" class="primary">Salvar alterações</button>
+            <button type="button" class="btn-ghost" id="btn-logout">Sair da conta</button>
+          </div>
+        </form>
       </div>
     </section>
 
@@ -1237,20 +1266,51 @@
     if(p&&p.nome)SESSAO.nome=p.nome;
     return p;
   }
-  function loadPerfil(){
-    const nome=(SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'Usuário';
-    document.getElementById('perfil-nome').textContent=nome;
-    document.getElementById('perfil-email').textContent=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';
-    document.getElementById('perfil-ini').textContent=ini(nome);
-    const rl=document.getElementById('perfil-role');rl.textContent=ROLE==='ADMIN'?'Administrador':'Operacional';
-    rl.className='st '+(ROLE==='ADMIN'?'st-aprov':'st-medi');
+  let PERFIL=null;
+  function renderAvatarEl(el,url,nome){if(!el)return;el.innerHTML=url?`<img src="${url}" alt="">`:`<span>${ini(nome||'US')}</span>`;}
+  async function loadPerfil(){
+    try{PERFIL=await api('/api/perfil');}
+    catch{PERFIL={nome:null,email:(SESSAO&&SESSAO.user&&SESSAO.user.email)||'',role:ROLE,avatar_url:null};}
+    const nome=PERFIL.nome||PERFIL.email||'Usuário';
+    document.getElementById('perfil-nome-inp').value=PERFIL.nome||'';
+    document.getElementById('perfil-email').value=PERFIL.email||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';
+    renderAvatarEl(document.getElementById('perfil-avatar'),PERFIL.avatar_url,nome);
+    renderAvatarEl(document.querySelector('.avatar'),PERFIL.avatar_url,nome);
+    const r=PERFIL.role||ROLE;const rl=document.getElementById('perfil-role');
+    rl.textContent=r==='ADMIN'?'Administrador':'Operacional';rl.className='st '+(r==='ADMIN'?'st-aprov':'st-medi');
   }
+  document.getElementById('perfil-file').addEventListener('change',async e=>{
+    const file=e.target.files[0];if(!file)return;
+    const fd=new FormData();fd.append('arquivo',file);
+    try{const r=await fetch('/api/perfil/avatar',{method:'POST',body:fd,headers:authHeaders()});
+      if(!r.ok)throw new Error(await r.text());
+      const {avatar_url}=await r.json();
+      if(PERFIL)PERFIL.avatar_url=avatar_url;
+      const nome=(PERFIL&&(PERFIL.nome||PERFIL.email))||'Usuário';
+      renderAvatarEl(document.getElementById('perfil-avatar'),avatar_url,nome);
+      renderAvatarEl(document.querySelector('.avatar'),avatar_url,nome);
+      showToast('Foto atualizada');
+    }catch(err){showToast('Erro ao enviar foto');console.error(err);}
+    e.target.value='';
+  });
+  document.getElementById('form-perfil').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const nome=document.getElementById('perfil-nome-inp').value.trim();
+    if(!nome){showToast('Informe o nome');return;}
+    try{const p=await api('/api/perfil',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome})});
+      PERFIL=p;if(SESSAO){SESSAO.nome=p.nome;localStorage.setItem('rb_sessao',JSON.stringify(SESSAO));}
+      renderAvatarEl(document.querySelector('.avatar'),p.avatar_url,p.nome||p.email);
+      showToast('Perfil atualizado');
+    }catch(err){showToast('Erro ao salvar');console.error(err);}
+  });
   function aplicarRole(role){
     const admin=role==='ADMIN';
     const permitido=admin?['dash','dp','fin','vt','orc','cfg']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
-    // avatar / iniciais no topo
-    const av=document.querySelector('.avatar');if(av){av.textContent=ini((SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'US');av.title=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';}
+    // avatar / iniciais no topo (busca a foto do perfil em segundo plano)
+    const av=document.querySelector('.avatar');
+    if(av){av.innerHTML='<span>'+ini((SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'US')+'</span>';av.title=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';}
+    api('/api/perfil').then(p=>{PERFIL=p;renderAvatarEl(av,p.avatar_url,p.nome||p.email);if(p.nome&&SESSAO){SESSAO.nome=p.nome;}}).catch(()=>{});
     // bottom nav por role
     const mostra=admin?{dp:1,fin:1,novo:1,perfil:1}:{orc:1,vt:1,perfil:1};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(b=>b.style.display=mostra[b.dataset.bn]?'':'none');

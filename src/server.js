@@ -64,6 +64,32 @@ app.use('/api/dp/vt/balanco', requireAdmin);     // valores totais p/ PIX/cartei
 app.use('/api/dp/vt/registro', requireAuth);     // presença de campo (operacional)
 app.use('/api/dp/vt/colaboradores', requireAuth);
 app.use('/api/orcamentos', requireAuth);         // orçamentos & medições (operacional)
+app.use('/api/perfil', requireAuth);             // cada usuário edita o próprio perfil
+
+// ---------- PERFIL DO USUÁRIO LOGADO ----------
+app.get('/api/perfil', async (req, res, next) => {
+  try {
+    const p = await db.getProfile(req.user.id);
+    res.json(p || { id: req.user.id, email: req.user.email, role: req.user.role, nome: null, avatar_url: null });
+  } catch (e) { next(e); }
+});
+
+app.patch('/api/perfil', async (req, res, next) => {
+  try {
+    const patch = {};
+    if (typeof req.body.nome === 'string' && req.body.nome.trim()) patch.nome = req.body.nome.trim().slice(0, 100);
+    if (req.body.avatar_url !== undefined) patch.avatar_url = req.body.avatar_url;
+    if (!Object.keys(patch).length) return res.status(400).json({ erro: 'nada para atualizar' });
+    res.json(await db.updateProfile(req.user.id, patch));
+  } catch (e) { next(e); }
+});
+
+app.post('/api/perfil/avatar', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
+    res.json(await db.uploadAvatar(req.user.id, req.file));
+  } catch (e) { next(e); }
+});
 
 // margem = (contrato - insumos - mão de obra) / contrato
 const resumoObra = (o) => {
