@@ -95,6 +95,29 @@ app.get('/api/dp/documento/:id/url', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---------- VALE-TRANSPORTE ----------
+app.get('/api/dp/vt/balanco', async (_req, res, next) => {
+  try {
+    const linhas = await db.listBalancoVT();
+    const total_geral = linhas.reduce((s, l) => s + Number(l.valor_total || 0), 0);
+    const total_viagens = linhas.reduce((s, l) => s + Number(l.total_viagens || 0), 0);
+    res.json({ linhas, resumo: { total_geral: Math.round(total_geral * 100) / 100, total_viagens, valor_passagem: 4.30 } });
+  } catch (e) { next(e); }
+});
+
+app.post('/api/dp/vt/registro', async (req, res, next) => {
+  try {
+    const { colaborador_id, data_registro, forma_pagamento, observacao } = req.body;
+    if (!colaborador_id) return res.status(400).json({ erro: 'colaborador_id é obrigatório' });
+    const qtd_viagens = Number.isInteger(req.body.qtd_viagens) ? req.body.qtd_viagens : 2;
+    const reg = await db.upsertRegistroVT({
+      colaborador_id, data_registro, qtd_viagens,
+      forma_pagamento: forma_pagamento || 'CARTEIRINHA', observacao: observacao || null,
+    });
+    res.status(201).json(reg);
+  } catch (e) { next(e); }
+});
+
 app.patch('/api/dp/colaborador/:id/mover', async (req, res, next) => {
   try {
     const { status } = req.body;

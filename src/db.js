@@ -79,7 +79,10 @@ const mock = {
     [C.lui]: { dias_trabalhados: 20, faltas: 3, horas_extras: 2 },
   },
   lancamentos: [],
+  registroVT: [],
 };
+
+const VALOR_PASSAGEM = 4.30;
 
 // alerta de documento a partir da data de vencimento
 export function docStatus(dataVenc) {
@@ -179,6 +182,44 @@ export const db = {
   async moverColaborador(id, status) {
     if (USING_SUPABASE) { const { data, error } = await sb('colaboradores').update({ status }).eq('id', id).select().single(); if (error) throw error; return data; }
     const c = mock.colaboradores.find(x => x.id === id); if (!c) return null; c.status = status; return c;
+  },
+  // ---- VALE-TRANSPORTE ----
+  async listBalancoVT() {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('vw_balanco_semanal_vt').select('*').order('funcionario');
+      if (error) throw error;
+      return data;
+    }
+    // mock: espelha a lógica da view vw_balanco_semanal_vt
+    return mock.colaboradores.map(c => {
+      const regs = mock.registroVT.filter(r => r.colaborador_id === c.id);
+      const total = regs.length ? regs.reduce((s, r) => s + (r.qtd_viagens ?? 2), 0) : 2;
+      const forma = regs.length ? regs[regs.length - 1].forma_pagamento
+        : (c.forma_pagamento_padrao || 'CARTEIRINHA');
+      const obs = [...new Set(regs.map(r => r.observacao).filter(Boolean))].join(' | ') || null;
+      return {
+        colaborador_id: c.id, funcionario: c.nome,
+        total_viagens: total, valor_passagem: VALOR_PASSAGEM,
+        valor_total: +(total * VALOR_PASSAGEM).toFixed(2),
+        forma_pagamento: forma, observacoes: obs,
+      };
+    });
+  },
+  async upsertRegistroVT({ colaborador_id, data_registro, qtd_viagens, forma_pagamento, observacao }) {
+    const dia = data_registro || new Date().toISOString().slice(0, 10);
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('registro_diario_vt')
+        .upsert({ colaborador_id, data_registro: dia, qtd_viagens, forma_pagamento, observacao },
+          { onConflict: 'colaborador_id,data_registro' })
+        .select().single();
+      if (error) throw error;
+      return data;
+    }
+    const ex = mock.registroVT.find(r => r.colaborador_id === colaborador_id && r.data_registro === dia);
+    if (ex) { Object.assign(ex, { qtd_viagens, forma_pagamento, observacao }); return ex; }
+    const novo = { id: uid(), colaborador_id, data_registro: dia, qtd_viagens, forma_pagamento, observacao };
+    mock.registroVT.push(novo);
+    return novo;
   },
   async getColaboradorDetalhe(id) {
     if (USING_SUPABASE) {
