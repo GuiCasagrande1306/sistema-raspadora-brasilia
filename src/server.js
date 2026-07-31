@@ -4,7 +4,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, USING_SUPABASE, docStatus } from './db.js';
+import { db, USING_SUPABASE, docStatus, supabase } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -65,6 +65,13 @@ app.use('/api/dp/vt/registro', requireAuth);     // presença de campo (operacio
 app.use('/api/dp/vt/colaboradores', requireAuth);
 app.use('/api/orcamentos', requireAuth);         // orçamentos & medições (operacional)
 app.use('/api/perfil', requireAuth);             // cada usuário edita o próprio perfil
+// Gestão v2
+app.use('/api/dp/apontamento', requireAuth);     // apontamento de campo (equipe)
+app.use('/api/dp/vale', requireAdmin);           // vale debita caixa — controle admin
+app.use('/api/dp/folha-fechamento', requireAdmin);
+app.use('/api/obras', requireAdmin);
+app.use('/api/bancos', requireAdmin);
+app.use('/api/fluxo-caixa', requireAdmin);
 
 // ---------- PERFIL DO USUÁRIO LOGADO ----------
 app.get('/api/perfil', async (req, res, next) => {
@@ -315,6 +322,108 @@ app.post('/api/financeiro/lancamento', async (req, res, next) => {
     if (!Number.isInteger(valor)) return res.status(400).json({ erro: 'valor deve ser inteiro (centavos)' });
     res.status(201).json(await db.createLancamento({ obra_id, tipo, categoria, valor, descricao: req.body.descricao }));
   } catch (e) { next(e); }
+});
+
+// ================= GESTÃO v2: DP produção · DRE · Bancos =================
+// entrada dos endpoints de gestão é em REAIS → converte para centavos
+const emCentavos = (v) => Math.round((Number(v) || 0) * 100);
+
+// DP — Apontamento diário (metragem + rateio de m² entre a equipe)
+app.post('/api/dp/apontamento', async (req, res, next) => {
+  try {
+    const { obra_id, metragem_dia_m2, equipe_ids } = req.body;
+    if (!obra_id || !(Number(metragem_dia_m2) > 0)) return res.status(400).json({ erro: 'obra_id e metragem_dia_m2 (>0) são obrigatórios' });
+    if (!Array.isArray(equipe_ids) || !equipe_ids.length) return res.status(400).json({ erro: 'equipe_ids deve ter ao menos 1 colaborador' });
+    res.status(201).json(await db.criarApontamento({ obra_id, metragem_dia_m2: Number(metragem_dia_m2), equipe_ids, data: req.body.data, observacoes_tecnicas: req.body.observacoes_tecnicas }));
+  } catch (e) { next(e); }
+});
+
+// DP — Vale/adiantamento (debita a Caixinha PIX; pendente de abate na folha)
+app.post('/api/dp/vale', async (req, res, next) => {
+  try {
+    const { colaborador_id, valor } = req.body;
+    if (!colaborador_id) return res.status(400).json({ erro: 'colaborador_id é obrigatório' });
+    const cents = emCentavos(valor);
+    if (!(cents > 0)) return res.status(400).json({ erro: 'valor deve ser > 0' });
+    const r = await db.criarVale({ colaborador_id, obra_id: req.body.obra_id, tipo: req.body.tipo, valor: cents, observacao: req.body.observacao, data_lancamento: req.body.data_lancamento });
+    res.status(201).json(r);
+  } catch (e) { next(e); }
+});
+
+// DP — Fechamento de folha (semana/mês)
+app.get('/api/dp/folha-fechamento', async (req, res, next) => {
+  try {
+    const hoje = new Date();
+    const desde = req.query.desde || new Date(hoje - 30 * 86400000).toISOString().slice(0, 10);
+    const ate = req.query.ate || hoje.toISOString().slice(0, 10);
+    res.json(await db.fecharFolha(desde, ate));
+  } catch (e) { next(e); }
+});
+
+// Obras — cadastro
+app.post('/api/obras', async (req, res, next) => {
+  try {
+    const { cliente_nome, metragem_total_m2, valor_contrato_total } = req.body;
+    if (!cliente_nome) return res.status(400).json({ erro: 'cliente_nome é obrigatório' });
+    // reaproveita a tabela obras_financeiro (genérica p/ madeira e industrial)
+    const payload = {
+      cliente: cliente_nome, cliente_telefone: req.body.cliente_telefone || null,
+      endereco: req.body.endereco || null, bairro_regiao: req.body.bairro_regiao || null,
+      metragem_m2: Number(metragem_total_m2) || 0, tipo_piso: req.body.tipo_piso || null,
+      tipo_tratamento: req.body.tipo_tratamento || null, valor_contrato: emCentavos(valor_contrato_total || 0),
+      status_pagamento: 'aguardando_sinal', coluna_kanban: 'aprovado', progresso: 0,
+      data_inicio: req.body.data_inicio || null, data_previsao_fim: req.body.data_previsao_fim || null,
+    };
+    if (!supabase) return res.status(201).json({ id: 'mock', ...payload });
+    const { data, error } = await supabase.from('obras_financeiro').insert(payload).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (e) { next(e); }
+});
+
+app.get('/api/obras/:id/dre', async (req, res, next) => {
+  try {
+    const dre = await db.dreObra(req.params.id);
+    if (!dre) return res.status(404).json({ erro: 'obra não encontrada' });
+    res.json(dre);
+  } catch (e) { next(e); }
+});
+
+app.post('/api/obras/:id/insumos', async (req, res, next) => {
+  try {
+    const { descricao_insumo, custo_unitario } = req.body;
+    if (!descricao_insumo) return res.status(400).json({ erro: 'descricao_insumo é obrigatório' });
+    res.status(201).json(await db.addCustoObra(req.params.id, {
+      descricao_insumo, quantidade_utilizada: Number(req.body.quantidade_utilizada) || 1, custo_unitario: emCentavos(custo_unitario || 0),
+    }));
+  } catch (e) { next(e); }
+});
+
+// Bancos — saldos consolidados
+app.get('/api/bancos/saldos', async (_req, res, next) => {
+  try {
+    const contas = await db.listContas();
+    const total = contas.reduce((s, c) => s + c.saldo_atual, 0);
+    res.json({ contas, total_consolidado: total });
+  } catch (e) { next(e); }
+});
+
+// Bancos — transferência interna
+app.post('/api/bancos/transferencia-interna', async (req, res, next) => {
+  try {
+    const { origem_id, destino_id, valor } = req.body;
+    if (!origem_id || !destino_id) return res.status(400).json({ erro: 'origem_id e destino_id são obrigatórios' });
+    if (origem_id === destino_id) return res.status(400).json({ erro: 'origem e destino devem ser diferentes' });
+    const cents = emCentavos(valor);
+    if (!(cents > 0)) return res.status(400).json({ erro: 'valor deve ser > 0' });
+    res.status(201).json(await db.transferenciaInterna(origem_id, destino_id, cents, req.body.descricao));
+  } catch (e) { next(e); }
+});
+
+// Fluxo de caixa projetado (próximos N dias)
+app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
+  try { res.json(await db.fluxoProjetado(Number(req.query.dias) || 30)); }
+  catch (e) { next(e); }
 });
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock' }));

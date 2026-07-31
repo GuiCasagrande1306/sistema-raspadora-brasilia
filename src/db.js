@@ -319,4 +319,176 @@ export const db = {
       ponto: mock.ponto[id] || { dias_trabalhados: 0, faltas: 0, horas_extras: 0 },
     };
   },
+
+  // ================= GESTÃO v2 (bancos, DRE, produção) =================
+  // Só faz sentido com Supabase; em mock retorna estruturas vazias.
+  async _saldoAjustar(contaId, delta) {
+    const { data } = await sb('contas_bancarias').select('saldo_atual').eq('id', contaId).single();
+    const novo = (data?.saldo_atual || 0) + delta;
+    await sb('contas_bancarias').update({ saldo_atual: novo }).eq('id', contaId);
+    return novo;
+  },
+  async listContas() {
+    if (!USING_SUPABASE) return [];
+    const { data, error } = await sb('contas_bancarias').select('*').order('nome_instituicao');
+    if (error) throw error; return data;
+  },
+  async getCaixinha() {
+    const { data } = await sb('contas_bancarias').select('*').eq('is_caixinha', true).limit(1).single();
+    return data || null;
+  },
+  async criarMovimentacao(m) {
+    const { data, error } = await sb('movimentacoes_caixa').insert(m).select().single();
+    if (error) throw error;
+    if (m.status !== 'PREVISTO') await this._saldoAjustar(m.conta_bancaria_id, m.tipo === 'ENTRADA' ? m.valor : -m.valor);
+    return data;
+  },
+  // Vale: debita a caixinha e registra pendente de abate na folha
+  async criarVale(v) {
+    if (!USING_SUPABASE) return { vale: { ...v, id: uid() }, saldo_caixinha: 0, alerta_liquidez: false };
+    const caixinha = await this.getCaixinha();
+    if (!caixinha) throw new Error('Caixinha PIX Campo não configurada');
+    const mov = await this.criarMovimentacao({
+      conta_bancaria_id: caixinha.id, obra_id: v.obra_id || null, colaborador_id: v.colaborador_id,
+      data_movimento: v.data_lancamento || new Date().toISOString().slice(0, 10),
+      descricao: 'Vale/adiantamento PIX' + (v.observacao ? ' — ' + v.observacao : ''),
+      categoria: 'VALE_CAMPO', tipo: 'SAIDA', valor: v.valor, status: 'REALIZADO', conciliado: true,
+    });
+    const { data, error } = await sb('vales_diaria').insert({
+      colaborador_id: v.colaborador_id, obra_id: v.obra_id || null, tipo: v.tipo || 'ADIANTAMENTO_VALE',
+      valor: v.valor, observacao: v.observacao || null, status_pagamento: 'PAGO', abatido_folha: false,
+      movimentacao_id: mov.id, data_lancamento: v.data_lancamento || new Date().toISOString().slice(0, 10),
+    }).select().single();
+    if (error) throw error;
+    const saldo = caixinha.saldo_atual - v.valor;
+    return { vale: data, saldo_caixinha: saldo, alerta_liquidez: saldo < 100000 };  // < R$ 1.000
+  },
+  // Apontamento diário com rateio de m² entre a equipe
+  async criarApontamento(a) {
+    if (!USING_SUPABASE) return { id: uid(), ...a, m2_por_colaborador: 0 };
+    const equipe = Array.isArray(a.equipe_ids) ? a.equipe_ids.filter(Boolean) : [];
+    const { data: ap, error } = await sb('apontamentos_diarios').insert({
+      obra_id: a.obra_id, data: a.data || new Date().toISOString().slice(0, 10),
+      metragem_dia_m2: a.metragem_dia_m2, observacoes_tecnicas: a.observacoes_tecnicas || null,
+    }).select().single();
+    if (error) throw error;
+    const rateio = equipe.length ? Math.round((a.metragem_dia_m2 / equipe.length) * 100) / 100 : 0;
+    if (equipe.length) {
+      await sb('apontamento_equipe').insert(equipe.map(cid => ({
+        apontamento_id: ap.id, colaborador_id: cid, m2_rateado: rateio, data: ap.data,
+      })));
+    }
+    return { ...ap, m2_por_colaborador: rateio, equipe: equipe.length };
+  },
+  // Fechamento de folha no período [desde, ate]
+  async fecharFolha(desde, ate) {
+    if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
+    const [{ data: colabs }, { data: apeq }, { data: vales }] = await Promise.all([
+      sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status'),
+      sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
+      sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha').eq('abatido_folha', false),
+    ]);
+    const porColab = {};
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0 };
+    for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); p.m2 += Number(r.m2_rateado); }
+    for (const v of (vales || [])) { const p = porColab[v.colaborador_id]; if (p) p.vales += v.valor; }
+    const linhas = Object.values(porColab).map(p => {
+      const dias = p.dias.size;
+      const diarias = dias * (p.valor_diaria || 0);
+      const comissao = Math.round(p.m2 * (p.comissao_por_m2 || 0));
+      const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade)
+      const bruto = diarias + comissao + bonus_assiduidade;
+      const total_liquido = bruto - p.vales;
+      return {
+        colaborador_id: p.id, nome: p.nome, cargo: p.cargo,
+        dias_trabalhados: dias, m2_processados: Math.round(p.m2 * 100) / 100,
+        diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales, total_liquido,
+      };
+    }).filter(l => l.dias_trabalhados || l.vales_abatidos);
+    const totais = {
+      a_pagar: linhas.reduce((s, l) => s + l.total_liquido, 0),
+      comissoes: linhas.reduce((s, l) => s + l.comissao, 0),
+      diarias: linhas.reduce((s, l) => s + l.diarias, 0),
+      vales: linhas.reduce((s, l) => s + l.vales_abatidos, 0),
+      bonus: linhas.reduce((s, l) => s + l.bonus_assiduidade, 0),
+    };
+    return { periodo: { desde, ate }, colaboradores: linhas, totais };
+  },
+  // DRE individual da obra
+  async dreObra(obraId) {
+    if (!USING_SUPABASE) return null;
+    const [{ data: obra }, { data: custos }, { data: apeq }] = await Promise.all([
+      sb('obras_financeiro').select('*').eq('id', obraId).single(),
+      sb('custos_obras').select('custo_total').eq('obra_id', obraId),
+      sb('apontamento_equipe').select('m2_rateado,colaborador_id,apontamento_id').in('apontamento_id',
+        (await sb('apontamentos_diarios').select('id').eq('obra_id', obraId)).data?.map(a => a.id) || ['00000000-0000-0000-0000-000000000000']),
+    ]);
+    if (!obra) return null;
+    const custo_insumos = (custos || []).reduce((s, c) => s + c.custo_total, 0) || obra.custo_insumos || 0;
+    // mão de obra: por colaborador-dia = diária + m²*comissão
+    let custo_mao_obra = 0;
+    if (apeq && apeq.length) {
+      const ids = [...new Set(apeq.map(r => r.colaborador_id))];
+      const { data: cs } = await sb('colaboradores').select('id,valor_diaria,comissao_por_m2').in('id', ids);
+      const map = Object.fromEntries((cs || []).map(c => [c.id, c]));
+      // diária: 1 por colaborador-dia (par colaborador+apontamento)
+      custo_mao_obra = apeq.reduce((s, r) => {
+        const c = map[r.colaborador_id] || {};
+        return s + (c.valor_diaria || 0) + Math.round(Number(r.m2_rateado) * (c.comissao_por_m2 || 0));
+      }, 0);
+    } else {
+      custo_mao_obra = obra.custo_mao_obra || 0;
+    }
+    const receita_bruta = obra.valor_contrato || 0;
+    const custo_direto = custo_insumos + custo_mao_obra;
+    const lucro_bruto = receita_bruta - custo_direto;
+    const margem = receita_bruta ? Math.round((lucro_bruto / receita_bruta) * 1000) / 10 : 0;
+    return {
+      obra_id: obraId, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
+      receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra,
+      lucro_bruto, margem_lucro_percentual: margem,
+    };
+  },
+  async addCustoObra(obraId, ci) {
+    if (!USING_SUPABASE) return { id: uid(), ...ci };
+    const custo_total = Math.round((Number(ci.quantidade_utilizada) || 1) * (ci.custo_unitario || 0));
+    const { data, error } = await sb('custos_obras').insert({
+      obra_id: obraId, descricao_insumo: ci.descricao_insumo,
+      quantidade_utilizada: ci.quantidade_utilizada || 1, custo_unitario: ci.custo_unitario || 0, custo_total,
+    }).select().single();
+    if (error) throw error;
+    // mantém o board financeiro em sincronia
+    const { data: obra } = await sb('obras_financeiro').select('custo_insumos').eq('id', obraId).single();
+    if (obra) await sb('obras_financeiro').update({ custo_insumos: (obra.custo_insumos || 0) + custo_total }).eq('id', obraId);
+    return data;
+  },
+  async transferenciaInterna(origemId, destinoId, valor, descricao) {
+    if (!USING_SUPABASE) return { ok: true };
+    const { data: origem } = await sb('contas_bancarias').select('*').eq('id', origemId).single();
+    if (!origem) throw new Error('conta de origem inválida');
+    if (origem.saldo_atual < valor) throw new Error('saldo insuficiente na conta de origem');
+    const saida = await this.criarMovimentacao({ conta_bancaria_id: origemId, data_movimento: new Date().toISOString().slice(0, 10), descricao: descricao || 'Transferência interna', categoria: 'TRANSFERENCIA', tipo: 'SAIDA', valor, status: 'REALIZADO', conciliado: true });
+    await this.criarMovimentacao({ conta_bancaria_id: destinoId, data_movimento: new Date().toISOString().slice(0, 10), descricao: descricao || 'Transferência interna', categoria: 'TRANSFERENCIA', tipo: 'ENTRADA', valor, status: 'REALIZADO', conciliado: true });
+    return { ok: true, movimentacao_id: saida.id };
+  },
+  async fluxoProjetado(dias) {
+    if (!USING_SUPABASE) return { dias: [], resumo: {} };
+    const hoje = new Date(); const ate = new Date(Date.now() + dias * 86400000);
+    const d0 = hoje.toISOString().slice(0, 10), d1 = ate.toISOString().slice(0, 10);
+    const { data: contas } = await sb('contas_bancarias').select('saldo_atual');
+    const saldo_atual = (contas || []).reduce((s, c) => s + c.saldo_atual, 0);
+    const { data: prev } = await sb('movimentacoes_caixa').select('data_movimento,tipo,valor')
+      .eq('status', 'PREVISTO').gte('data_movimento', d0).lte('data_movimento', d1).order('data_movimento');
+    const porDia = {}; let entradas = 0, saidas = 0;
+    for (const m of (prev || [])) {
+      porDia[m.data_movimento] ||= { data: m.data_movimento, entradas: 0, saidas: 0 };
+      if (m.tipo === 'ENTRADA') { porDia[m.data_movimento].entradas += m.valor; entradas += m.valor; }
+      else { porDia[m.data_movimento].saidas += m.valor; saidas += m.valor; }
+    }
+    let saldo = saldo_atual;
+    const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)).map(d => {
+      saldo += d.entradas - d.saidas; return { ...d, saldo_projetado: saldo };
+    });
+    return { saldo_atual, dias: linhas, resumo: { entradas_previstas: entradas, saidas_previstas: saidas, saldo_final_projetado: saldo_atual + entradas - saidas } };
+  },
 };
