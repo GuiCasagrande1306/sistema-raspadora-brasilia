@@ -80,6 +80,8 @@ const mock = {
   },
   lancamentos: [],
   registroVT: [],
+  orcamentos: [],
+  _orcSeq: 193,
 };
 
 const VALOR_PASSAGEM = 4.30;
@@ -183,6 +185,50 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('colaboradores').update({ status }).eq('id', id).select().single(); if (error) throw error; return data; }
     const c = mock.colaboradores.find(x => x.id === id); if (!c) return null; c.status = status; return c;
   },
+  // ---- ORÇAMENTOS & MEDIÇÕES ----
+  async listOrcamentos() {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('orcamentos').select('*').order('numero_orcamento', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+    return [...mock.orcamentos].sort((a, b) => b.numero_orcamento - a.numero_orcamento);
+  },
+  async getOrcamento(id) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('orcamentos').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    }
+    return mock.orcamentos.find(o => o.id === id) || null;
+  },
+  async createOrcamento(o) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('orcamentos').insert(o).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = {
+      id: uid(), numero_orcamento: ++mock._orcSeq,
+      data_orcamento: o.data_orcamento || new Date().toISOString().slice(0, 10),
+      status: 'PENDENTE_MEDICAO', itens: [], valor_total: 0,
+      criado_em: new Date().toISOString(), ...o,
+    };
+    mock.orcamentos.push(novo);
+    return novo;
+  },
+  async updateOrcamento(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('orcamentos').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const o = mock.orcamentos.find(x => x.id === id);
+    if (!o) return null;
+    Object.assign(o, patch);
+    return o;
+  },
+
   // ---- VALE-TRANSPORTE ----
   async listBalancoVT() {
     if (USING_SUPABASE) {
