@@ -291,6 +291,36 @@
   .vt-add:hover{background:var(--laranja-50);color:var(--laranja-esc);border-color:var(--laranja-100);}
   .vt-cards{display:none;}
 
+  /* ---- Bancos / Folha / Apontamento ---- */
+  .conta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:22px;}
+  .conta-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);border-top:3px solid var(--laranja);}
+  .conta-card.caixinha{border-top-color:var(--ok);}
+  .conta-card .cc-nome{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px;}
+  .conta-card .cc-tipo{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em;margin-top:2px;}
+  .conta-card .cc-saldo{font-size:22px;font-weight:800;margin-top:10px;font-variant-numeric:tabular-nums;}
+  .conta-card .cc-saldo.baixo{color:var(--danger);}
+  .fluxo-list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+  .fluxo-list h5{margin:0;padding:14px 16px;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800;border-bottom:1px solid var(--line);}
+  .fluxo-row{display:grid;grid-template-columns:100px 1fr 1fr 1fr;gap:8px;padding:10px 16px;font-size:13px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+  .fluxo-row.head{font-size:10.5px;text-transform:uppercase;color:var(--ink-3);font-weight:800;background:var(--surface-2);}
+  .fluxo-row .ent{color:var(--ok);} .fluxo-row .sai{color:var(--danger);} .fluxo-row .sal{font-weight:700;text-align:right;}
+  .fluxo-empty{padding:26px;text-align:center;color:var(--ink-3);}
+  .folha-periodo{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+  .folha-periodo label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2);}
+  .folha-periodo input{padding:8px 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);font-family:inherit;}
+  .apont-equipe{display:flex;flex-wrap:wrap;gap:8px;}
+  .apont-chip{display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:20px;border:1px solid var(--line-2);
+    background:var(--surface-2);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;}
+  .apont-chip.on{background:var(--laranja);color:#fff;border-color:transparent;}
+  .dre-hero{background:var(--chumbo-900);color:#fff;padding:18px 20px;}
+  .dre-hero h3{margin:0;font-size:17px;} .dre-hero .sub{color:var(--laranja);font-size:12.5px;font-weight:600;margin-top:2px;}
+  .dre-line{display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line);font-size:14px;}
+  .dre-line b{font-variant-numeric:tabular-nums;}
+  .dre-line.neg b{color:var(--danger);} .dre-line.total{background:var(--laranja-50);}
+  .dre-line.total b{font-size:18px;color:var(--laranja-esc);}
+  .dre-margem{text-align:center;padding:16px;font-size:13px;color:var(--ink-2);}
+  .dre-margem b{font-size:30px;display:block;font-weight:800;}
+
   /* ---- Orçamentos ---- */
   .orc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
   .orc-card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--laranja);
@@ -399,6 +429,8 @@
     .orc-item .it-total{grid-column:1 / -1;text-align:left;}
     .orc-item .it-del{position:absolute;top:6px;right:8px;}
     .vt-table{display:none;}
+    #folha-content .vt-wrap,#bancos-content{overflow-x:auto;}
+    #folha-content .vt-table{display:table;min-width:660px;}
     .vt-cards{display:flex;flex-direction:column;gap:12px;}
     .vt-card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--laranja);
       border-radius:12px;padding:14px;box-shadow:var(--shadow);}
@@ -482,6 +514,8 @@
       <button data-view="dp" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="tip">DP — Colaboradores</span></button>
       <button data-view="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="tip">Financeiro — Obras &amp; DRE</span></button>
       <button data-view="vt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M4 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 16v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M4 10h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="tip">Vale-Transporte</span></button>
+      <button data-view="bancos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><path d="M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M9 14v3M15 14v3"/></svg><span class="tip">Bancos &amp; Fluxo</span></button>
+      <button data-view="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg><span class="tip">Folha de Pagamento</span></button>
       <button data-view="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span class="tip">Orçamentos</span></button>
       <button data-view="cfg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="tip">Configurações</span></button>
     </nav>
@@ -566,6 +600,45 @@
         <div class="metric"><div class="lbl">Colaboradores</div><div class="val" id="vt-colabs">—</div><div class="sub">no balanço</div></div>
       </div>
       <div id="vt-content" style="padding:18px 26px 96px;"></div>
+    </section>
+
+    <!-- ===== BANCOS & FLUXO DE CAIXA ===== -->
+    <section id="view-bancos" class="hidden">
+      <div class="modhead"><h1>Bancos &amp; Fluxo de Caixa</h1><p>Saldos das contas, projeção dos próximos 30 dias e transferências internas.</p></div>
+      <div class="tabsrow">
+        <div class="tabs"><button class="on">Contas &amp; Fluxo</button><button>Movimentações</button></div>
+        <button class="primary" id="btn-transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/></svg> Transferência</button>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
+        <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
+        <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores</div></div>
+        <div class="metric"><div class="lbl">Saldo projetado</div><div class="val money" id="bancos-proj">—</div><div class="sub">ao fim de 30 dias</div></div>
+      </div>
+      <div id="bancos-content" style="padding:18px 26px 96px;"></div>
+    </section>
+
+    <!-- ===== FOLHA DE PAGAMENTO ===== -->
+    <section id="view-folha" class="hidden">
+      <div class="modhead"><h1>Folha de Pagamento</h1><p>Fechamento por período — diárias + comissões por m² + bônus − vales adiantados via PIX.</p></div>
+      <div class="tabsrow">
+        <div class="folha-periodo">
+          <label>De <input type="date" id="folha-desde"></label>
+          <label>Até <input type="date" id="folha-ate"></label>
+          <button class="primary" id="btn-folha-calc" style="min-height:40px">Fechar folha</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="primary" id="btn-apont" style="background:var(--chumbo-800)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Apontar produção</button>
+          <button class="primary" id="btn-novo-vale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Registrar vale</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="lbl">Total a Pagar</div><div class="val money" id="folha-total">—</div><div class="sub">líquido no período</div></div>
+        <div class="metric"><div class="lbl">Diárias</div><div class="val money" id="folha-diarias">—</div><div class="sub">dias × diária base</div></div>
+        <div class="metric"><div class="lbl">Comissões m²</div><div class="val money" id="folha-comissoes">—</div><div class="sub">produção rateada</div></div>
+        <div class="metric"><div class="lbl">Vales abatidos</div><div class="val money" id="folha-vales">—</div><div class="sub">adiantados via PIX</div></div>
+      </div>
+      <div id="folha-content" style="padding:18px 26px 96px;"></div>
     </section>
 
     <!-- ===== PERFIL & CONFIGURAÇÕES ===== -->
@@ -750,6 +823,67 @@
   </div>
 </div>
 
+<!-- MODAL: Transferência interna -->
+<div class="overlay" id="ov-transfer">
+  <div class="modal">
+    <header><h3>Transferência entre contas</h3><button class="x" data-close>×</button></header>
+    <form id="form-transfer">
+      <div class="body">
+        <div class="field"><label>De</label><select name="origem_id" id="transfer-origem" required></select></div>
+        <div class="field"><label>Para</label><select name="destino_id" id="transfer-destino" required></select></div>
+        <div class="field"><label>Valor (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="1000,00"></div>
+        <div class="field"><label>Descrição</label><input name="descricao" placeholder="Ex: recarga da caixinha"></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Transferir</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Registrar vale -->
+<div class="overlay" id="ov-vale">
+  <div class="modal">
+    <header><h3>Registrar vale / adiantamento</h3><button class="x" data-close>×</button></header>
+    <form id="form-vale">
+      <div class="body">
+        <div class="field"><label>Colaborador</label><select name="colaborador_id" id="vale-colab" required><option value="">Selecione…</option></select></div>
+        <div class="grid2">
+          <div class="field"><label>Tipo</label><select name="tipo"><option value="ADIANTAMENTO_VALE">Adiantamento/Vale</option><option value="REEMBOLSO_COMBUSTIVEL">Reembolso combustível</option><option value="BONUS_METRAGEM">Bônus metragem</option></select></div>
+          <div class="field"><label>Valor (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="200,00"></div>
+        </div>
+        <div class="field"><label>Observação</label><input name="observacao" placeholder="Opcional"></div>
+        <div class="login-hint" style="text-align:left">Debita da <b>Caixinha PIX Campo</b> e fica pendente de abate na próxima folha.</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Pagar via PIX</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Apontamento de produção -->
+<div class="overlay" id="ov-apont">
+  <div class="modal">
+    <header><h3>Apontar produção do dia</h3><button class="x" data-close>×</button></header>
+    <form id="form-apont">
+      <div class="body">
+        <div class="field"><label>Obra</label><select name="obra_id" id="apont-obra" required><option value="">Selecione…</option></select></div>
+        <div class="grid2">
+          <div class="field"><label>Data</label><input name="data" type="date" required></div>
+          <div class="field"><label>Metragem do dia (m²)</label><input name="metragem_dia_m2" type="number" step="0.01" min="0" required placeholder="180"></div>
+        </div>
+        <div class="field"><label>Equipe alocada (rateio automático do m²)</label><div id="apont-equipe" class="apont-equipe"></div></div>
+        <div class="field"><label>Observações técnicas</label><input name="observacoes_tecnicas" placeholder="Ex: calafetagem concluída, 1ª demão"></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Registrar apontamento</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: DRE da obra -->
+<div class="overlay" id="ov-dre">
+  <div class="modal">
+    <div id="dre-body"><div class="sec">Carregando…</div></div>
+  </div>
+</div>
+
 <!-- MODAL: Ficha do Colaborador -->
 <div class="overlay" id="ov-ficha">
   <div class="modal wide">
@@ -772,6 +906,8 @@
     if(view==='fin')loadFin().catch(e=>console.error(e));
     if(view==='vt')loadVT().catch(e=>console.error(e));
     if(view==='orc')loadOrc().catch(e=>console.error(e));
+    if(view==='bancos')loadBancos().catch(e=>console.error(e));
+    if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
     const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
@@ -862,7 +998,7 @@
         <div class="mline"><span>Lucro líquido</span><b class="money" style="color:${margemCor}">${brl(o.lucro)}</b></div>
         <div class="mline"><span>Margem</span><b style="color:${margemCor}">${o.margem_pct}%</b></div>
       </div>
-      <div class="cardfoot"><button class="miniact" data-lancar="${o.id}">Lançar custo</button><button class="miniact">Ver obra</button></div></div>`;
+      <div class="cardfoot"><button class="miniact" data-lancar="${o.id}">Lançar custo</button><button class="miniact" data-dre="${o.id}">Ver DRE</button></div></div>`;
   }
   let OBRAS=[];
   async function loadFin(){
@@ -1229,6 +1365,133 @@
     }catch(err){showToast('Erro ao lançar');console.error(err);}
   });
 
+  // ================= GESTÃO v2 (UI) =================
+  const isoHoje=()=>new Date().toISOString().slice(0,10);
+  const isoAtras=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
+  let COLABS_NOMES=null;
+  async function popularColabSelect(id){
+    if(!COLABS_NOMES){try{COLABS_NOMES=await api('/api/dp/vt/colaboradores');}catch{COLABS_NOMES=[];}}
+    document.getElementById(id).innerHTML='<option value="">Selecione…</option>'+COLABS_NOMES.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  }
+
+  // ---- Bancos & Fluxo de Caixa ----
+  async function loadBancos(){
+    const [saldos,fluxo]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30')]);
+    document.getElementById('bancos-total').textContent=brl(saldos.total_consolidado);
+    document.getElementById('bancos-ent').textContent=brl(fluxo.resumo.entradas_previstas||0);
+    document.getElementById('bancos-sai').textContent=brl(fluxo.resumo.saidas_previstas||0);
+    document.getElementById('bancos-proj').textContent=brl(fluxo.resumo.saldo_final_projetado||saldos.total_consolidado);
+    const cards=saldos.contas.map(c=>{const baixo=c.is_caixinha&&c.saldo_atual<100000;
+      return `<div class="conta-card ${c.is_caixinha?'caixinha':''}">
+        <div class="cc-nome">${esc(c.nome_instituicao)}</div>
+        <div class="cc-tipo">${esc(c.tipo_conta)}${c.agencia?' · Ag '+esc(c.agencia):''}${c.conta?' · '+esc(c.conta):''}</div>
+        <div class="cc-saldo ${baixo?'baixo':''}">${brl(c.saldo_atual)}</div>
+        ${baixo?'<div style="color:var(--danger);font-size:11.5px;font-weight:700;margin-top:6px">⚠ Abaixo de R$ 1.000 — recarregar do Itaú</div>':''}</div>`;}).join('');
+    const rows=(fluxo.dias&&fluxo.dias.length)?fluxo.dias.map(d=>`<div class="fluxo-row">
+        <span>${new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
+        <span class="ent">${d.entradas?'+'+brl(d.entradas):'—'}</span>
+        <span class="sai">${d.saidas?'−'+brl(d.saidas):'—'}</span>
+        <span class="sal">${brl(d.saldo_projetado)}</span></div>`).join('')
+      :'<div class="fluxo-empty">Sem movimentações previstas nos próximos 30 dias.<br>Lançamentos com status PREVISTO aparecem aqui como projeção.</div>';
+    document.getElementById('bancos-content').innerHTML=
+      `<div class="conta-grid">${cards}</div>
+       <div class="fluxo-list"><h5>Fluxo projetado — 30 dias</h5>
+         <div class="fluxo-row head"><span>Data</span><span>Entradas</span><span>Saídas</span><span class="sal">Saldo</span></div>${rows}</div>`;
+    const opt=saldos.contas.map(c=>`<option value="${c.id}">${esc(c.nome_instituicao)} — ${brl(c.saldo_atual)}</option>`).join('');
+    document.getElementById('transfer-origem').innerHTML=opt;
+    document.getElementById('transfer-destino').innerHTML=opt;
+  }
+  document.getElementById('btn-transfer').addEventListener('click',()=>openModal('ov-transfer'));
+  document.getElementById('form-transfer').addEventListener('submit',async e=>{
+    e.preventDefault();const f=new FormData(e.target);
+    try{await api('/api/bancos/transferencia-interna',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({origem_id:f.get('origem_id'),destino_id:f.get('destino_id'),valor:parseFloat(f.get('valor')),descricao:f.get('descricao')||null})});
+      document.getElementById('ov-transfer').classList.remove('open');e.target.reset();
+      await loadBancos();showToast('Transferência realizada');
+    }catch(err){showToast('Erro: '+((err.message||'').includes('insuficiente')?'saldo insuficiente':'transferência'));console.error(err);}
+  });
+
+  // ---- Folha ----
+  async function loadFolha(){
+    if(!document.getElementById('folha-desde').value){document.getElementById('folha-desde').value=isoAtras(7);document.getElementById('folha-ate').value=isoHoje();}
+    await calcularFolha();
+  }
+  async function calcularFolha(){
+    const desde=document.getElementById('folha-desde').value,ate=document.getElementById('folha-ate').value;
+    const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
+    document.getElementById('folha-total').textContent=brl(r.totais.a_pagar||0);
+    document.getElementById('folha-diarias').textContent=brl(r.totais.diarias||0);
+    document.getElementById('folha-comissoes').textContent=brl(r.totais.comissoes||0);
+    document.getElementById('folha-vales').textContent=brl(r.totais.vales||0);
+    const rows=r.colaboradores.length?r.colaboradores.map(l=>`<tr>
+        <td><div class="vt-nome"><div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}</div></td>
+        <td class="num">${l.dias_trabalhados}</td><td class="num">${l.m2_processados}</td>
+        <td class="num">${brl(l.diarias)}</td><td class="num">${brl(l.comissao)}</td>
+        <td class="num">${l.bonus_assiduidade?brl(l.bonus_assiduidade):'—'}</td>
+        <td class="num" style="color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td>
+        <td class="num money">${brl(l.total_liquido)}</td></tr>`).join('')
+      :'<tr><td colspan="8" style="text-align:center;color:var(--ink-3);padding:24px">Sem produção ou vales no período selecionado.</td></tr>';
+    document.getElementById('folha-content').innerHTML=
+      `<div class="vt-wrap"><table class="vt-table"><thead><tr>
+         <th>Colaborador</th><th class="num">Dias</th><th class="num">m²</th><th class="num">Diárias</th><th class="num">Comissão</th><th class="num">Bônus</th><th class="num">Vales</th><th class="num">Líquido</th>
+       </tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  document.getElementById('btn-folha-calc').addEventListener('click',()=>calcularFolha().catch(e=>{showToast('Erro na folha');console.error(e);}));
+
+  // ---- Vale ----
+  document.getElementById('btn-novo-vale').addEventListener('click',async()=>{await popularColabSelect('vale-colab');openModal('ov-vale');});
+  document.getElementById('form-vale').addEventListener('submit',async e=>{
+    e.preventDefault();const f=new FormData(e.target);
+    try{const r=await api('/api/dp/vale',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseFloat(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
+      document.getElementById('ov-vale').classList.remove('open');e.target.reset();
+      showToast(r.alerta_liquidez?'Vale pago — ⚠ Caixinha abaixo de R$ 1.000!':'Vale pago via PIX');
+      if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
+      if(!document.getElementById('view-bancos').classList.contains('hidden'))loadBancos();
+    }catch(err){showToast('Erro ao registrar vale');console.error(err);}
+  });
+
+  // ---- Apontamento ----
+  async function abrirApont(){
+    const {colunas}=await api('/api/financeiro/obras');const obras=Object.values(colunas).flat();
+    document.getElementById('apont-obra').innerHTML='<option value="">Selecione…</option>'+obras.map(o=>`<option value="${o.id}">${esc(o.cliente)} — ${o.metragem_m2}m²</option>`).join('');
+    document.querySelector('#form-apont [name=data]').value=isoHoje();
+    if(!COLABS_NOMES){try{COLABS_NOMES=await api('/api/dp/vt/colaboradores');}catch{COLABS_NOMES=[];}}
+    document.getElementById('apont-equipe').innerHTML=COLABS_NOMES.map(c=>`<span class="apont-chip" data-cid="${c.id}">${esc(c.nome)}</span>`).join('');
+    document.querySelectorAll('#apont-equipe .apont-chip').forEach(ch=>ch.addEventListener('click',()=>ch.classList.toggle('on')));
+    openModal('ov-apont');
+  }
+  document.getElementById('btn-apont').addEventListener('click',()=>abrirApont().catch(e=>{showToast('Erro ao abrir');console.error(e);}));
+  document.getElementById('form-apont').addEventListener('submit',async e=>{
+    e.preventDefault();const f=new FormData(e.target);
+    const equipe_ids=[...document.querySelectorAll('#apont-equipe .apont-chip.on')].map(c=>c.dataset.cid);
+    if(!equipe_ids.length){showToast('Selecione ao menos 1 na equipe');return;}
+    try{const r=await api('/api/dp/apontamento',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({obra_id:f.get('obra_id'),data:f.get('data'),metragem_dia_m2:parseFloat(f.get('metragem_dia_m2')),equipe_ids,observacoes_tecnicas:f.get('observacoes_tecnicas')||null})});
+      document.getElementById('ov-apont').classList.remove('open');e.target.reset();
+      showToast('Apontamento salvo — '+r.m2_por_colaborador+' m²/colaborador');
+      if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
+    }catch(err){showToast('Erro no apontamento');console.error(err);}
+  });
+
+  // ---- DRE (a partir do board Financeiro) ----
+  document.getElementById('board-fin').addEventListener('click',async e=>{
+    const b=e.target.closest('[data-dre]');if(!b)return;
+    openModal('ov-dre');document.getElementById('dre-body').innerHTML='<div class="sec">Carregando…</div>';
+    try{const d=await api('/api/obras/'+b.dataset.dre+'/dre');
+      const cor=d.margem_lucro_percentual>=35?'var(--ok)':d.margem_lucro_percentual>=20?'var(--warn)':'var(--danger)';
+      document.getElementById('dre-body').innerHTML=`
+        <div class="dre-hero"><button class="x" data-close style="float:right;border:0;background:none;color:#9CA3AF;font-size:22px;cursor:pointer;line-height:1">×</button>
+          <h3>${esc(d.cliente)}</h3><div class="sub">DRE · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²</div></div>
+        <div class="dre-line"><span>Receita bruta (contrato)</span><b>${brl(d.receita_bruta)}</b></div>
+        <div class="dre-line neg"><span>(−) Insumos</span><b>${brl(d.custo_direto_insumos)}</b></div>
+        <div class="dre-line neg"><span>(−) Mão de obra (diárias + comissões)</span><b>${brl(d.custo_direto_mao_obra)}</b></div>
+        <div class="dre-line total"><span>Lucro bruto</span><b>${brl(d.lucro_bruto)}</b></div>
+        <div class="dre-margem">Margem de lucro<b style="color:${cor}">${d.margem_lucro_percentual}%</b></div>`;
+      document.querySelector('#ov-dre [data-close]').addEventListener('click',()=>document.getElementById('ov-dre').classList.remove('open'));
+    }catch(err){document.getElementById('dre-body').innerHTML='<div class="sec">Erro ao carregar DRE.</div>';console.error(err);}
+  });
+
   // ================= AUTENTICAÇÃO & ROLES =================
   const loginScreen=document.getElementById('login-screen');
   const appEl=document.getElementById('app');
@@ -1305,7 +1568,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['dash','dp','fin','vt','orc','cfg']:['orc','vt'];
+    const permitido=admin?['dash','dp','fin','bancos','folha','vt','orc','cfg']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     // avatar / iniciais no topo (busca a foto do perfil em segundo plano)
     const av=document.querySelector('.avatar');
