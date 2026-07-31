@@ -15,6 +15,56 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // upload em memória (10 MB) — PDFs e imagens de documentos
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+// ---------- AUTENTICAÇÃO / ROLES ----------
+// Sem Supabase (dev/mock) a autenticação é desligada e tudo roda como ADMIN.
+const AUTH_ON = USING_SUPABASE;
+
+async function validarToken(token) {
+  const r = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return null;
+  const u = await r.json();
+  return u && u.id ? u : null;
+}
+async function requireAuth(req, res, next) {
+  if (!AUTH_ON) { req.user = { id: 'dev', email: 'dev@local', role: 'ADMIN' }; return next(); }
+  try {
+    const h = req.headers.authorization || '';
+    const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+    if (!token) return res.status(401).json({ erro: 'não autenticado' });
+    const u = await validarToken(token);
+    if (!u) return res.status(401).json({ erro: 'sessão inválida' });
+    const prof = await db.getProfile(u.id);
+    req.user = { id: u.id, email: u.email, role: (prof && prof.role) || 'OPERACIONAL' };
+    next();
+  } catch (e) { next(e); }
+}
+function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ erro: 'acesso restrito ao administrador' });
+    next();
+  });
+}
+
+// Config pública para o frontend (a anon key é pública por design)
+app.get('/api/config', (_req, res) => res.json({
+  auth: AUTH_ON,
+  supabaseUrl: process.env.SUPABASE_URL || null,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
+}));
+
+// ---------- MATRIZ DE PERMISSÕES (gating por rota) ----------
+// ADMIN: tudo. OPERACIONAL: apenas Orçamentos e registro de VT (presença).
+app.use('/api/financeiro', requireAdmin);
+app.use('/api/dp/kanban', requireAdmin);
+app.use('/api/dp/colaborador', requireAdmin);   // ficha, docs, mover, cadastro
+app.use('/api/dp/documento', requireAdmin);
+app.use('/api/dp/vt/balanco', requireAdmin);     // valores totais p/ PIX/carteirinha
+app.use('/api/dp/vt/registro', requireAuth);     // presença de campo (operacional)
+app.use('/api/dp/vt/colaboradores', requireAuth);
+app.use('/api/orcamentos', requireAuth);         // orçamentos & medições (operacional)
+
 // margem = (contrato - insumos - mão de obra) / contrato
 const resumoObra = (o) => {
   const custo = (o.custo_insumos || 0) + (o.custo_mao_obra || 0);
@@ -171,6 +221,14 @@ app.get('/api/dp/vt/balanco', async (_req, res, next) => {
     const total_geral = linhas.reduce((s, l) => s + Number(l.valor_total || 0), 0);
     const total_viagens = linhas.reduce((s, l) => s + Number(l.total_viagens || 0), 0);
     res.json({ linhas, resumo: { total_geral: Math.round(total_geral * 100) / 100, total_viagens, valor_passagem: 4.30 } });
+  } catch (e) { next(e); }
+});
+
+// lista enxuta (id + nome) — operacional registra presença sem ver dados sensíveis
+app.get('/api/dp/vt/colaboradores', async (_req, res, next) => {
+  try {
+    const cs = await db.listColaboradores();
+    res.json(cs.map(c => ({ id: c.id, nome: c.nome })));
   } catch (e) { next(e); }
 });
 

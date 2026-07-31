@@ -409,9 +409,56 @@
     .vt-card .vt-add{min-height:40px;}
   }
   @keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+
+  /* ---- Tela de Login ---- */
+  .login-screen{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:24px;
+    background:radial-gradient(1200px 600px at 50% -10%, #24303f, #111827 60%);}
+  .login-screen.hidden{display:none;}
+  .login-card{width:100%;max-width:380px;background:var(--surface);border-radius:20px;
+    box-shadow:0 24px 70px rgba(0,0,0,.5);overflow:hidden;border:1px solid var(--line);}
+  .login-top{background:linear-gradient(135deg,var(--laranja),var(--laranja-2));padding:28px 24px 22px;text-align:center;color:#fff;}
+  .login-logo{width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,.18);margin:0 auto 12px;
+    display:grid;place-items:center;font-weight:800;font-size:22px;letter-spacing:-.5px;}
+  .login-top h1{margin:0;font-size:19px;font-weight:800;}
+  .login-top p{margin:3px 0 0;font-size:12.5px;opacity:.9;}
+  .login-body{padding:22px 24px 24px;display:flex;flex-direction:column;gap:14px;}
+  .login-loading{text-align:center;color:var(--ink-3);font-size:13px;padding:10px 0;}
+  .login-form-wrap{display:none;flex-direction:column;gap:14px;}
+  .login-screen.ready .login-form-wrap{display:flex;}
+  .login-screen.ready .login-loading{display:none;}
+  .login-err{color:var(--danger);font-size:12.5px;font-weight:600;min-height:16px;}
+  .login-btn{justify-content:center;width:100%;padding:12px;font-size:14px;min-height:48px;}
+  .login-hint{font-size:11px;color:var(--ink-3);text-align:center;}
+
+  /* ---- Perfil ---- */
+  .perfil-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);
+    border-left:4px solid var(--laranja);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);max-width:460px;}
+  .perfil-card .ini{width:52px;height:52px;border-radius:13px;font-size:18px;background:var(--laranja);}
+  .perfil-card h3{margin:0;font-size:17px;} .perfil-card .role{color:var(--ink-2);font-size:13px;margin:1px 0 6px;}
 </style>
 
-<div class="app">
+<!-- Tela de Login -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-top">
+      <div class="login-logo">RB</div>
+      <h1>Raspadora Brasília</h1>
+      <p>Sistema interno de gestão</p>
+    </div>
+    <div class="login-body">
+      <div class="login-loading">Carregando…</div>
+      <form class="login-form-wrap" id="form-login">
+        <div class="field"><label>E-mail</label><input name="email" type="email" autocomplete="username" required placeholder="voce@raspadorabrasilia.com.br"></div>
+        <div class="field"><label>Senha</label><input name="password" type="password" autocomplete="current-password" required placeholder="••••••••"></div>
+        <div class="login-err" id="login-err"></div>
+        <button type="submit" class="primary login-btn">Entrar</button>
+        <div class="login-hint">Levando sucesso e experiência para sua obra!</div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app" style="visibility:hidden">
   <aside class="side">
     <div class="logo" title="Raspadora Brasília">RB</div>
     <nav class="nav" id="nav">
@@ -505,6 +552,18 @@
       <div id="vt-content" style="padding:18px 26px 96px;"></div>
     </section>
 
+    <!-- ===== PERFIL ===== -->
+    <section id="view-perfil" class="hidden">
+      <div class="modhead"><h1>Meu Perfil</h1><p>Sua conta e sessão neste dispositivo.</p></div>
+      <div style="padding:18px 26px 96px;">
+        <div class="perfil-card">
+          <div class="ini" id="perfil-ini">--</div>
+          <div><h3 id="perfil-nome">—</h3><div class="role" id="perfil-email"></div><span class="st" id="perfil-role"></span></div>
+        </div>
+        <button class="btn-ghost" id="btn-logout" style="margin-top:16px;min-height:44px;">Sair da conta</button>
+      </div>
+    </section>
+
     <section id="view-dash" class="hidden"><div class="modhead"><h1>Dashboard Geral</h1><p>Visão consolidada de DP + Financeiro. Selecione DP ou Financeiro no menu para ver os quadros Kanban.</p></div></section>
     <!-- ===== ORÇAMENTOS & MEDIÇÕES ===== -->
     <section id="view-orc" class="hidden">
@@ -533,6 +592,8 @@
   <nav class="bottomnav" id="bottomnav">
     <button data-bn="dp" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>DP / Equipe</button>
     <button data-bn="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Financeiro</button>
+    <button data-bn="orc" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>Orçamentos</button>
+    <button data-bn="vt" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg>VT</button>
     <button data-bn="novo" class="center"><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
     <button data-bn="perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Perfil</button>
   </nav>
@@ -672,14 +733,21 @@
 <script>
   const titles={dash:'Dashboard Geral',dp:'DP — Colaboradores',fin:'Financeiro — Obras & DRE',orc:'Orçamentos',cfg:'Configurações'};
   const nav=document.getElementById('nav');
-  nav.querySelectorAll('button[data-view]').forEach(b=>b.addEventListener('click',()=>{
-    nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-    const v=b.dataset.view;
+  function irParaView(view){
+    nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    const sb=nav.querySelector('button[data-view="'+view+'"]');if(sb)sb.classList.add('on');
     document.querySelectorAll('.main > section').forEach(s=>s.classList.add('hidden'));
-    document.getElementById('view-'+v).classList.remove('hidden');
-    if(v==='vt')loadVT().catch(e=>console.error(e));
-    if(v==='orc')loadOrc().catch(e=>console.error(e));
-  }));
+    const sec=document.getElementById('view-'+view);if(sec)sec.classList.remove('hidden');
+    window.scrollTo(0,0);
+    if(view==='dp')loadDP().catch(e=>console.error(e));
+    if(view==='fin')loadFin().catch(e=>console.error(e));
+    if(view==='vt')loadVT().catch(e=>console.error(e));
+    if(view==='orc')loadOrc().catch(e=>console.error(e));
+    if(view==='perfil')loadPerfil();
+    const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
+    document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
+  }
+  nav.querySelectorAll('button[data-view]').forEach(b=>b.addEventListener('click',()=>irParaView(b.dataset.view)));
   document.querySelectorAll('.tabs').forEach(t=>t.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     t.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');})));
   const root=document.documentElement;
@@ -693,7 +761,15 @@
   const ini=n=>n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const hue=s=>['#6B7280','#2563EB','#F37021','#0EA5E9','#D97706','#16A34A','#7C3AED'][[...s].reduce((a,c)=>a+c.charCodeAt(0),0)%7];
-  async function api(p,o){const r=await fetch(p,o);if(!r.ok)throw new Error(await r.text());return r.json();}
+  let SESSAO=null, ROLE=null, CFG=null;
+  const authHeaders=()=>SESSAO&&SESSAO.access_token?{Authorization:'Bearer '+SESSAO.access_token}:{};
+  async function api(p,o={}){
+    const headers={...(o.headers||{}),...authHeaders()};
+    const r=await fetch(p,{...o,headers});
+    if(r.status===401){sair();throw new Error('sessão expirada');}
+    if(!r.ok)throw new Error(await r.text());
+    return r.json();
+  }
 
   const DP_COLS=[
     {k:'admissao',t:'Admissão',c:'var(--wait)'},
@@ -788,9 +864,6 @@
     tabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>activate(b.dataset.col)));
     activate(activeCol[boardId]);
   }
-
-  loadDP().catch(e=>console.error(e));
-  loadFin().catch(e=>console.error(e));
 
   // ---------- ORÇAMENTOS & MEDIÇÕES ----------
   const brlN=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2});
@@ -921,13 +994,7 @@
   }
   document.getElementById('btn-vt-novo').addEventListener('click',()=>abrirVT());
   // atalho para a tela de VT (funciona no mobile, onde a sidebar some)
-  document.querySelectorAll('[data-goto="vt"]').forEach(b=>b.addEventListener('click',()=>{
-    nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-    const sb=nav.querySelector('button[data-view="vt"]');if(sb)sb.classList.add('on');
-    document.querySelectorAll('.main > section').forEach(s=>s.classList.add('hidden'));
-    document.getElementById('view-vt').classList.remove('hidden');
-    window.scrollTo(0,0);loadVT().catch(e=>console.error(e));
-  }));
+  document.querySelectorAll('[data-goto="vt"]').forEach(b=>b.addEventListener('click',()=>irParaView('vt')));
   document.getElementById('vt-content').addEventListener('click',e=>{
     const b=e.target.closest('[data-vtadd]');if(b)abrirVT(b.dataset.vtadd);
   });
@@ -942,19 +1009,10 @@
   });
 
   // ---------- BOTTOM NAV (mobile) ----------
-  function irPara(view){
-    nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-    const sb=nav.querySelector('button[data-view="'+view+'"]');if(sb)sb.classList.add('on');
-    document.querySelectorAll('.main > section').forEach(s=>s.classList.add('hidden'));
-    document.getElementById('view-'+view).classList.remove('hidden');
-    window.scrollTo(0,0);
-  }
   document.getElementById('bottomnav').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     const t=b.dataset.bn;
     if(t==='novo'){document.getElementById('lanc-tipo').value='entrada';fillCats();openModal('ov-lanc');return;}
-    const view={dp:'dp',fin:'fin',perfil:'cfg'}[t];
-    irPara(view);
-    document.getElementById('bottomnav').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    irParaView({dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'}[t]);
   }));
 
   // ---------- SERVICE WORKER (PWA) ----------
@@ -1072,7 +1130,7 @@
     document.getElementById('form-doc').addEventListener('submit',async ev=>{
       ev.preventDefault();const fd=new FormData(ev.target);
       if(!fd.get('data_vencimento'))fd.delete('data_vencimento');
-      try{const r=await fetch('/api/dp/colaborador/'+c.id+'/documento',{method:'POST',body:fd});
+      try{const r=await fetch('/api/dp/colaborador/'+c.id+'/documento',{method:'POST',body:fd,headers:authHeaders()});
         if(!r.ok)throw new Error(await r.text());
         renderFicha(await api('/api/dp/colaborador/'+c.id));  // recarrega a ficha
         loadDP();showToast('Documento enviado');
@@ -1141,4 +1199,88 @@
       await loadFin();showToast((payload.tipo==='entrada'?'Entrada':'Custo')+' lançado — margem recalculada');
     }catch(err){showToast('Erro ao lançar');console.error(err);}
   });
+
+  // ================= AUTENTICAÇÃO & ROLES =================
+  const loginScreen=document.getElementById('login-screen');
+  const appEl=document.getElementById('app');
+  function mostrarLogin(){loginScreen.classList.remove('hidden');loginScreen.classList.add('ready');appEl.style.visibility='hidden';}
+  function esconderLogin(){loginScreen.classList.add('hidden');appEl.style.visibility='';}
+  function salvarSessao(s){SESSAO=s;localStorage.setItem('rb_sessao',JSON.stringify(s));}
+  function carregarSessaoLocal(){try{SESSAO=JSON.parse(localStorage.getItem('rb_sessao'));}catch{SESSAO=null;}}
+  function sessaoValida(){return SESSAO&&SESSAO.access_token&&SESSAO.expires_at&&(SESSAO.expires_at*1000>Date.now()+5000);}
+  function sair(){localStorage.removeItem('rb_sessao');SESSAO=null;ROLE=null;mostrarLogin();}
+
+  async function fazerLogin(email,password){
+    const r=await fetch(CFG.supabaseUrl+'/auth/v1/token?grant_type=password',{method:'POST',
+      headers:{apikey:CFG.supabaseAnonKey,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));
+      const msg=/invalid/i.test(e.error_code||e.msg||'')?'E-mail ou senha inválidos':(e.error_description||e.msg||'Não foi possível entrar');
+      throw new Error(msg);}
+    const d=await r.json();
+    salvarSessao({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at,user:{id:d.user.id,email:d.user.email}});
+  }
+  async function refrescarSessao(){
+    if(!SESSAO||!SESSAO.refresh_token)return false;
+    const r=await fetch(CFG.supabaseUrl+'/auth/v1/token?grant_type=refresh_token',{method:'POST',
+      headers:{apikey:CFG.supabaseAnonKey,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:SESSAO.refresh_token})});
+    if(!r.ok)return false;
+    const d=await r.json();
+    salvarSessao({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at,user:{id:d.user.id,email:d.user.email}});
+    return true;
+  }
+  async function carregarPerfilUsuario(){
+    const r=await fetch(CFG.supabaseUrl+'/rest/v1/profiles?id=eq.'+SESSAO.user.id+'&select=nome,email,role',
+      {headers:{apikey:CFG.supabaseAnonKey,Authorization:'Bearer '+SESSAO.access_token}});
+    const arr=await r.json().catch(()=>[]);
+    const p=Array.isArray(arr)?arr[0]:null;
+    ROLE=(p&&p.role)||'OPERACIONAL';
+    if(p&&p.nome)SESSAO.nome=p.nome;
+    return p;
+  }
+  function loadPerfil(){
+    const nome=(SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'Usuário';
+    document.getElementById('perfil-nome').textContent=nome;
+    document.getElementById('perfil-email').textContent=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';
+    document.getElementById('perfil-ini').textContent=ini(nome);
+    const rl=document.getElementById('perfil-role');rl.textContent=ROLE==='ADMIN'?'Administrador':'Operacional';
+    rl.className='st '+(ROLE==='ADMIN'?'st-aprov':'st-medi');
+  }
+  function aplicarRole(role){
+    const admin=role==='ADMIN';
+    const permitido=admin?['dash','dp','fin','vt','orc','cfg']:['orc','vt'];
+    document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
+    // avatar / iniciais no topo
+    const av=document.querySelector('.avatar');if(av){av.textContent=ini((SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'US');av.title=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';}
+    // bottom nav por role
+    const mostra=admin?{dp:1,fin:1,novo:1,perfil:1}:{orc:1,vt:1,perfil:1};
+    document.querySelectorAll('#bottomnav [data-bn]').forEach(b=>b.style.display=mostra[b.dataset.bn]?'':'none');
+    // esconde o atalho de VT na aba do DP para operacional (não usa DP)
+    irParaView(admin?'dp':'orc');
+    if(admin)loadFin().catch(e=>console.error(e)); // popula select do modal de lançamento
+  }
+
+  document.getElementById('form-login').addEventListener('submit',async e=>{
+    e.preventDefault();const f=new FormData(e.target);
+    const err=document.getElementById('login-err');err.textContent='';
+    const btn=e.target.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Entrando…';
+    try{
+      await fazerLogin(f.get('email'),f.get('password').trim());
+      await carregarPerfilUsuario();
+      esconderLogin();aplicarRole(ROLE);
+    }catch(ex){err.textContent=ex.message||'Falha no login';}
+    finally{btn.disabled=false;btn.textContent='Entrar';}
+  });
+  document.getElementById('btn-logout').addEventListener('click',sair);
+  document.querySelector('.avatar').addEventListener('click',()=>irParaView('perfil'));
+
+  async function boot(){
+    try{CFG=await (await fetch('/api/config')).json();}catch{CFG={auth:false};}
+    if(!CFG.auth){ROLE='ADMIN';esconderLogin();aplicarRole('ADMIN');return;}   // dev/mock: sem login
+    carregarSessaoLocal();
+    if(sessaoValida()||await refrescarSessao()){
+      try{await carregarPerfilUsuario();esconderLogin();aplicarRole(ROLE);}
+      catch{sair();}
+    }else{mostrarLogin();}
+  }
+  boot();
 </script>

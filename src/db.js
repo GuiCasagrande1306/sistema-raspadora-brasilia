@@ -185,6 +185,16 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('colaboradores').update({ status }).eq('id', id).select().single(); if (error) throw error; return data; }
     const c = mock.colaboradores.find(x => x.id === id); if (!c) return null; c.status = status; return c;
   },
+  // ---- PERFIS / ROLES ----
+  async getProfile(userId) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('profiles').select('id,nome,email,role').eq('id', userId).single();
+      if (error) return null;
+      return data;
+    }
+    return { id: 'dev', nome: 'Dev', email: 'dev@local', role: 'ADMIN' };
+  },
+
   // ---- ORÇAMENTOS & MEDIÇÕES ----
   async listOrcamentos() {
     if (USING_SUPABASE) {
