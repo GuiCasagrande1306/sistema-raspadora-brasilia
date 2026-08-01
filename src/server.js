@@ -278,6 +278,47 @@ app.post('/api/dp/vt/registro', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---------- PRONTUÁRIO / SST / VACINAS / ANEXOS ----------
+app.get('/api/dp/colaborador/:id/prontuario', async (req, res, next) => {
+  try {
+    const p = await db.getProntuario(req.params.id);
+    if (!p) return res.status(404).json({ erro: 'colaborador não encontrado' });
+    res.json(p);
+  } catch (e) { next(e); }
+});
+app.post('/api/dp/colaborador/:id/sst', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const { tipo_documento } = req.body;
+    if (!tipo_documento) return res.status(400).json({ erro: 'tipo_documento é obrigatório' });
+    let arquivo_pdf_url = req.body.arquivo_pdf_url || null;
+    if (req.file) {
+      const r = await db.uploadDocumento(req.params.id, { tipo_doc: 'SST_' + tipo_documento, data_vencimento: req.body.data_vencimento, file: req.file });
+      arquivo_pdf_url = r.url_arquivo || arquivo_pdf_url;
+    }
+    res.status(201).json(await db.addSST(req.params.id, {
+      tipo_documento, data_elaboracao: req.body.data_elaboracao, data_vencimento: req.body.data_vencimento,
+      arquivo_pdf_url, observacoes: req.body.observacoes,
+    }));
+  } catch (e) { next(e); }
+});
+app.post('/api/dp/colaborador/:id/vacina', async (req, res, next) => {
+  try {
+    if (!req.body.tipo_vacina) return res.status(400).json({ erro: 'tipo_vacina é obrigatório' });
+    res.status(201).json(await db.addVacina(req.params.id, req.body));
+  } catch (e) { next(e); }
+});
+app.post('/api/dp/colaborador/:id/anexo', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const nome = req.body.nome_documento;
+    if (!nome) return res.status(400).json({ erro: 'nome_documento é obrigatório' });
+    res.status(201).json(await db.addAnexo(req.params.id, { nome_documento: nome, file: req.file }));
+  } catch (e) { next(e); }
+});
+app.get('/api/sst/alertas-vencimento', requireAdmin, async (req, res, next) => {
+  try { res.json(await db.alertasSST(Number(req.query.dias) || 30)); }
+  catch (e) { next(e); }
+});
+
 app.patch('/api/dp/colaborador/:id/mover', async (req, res, next) => {
   try {
     const { status } = req.body;
@@ -429,6 +470,7 @@ app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
 app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock' }));
 
 app.use((err, _req, res, _next) => {
+  if (err && err.status) return res.status(err.status).json({ erro: err.message });
   console.error(err);
   res.status(500).json({ erro: 'erro interno', detalhe: err.message });
 });

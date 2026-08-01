@@ -86,6 +86,16 @@ const mock = {
 
 const VALOR_PASSAGEM = 4.30;
 
+// status de documento SST/NR (janela de 30 dias)
+export function sstStatus(dataVenc) {
+  if (!dataVenc) return { status: 'SEM_VENCIMENTO', dias: null };
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((new Date(dataVenc + 'T00:00:00') - hoje) / 86400000);
+  if (dias < 0) return { status: 'VENCIDO', dias };
+  if (dias <= 30) return { status: 'PRESTES_A_VENCER', dias };
+  return { status: 'VALIDO', dias };
+}
+
 // alerta de documento a partir da data de vencimento
 export function docStatus(dataVenc) {
   if (!dataVenc) return { nivel: 'pendente', dias: null };
@@ -213,6 +223,88 @@ export const db = {
     const avatar_url = data.publicUrl;
     await sb('profiles').update({ avatar_url }).eq('id', userId);
     return { avatar_url };
+  },
+
+  // ---- SST / PRONTUÁRIO / VACINAS / ANEXOS ----
+  async getProntuario(id) {
+    if (!USING_SUPABASE) return null;
+    const [{ data: c }, { data: sst }, { data: vac }, { data: anexos }, { data: docs }] = await Promise.all([
+      sb('colaboradores').select('*').eq('id', id).single(),
+      sb('documentos_sst').select('*').eq('colaborador_id', id).order('data_vencimento', { ascending: true }),
+      sb('vacinas_colaborador').select('*').eq('colaborador_id', id).order('data_aplicacao', { ascending: false }),
+      sb('documentos_anexo').select('*').eq('colaborador_id', id).order('uploaded_at', { ascending: false }),
+      sb('documentos_dp').select('*').eq('colaborador_id', id),
+    ]);
+    if (!c) return null;
+    return {
+      colaborador: c,
+      empresa: c.empresa,
+      sst: (sst || []).map(d => ({ ...d, status: sstStatus(d.data_vencimento) })),
+      vacinas: vac || [],
+      anexos: anexos || [],
+      documentos_dp: (docs || []).map(d => ({ ...d, status: docStatus(d.data_vencimento) })),
+    };
+  },
+  async addSST(colaboradorId, s) {
+    if (!USING_SUPABASE) return { id: uid(), ...s };
+    const { data, error } = await sb('documentos_sst').insert({
+      colaborador_id: colaboradorId, tipo_documento: s.tipo_documento,
+      data_elaboracao: s.data_elaboracao || null, data_vencimento: s.data_vencimento || null,
+      arquivo_pdf_url: s.arquivo_pdf_url || null, observacoes: s.observacoes || null,
+    }).select().single();
+    if (error) throw error;
+    return { ...data, status: sstStatus(data.data_vencimento) };
+  },
+  async addVacina(colaboradorId, v) {
+    if (!USING_SUPABASE) return { id: uid(), ...v };
+    const { data, error } = await sb('vacinas_colaborador').insert({
+      colaborador_id: colaboradorId, tipo_vacina: v.tipo_vacina,
+      data_aplicacao: v.data_aplicacao || null, data_vencimento_dose: v.data_vencimento_dose || null,
+      comprovante_pdf_url: v.comprovante_pdf_url || null,
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async addAnexo(colaboradorId, { nome_documento, file }) {
+    if (!USING_SUPABASE) return { id: uid(), nome_documento };
+    let arquivo_url = null, mime_type = 'application/pdf';
+    if (file) {
+      const safe = (file.originalname || 'anexo').replace(/[^\w.\-]+/g, '_');
+      const path = `anexos/${colaboradorId}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file.buffer, { contentType: file.mimetype });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+      arquivo_url = signed?.signedUrl || path; mime_type = file.mimetype;
+    }
+    const { data, error } = await sb('documentos_anexo').insert({ colaborador_id: colaboradorId, nome_documento, arquivo_url, mime_type }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async alertasSST(dias = 30) {
+    if (!USING_SUPABASE) return { vencidos: [], prestes: [] };
+    const { data: sst } = await sb('documentos_sst').select('*, colaboradores(nome,empresa)').not('data_vencimento', 'is', null);
+    const vencidos = [], prestes = [];
+    for (const d of (sst || [])) {
+      const s = sstStatus(d.data_vencimento);
+      const item = { id: d.id, colaborador: d.colaboradores?.nome, empresa: d.colaboradores?.empresa, tipo_documento: d.tipo_documento, data_vencimento: d.data_vencimento, dias: s.dias };
+      if (s.status === 'VENCIDO') vencidos.push(item);
+      else if (s.status === 'PRESTES_A_VENCER' && s.dias <= dias) prestes.push(item);
+    }
+    vencidos.sort((a, b) => a.dias - b.dias); prestes.sort((a, b) => a.dias - b.dias);
+    return { vencidos, prestes };
+  },
+  // valida se um colaborador pode ser alocado numa obra (mesma empresa)
+  async validarAlocacao(colaboradorIds, obraId) {
+    if (!USING_SUPABASE) return { ok: true };
+    const { data: obra } = await sb('obras_financeiro').select('empresa_responsavel,cliente').eq('id', obraId).single();
+    if (!obra) return { ok: false, erro: 'obra não encontrada' };
+    const { data: cs } = await sb('colaboradores').select('id,nome,empresa').in('id', colaboradorIds);
+    for (const c of (cs || [])) {
+      if (c.empresa && obra.empresa_responsavel && c.empresa !== obra.empresa_responsavel) {
+        return { ok: false, erro: `Colaborador ${c.nome} (${c.empresa}) não pode ser alocado nesta obra (${obra.empresa_responsavel}).` };
+      }
+    }
+    return { ok: true };
   },
 
   // ---- ORÇAMENTOS & MEDIÇÕES ----
@@ -367,6 +459,8 @@ export const db = {
   async criarApontamento(a) {
     if (!USING_SUPABASE) return { id: uid(), ...a, m2_por_colaborador: 0 };
     const equipe = Array.isArray(a.equipe_ids) ? a.equipe_ids.filter(Boolean) : [];
+    const val = await this.validarAlocacao(equipe, a.obra_id);
+    if (!val.ok) { const e = new Error(val.erro); e.status = 422; throw e; }
     const { data: ap, error } = await sb('apontamentos_diarios').insert({
       obra_id: a.obra_id, data: a.data || new Date().toISOString().slice(0, 10),
       metragem_dia_m2: a.metragem_dia_m2, observacoes_tecnicas: a.observacoes_tecnicas || null,

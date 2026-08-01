@@ -977,6 +977,9 @@
     const el=document.getElementById('dp-docs');if(el)el.textContent=venc;
     document.getElementById('dp-ferias').textContent=(data.ferias||[]).length;
     buildColTabs('tabs-dp','board-dp',DP_COLS);
+    // soma alertas de SST/NRs ao indicador de documentos
+    api('/api/sst/alertas-vencimento').then(a=>{const el2=document.getElementById('dp-docs');
+      if(el2)el2.textContent=venc+(a.vencidos.length+a.prestes.length);}).catch(()=>{});
   }
 
   const FIN_COLS=[
@@ -1285,8 +1288,10 @@
           <button type="submit" class="primary" style="padding:8px 12px">Enviar</button>
         </form>
       </div>
+      <div class="sec"><h5>Prontuário — SST / NRs &amp; Vacinas</h5><div id="ficha-prontuario"><span class="dv">Carregando…</span></div></div>
       <div class="sec"><h5>Histórico Funcional</h5><div class="tl">${hist}</div></div>`;
     document.querySelector('#ov-ficha [data-close]').addEventListener('click',()=>document.getElementById('ov-ficha').classList.remove('open'));
+    carregarProntuario(c.id);
     const pixBtn=document.querySelector('#ov-ficha [data-copypix]');
     if(pixBtn)pixBtn.addEventListener('click',async()=>{
       try{await navigator.clipboard.writeText(pixBtn.dataset.copypix);showToast('Chave PIX copiada');}
@@ -1301,6 +1306,43 @@
         loadDP();showToast('Documento enviado');
       }catch(err){showToast('Erro ao enviar documento');console.error(err);}
     });
+  }
+  async function carregarProntuario(id){
+    const el=document.getElementById('ficha-prontuario');if(!el)return;
+    try{const p=await api('/api/dp/colaborador/'+id+'/prontuario');
+      const empCls=p.empresa==='ECO_PISOS'?'p-medi':'p-ok';
+      const sst=(p.sst||[]).map(s=>{const st=s.status.status;
+        const cls=st==='VENCIDO'?'p-danger':st==='PRESTES_A_VENCER'?'p-warn':st==='VALIDO'?'p-ok':'p-wait';
+        const lbl=st==='VENCIDO'?'Vencido':st==='PRESTES_A_VENCER'?'A vencer':st==='VALIDO'?'Válido':'Sem venc.';
+        const info=s.data_vencimento?('vence '+dtBR(s.data_vencimento)):'—';
+        return `<div class="docrow"><span class="pill ${cls}">${lbl}</span><div class="dt">${esc(s.tipo_documento)}</div><div class="dv">${info}</div></div>`;}).join('')||'<div class="dv">Nenhuma NR/ASO cadastrada.</div>';
+      const vac=(p.vacinas||[]).map(v=>`<span class="tag t-ok">${esc(v.tipo_vacina)}${v.data_aplicacao?' · '+dtBR(v.data_aplicacao):''}</span>`).join('')||'<span class="dv">Nenhuma vacina registrada.</span>';
+      const anexos=(p.anexos||[]).map(a=>`<a class="tag t-info" href="${a.arquivo_url||'#'}" target="_blank" rel="noopener">${esc(a.nome_documento)}</a>`).join('');
+      const drive=p.colaborador&&p.colaborador.documentos_drive_link?`<a class="tag t-lar" href="${esc(p.colaborador.documentos_drive_link)}" target="_blank" rel="noopener">📁 Google Drive</a>`:'';
+      el.innerHTML=`
+        <div class="mline"><span>Empresa do grupo</span><b><span class="pill ${empCls}">${esc(p.empresa||'—')}</span></b></div>
+        <div style="margin-top:10px">${sst}</div>
+        <div style="margin-top:12px"><div class="dv" style="margin-bottom:6px;font-weight:700">Carteira de vacinação</div><div class="tags">${vac}</div></div>
+        <div style="margin-top:12px"><div class="dv" style="margin-bottom:6px;font-weight:700">Anexos / dossiê</div><div class="tags">${anexos||'<span class="dv">Sem anexos.</span>'}${drive}</div></div>
+        <form id="form-sst" class="docup" style="margin-top:14px">
+          <select name="tipo_documento" required>
+            <option value="">NR / ASO…</option><option>ASO</option><option>NR06</option><option>NR07</option><option>NR12</option><option>NR18</option><option>NR23</option><option>NR35</option><option>ANUENCIA_NR12</option>
+          </select>
+          <input name="data_elaboracao" type="date" title="Elaboração">
+          <input name="data_vencimento" type="date" title="Vencimento">
+          <input name="arquivo" type="file" accept="application/pdf,image/*">
+          <button type="submit" class="primary" style="padding:8px 12px">+ SST</button>
+        </form>`;
+      document.getElementById('form-sst').addEventListener('submit',async ev=>{
+        ev.preventDefault();const fd=new FormData(ev.target);
+        if(!fd.get('data_elaboracao'))fd.delete('data_elaboracao');
+        if(!fd.get('data_vencimento'))fd.delete('data_vencimento');
+        try{const r=await fetch('/api/dp/colaborador/'+id+'/sst',{method:'POST',body:fd,headers:authHeaders()});
+          if(!r.ok)throw new Error(await r.text());
+          carregarProntuario(id);showToast('Documento SST salvo');
+        }catch(err){showToast('Erro ao salvar SST');console.error(err);}
+      });
+    }catch(err){el.innerHTML='<span class="dv">Erro ao carregar prontuário.</span>';console.error(err);}
   }
   document.getElementById('board-dp').addEventListener('click',async e=>{
     const b=e.target.closest('[data-ficha]');if(!b)return;

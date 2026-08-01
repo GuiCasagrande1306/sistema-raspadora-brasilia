@@ -1,6 +1,6 @@
 // Service Worker — Raspadora Brasília PWA
 // Cache de assets estáticos (app shell). Dados da API NUNCA são cacheados.
-const CACHE = 'raspadora-v5';
+const CACHE = 'raspadora-v6';
 const ASSETS = [
   '/',
   '/index.html',
