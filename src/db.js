@@ -304,6 +304,15 @@ export const db = {
         return { ok: false, erro: `Colaborador ${c.nome} (${c.empresa}) não pode ser alocado nesta obra (${obra.empresa_responsavel}).` };
       }
     }
+    // bloqueio por NR de segurança vencida (NR35 trabalho em altura, NR12 máquinas)
+    const { data: nrs } = await sb('documentos_sst').select('colaborador_id,tipo_documento,data_vencimento')
+      .in('colaborador_id', colaboradorIds).in('tipo_documento', ['NR35', 'NR12']);
+    const nomeDe = Object.fromEntries((cs || []).map(c => [c.id, c.nome]));
+    for (const d of (nrs || [])) {
+      if (sstStatus(d.data_vencimento).status === 'VENCIDO') {
+        return { ok: false, erro: `Alocação bloqueada: ${nomeDe[d.colaborador_id] || 'colaborador'} está com ${d.tipo_documento} VENCIDA. Regularize a documentação de segurança.` };
+      }
+    }
     return { ok: true };
   },
 

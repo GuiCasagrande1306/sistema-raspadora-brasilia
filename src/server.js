@@ -319,6 +319,29 @@ app.get('/api/sst/alertas-vencimento', requireAdmin, async (req, res, next) => {
   catch (e) { next(e); }
 });
 
+// Rotina diária (Vercel Cron) — verifica vencimentos e alerta em 30/15/7 dias.
+// Protegido por CRON_SECRET quando definido (header Authorization: Bearer <secret>).
+app.get('/api/sst/cron-alertas', async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    if (secret) {
+      const h = req.headers.authorization || '';
+      if (h !== `Bearer ${secret}`) return res.status(401).json({ erro: 'não autorizado' });
+    }
+    const { vencidos, prestes } = await db.alertasSST(30);
+    const buckets = { d30: [], d15: [], d7: [], vencidos };
+    for (const p of prestes) {
+      if (p.dias <= 7) buckets.d7.push(p);
+      else if (p.dias <= 15) buckets.d15.push(p);
+      else buckets.d30.push(p);
+    }
+    console.log(`[cron-alertas] vencidos=${vencidos.length} · 7d=${buckets.d7.length} · 15d=${buckets.d15.length} · 30d=${buckets.d30.length}`);
+    for (const v of vencidos) console.log(`  VENCIDO: ${v.colaborador} (${v.empresa}) — ${v.tipo_documento} há ${-v.dias}d`);
+    for (const p of [...buckets.d7, ...buckets.d15, ...buckets.d30]) console.log(`  A VENCER em ${p.dias}d: ${p.colaborador} — ${p.tipo_documento}`);
+    res.json({ ok: true, executado_em: new Date().toISOString(), resumo: { vencidos: vencidos.length, d7: buckets.d7.length, d15: buckets.d15.length, d30: buckets.d30.length }, buckets });
+  } catch (e) { next(e); }
+});
+
 app.patch('/api/dp/colaborador/:id/mover', async (req, res, next) => {
   try {
     const { status } = req.body;
