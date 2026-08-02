@@ -291,6 +291,38 @@
   .vt-add:hover{background:var(--laranja-50);color:var(--laranja-esc);border-color:var(--laranja-100);}
   .vt-cards{display:none;}
 
+  /* ---- Dashboard Financeiro ---- */
+  .dash-filtros{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 26px 0;flex-wrap:wrap;}
+  .seg{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);padding:4px;border-radius:11px;}
+  .seg button{border:0;background:transparent;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);font-family:inherit;}
+  .seg button.on{background:var(--laranja);color:#fff;}
+  .dash-sel{padding:9px 14px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;font-family:inherit;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 26px 4px;}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:13px;}
+  .kpi-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:18px;font-weight:800;flex-shrink:0;}
+  .kpi-lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:700;}
+  .kpi-val{font-size:22px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px;}
+  .dash-charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:18px 26px 4px;}
+  .chart-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);}
+  .chart-card h5{margin:0 0 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:800;}
+  .donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  .donut{width:150px;height:150px;border-radius:50%;flex-shrink:0;position:relative;
+    -webkit-mask:radial-gradient(circle 44px at center, transparent 98%, #000 100%);
+    mask:radial-gradient(circle 44px at center, transparent 98%, #000 100%);}
+  .donut-legend{display:flex;flex-direction:column;gap:8px;flex:1;min-width:180px;}
+  .leg-item{display:flex;align-items:center;gap:9px;font-size:12.5px;}
+  .leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+  .leg-item .leg-nome{flex:1;color:var(--ink-2);}
+  .leg-item .leg-val{font-weight:700;font-variant-numeric:tabular-nums;}
+  .cat-row{display:grid;grid-template-columns:1fr 120px 130px 90px;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line);}
+  .cat-row:first-child{border-top:0;}
+  .cat-nome{font-size:13.5px;font-weight:600;}
+  .cat-val{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;font-size:13px;}
+  .cat-bar{height:8px;border-radius:6px;background:var(--concreto);overflow:hidden;}
+  .cat-bar span{display:block;height:100%;border-radius:6px;}
+  .cat-status{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:20px;text-align:center;text-transform:uppercase;}
+  .cat-ok{background:var(--ok-bg);color:var(--ok-ink);} .cat-alerta{background:var(--danger-bg);color:var(--danger);}
+
   /* ---- Bancos / Folha / Apontamento ---- */
   .conta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:22px;}
   .conta-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);border-top:3px solid var(--laranja);}
@@ -429,6 +461,13 @@
     .orc-item .it-total{grid-column:1 / -1;text-align:left;}
     .orc-item .it-del{position:absolute;top:6px;right:8px;}
     .vt-table{display:none;}
+    .kpi-grid{grid-template-columns:1fr 1fr;}
+    .dash-charts{grid-template-columns:1fr;}
+    .dash-filtros{padding:12px 16px 0;}
+    .kpi-grid{padding:14px 16px 4px;} .dash-charts{padding:14px 16px 4px;}
+    .chart-card{margin-left:0;margin-right:0;}
+    .cat-row{grid-template-columns:1fr auto;gap:6px 10px;}
+    .cat-row .cat-nome{grid-column:1/-1;} .cat-row>div:nth-child(3){grid-column:1/-1;}
     #folha-content .vt-wrap,#bancos-content{overflow-x:auto;}
     #folha-content .vt-table{display:table;min-width:660px;}
     .vt-cards{display:flex;flex-direction:column;gap:12px;}
@@ -666,7 +705,32 @@
       </div>
     </section>
 
-    <section id="view-dash" class="hidden"><div class="modhead"><h1>Dashboard Geral</h1><p>Visão consolidada de DP + Financeiro. Selecione DP ou Financeiro no menu para ver os quadros Kanban.</p></div></section>
+    <!-- ===== DASHBOARD FINANCEIRO ===== -->
+    <section id="view-dash" class="hidden">
+      <div class="modhead"><h1>Dashboard Financeiro</h1><p>Visão consolidada de faturamento, custos, margem e caixa — por empresa e período.</p></div>
+      <div class="dash-filtros">
+        <div class="seg" id="dash-empresa">
+          <button data-emp="TODAS" class="on">Todas</button><button data-emp="RB_PISOS">RB Pisos</button><button data-emp="ECO_PISOS">Eco Pisos</button>
+        </div>
+        <select class="dash-sel" id="dash-periodo">
+          <option value="mes">Este mês</option><option value="anterior">Mês anterior</option><option value="trimestre">Trimestre</option><option value="ano">Ano</option>
+        </select>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-ic" style="background:var(--info-bg);color:var(--info)">₹</div><div><div class="kpi-lbl">Faturamento Total</div><div class="kpi-val money" id="kpi-fat">—</div></div></div>
+        <div class="kpi"><div class="kpi-ic" style="background:var(--danger-bg);color:var(--danger)">▼</div><div><div class="kpi-lbl">Custos Operacionais</div><div class="kpi-val money" id="kpi-cus">—</div></div></div>
+        <div class="kpi"><div class="kpi-ic" style="background:var(--ok-bg);color:var(--ok-ink)">%</div><div><div class="kpi-lbl">Margem / EBITDA</div><div class="kpi-val" id="kpi-mar">—</div></div></div>
+        <div class="kpi"><div class="kpi-ic" style="background:var(--laranja-100);color:var(--laranja-esc)">◈</div><div><div class="kpi-lbl">Saldo em Caixa</div><div class="kpi-val money" id="kpi-sal">—</div></div></div>
+      </div>
+      <div class="dash-charts">
+        <div class="chart-card"><h5>Distribuição de Custos por Categoria</h5><div class="donut-wrap"><div class="donut" id="donut-custos"></div><div class="donut-legend" id="leg-custos"></div></div></div>
+        <div class="chart-card"><h5>Origem das Receitas por Serviço</h5><div class="donut-wrap"><div class="donut" id="donut-receitas"></div><div class="donut-legend" id="leg-receitas"></div></div></div>
+      </div>
+      <div class="chart-card" style="margin:0 26px 96px">
+        <h5>Categorias de Despesas — uso do orçamento</h5>
+        <div id="dash-categorias"></div>
+      </div>
+    </section>
     <!-- ===== ORÇAMENTOS & MEDIÇÕES ===== -->
     <section id="view-orc" class="hidden">
       <div class="modhead"><h1>Orçamentos &amp; Medições</h1><p>Bloco de orçamento de campo — cabeçalho do cliente, itens medidos por m² e total do serviço.</p></div>
@@ -906,6 +970,7 @@
     if(view==='fin')loadFin().catch(e=>console.error(e));
     if(view==='vt')loadVT().catch(e=>console.error(e));
     if(view==='orc')loadOrc().catch(e=>console.error(e));
+    if(view==='dash')loadDashboard().catch(e=>console.error(e));
     if(view==='bancos')loadBancos().catch(e=>console.error(e));
     if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
@@ -1406,6 +1471,36 @@
       await loadFin();showToast((payload.tipo==='entrada'?'Entrada':'Custo')+' lançado — margem recalculada');
     }catch(err){showToast('Erro ao lançar');console.error(err);}
   });
+
+  // ================= DASHBOARD FINANCEIRO =================
+  const DASH_CORES=['#F37021','#2563EB','#16A34A','#D97706','#8B5CF6','#0EA5E9','#EF5B25','#64748B'];
+  let dashEmpresa='TODAS';
+  function donutHTML(el,legEl,items){
+    const total=items.reduce((s,i)=>s+i.valor,0);
+    if(!total){el.style.background='var(--concreto)';legEl.innerHTML='<span class="dv">Sem dados no período.</span>';return;}
+    let acc=0;const stops=items.map((it,i)=>{const c=DASH_CORES[i%DASH_CORES.length];const a=acc/total*360;acc+=it.valor;return `${c} ${a}deg ${acc/total*360}deg`;}).join(',');
+    el.style.background='conic-gradient('+stops+')';
+    legEl.innerHTML=items.map((it,i)=>`<div class="leg-item"><span class="leg-dot" style="background:${DASH_CORES[i%DASH_CORES.length]}"></span><span class="leg-nome">${esc(it.nome)}</span><span class="leg-val">${brl(it.valor)} · ${Math.round(it.valor/total*100)}%</span></div>`).join('');
+  }
+  async function loadDashboard(){
+    const d=await api('/api/dashboard?empresa='+dashEmpresa+'&periodo='+document.getElementById('dash-periodo').value);
+    document.getElementById('kpi-fat').textContent=brl(d.cards.faturamento);
+    document.getElementById('kpi-cus').textContent=brl(d.cards.custos_totais);
+    document.getElementById('kpi-mar').textContent=d.cards.margem_pct+'%';
+    document.getElementById('kpi-sal').textContent=brl(d.cards.saldo_caixa);
+    donutHTML(document.getElementById('donut-custos'),document.getElementById('leg-custos'),d.custos_categoria.filter(c=>c.valor>0).map(c=>({nome:c.nome,valor:c.valor})));
+    donutHTML(document.getElementById('donut-receitas'),document.getElementById('leg-receitas'),d.receitas_servico);
+    document.getElementById('dash-categorias').innerHTML=d.custos_categoria.map(c=>{
+      const pct=Math.min(100,c.pct_orcamento);const cor=c.estouro?'var(--danger)':c.pct_orcamento>=80?'var(--warn)':'var(--laranja)';
+      return `<div class="cat-row"><div class="cat-nome">${esc(c.nome)}</div>
+        <div class="cat-val">${brl(c.valor)}</div>
+        <div><div class="cat-bar"><span style="width:${pct}%;background:${cor}"></span></div><div style="font-size:11px;color:var(--ink-3);margin-top:3px">${c.pct_orcamento}% de ${brl(c.orcamento)}</div></div>
+        <div class="cat-status ${c.estouro?'cat-alerta':'cat-ok'}">${c.estouro?'Estouro':'No limite'}</div></div>`;}).join('');
+  }
+  document.getElementById('dash-empresa').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    document.getElementById('dash-empresa').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+    dashEmpresa=b.dataset.emp;loadDashboard().catch(e=>console.error(e));}));
+  document.getElementById('dash-periodo').addEventListener('change',()=>loadDashboard().catch(e=>console.error(e)));
 
   // ================= GESTÃO v2 (UI) =================
   const isoHoje=()=>new Date().toISOString().slice(0,10);

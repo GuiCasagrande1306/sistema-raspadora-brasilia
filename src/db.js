@@ -225,6 +225,60 @@ export const db = {
     return { avatar_url };
   },
 
+  // ---- DASHBOARD FINANCEIRO ----
+  async dashboardFinanceiro(empresa, periodo) {
+    if (!USING_SUPABASE) return null;
+    // período → intervalo de datas (aplica-se às movimentações datadas)
+    const hoje = new Date(); const y = hoje.getFullYear(), m = hoje.getMonth();
+    let d0, d1;
+    if (periodo === 'anterior') { d0 = new Date(y, m - 1, 1); d1 = new Date(y, m, 0); }
+    else if (periodo === 'trimestre') { d0 = new Date(y, m - 2, 1); d1 = new Date(y, m + 1, 0); }
+    else if (periodo === 'ano') { d0 = new Date(y, 0, 1); d1 = new Date(y, 11, 31); }
+    else { d0 = new Date(y, m, 1); d1 = new Date(y, m + 1, 0); } // mês atual
+    const iso = dt => dt.toISOString().slice(0, 10);
+
+    let obrasQ = sb('obras_financeiro').select('valor_contrato,custo_insumos,custo_mao_obra,tipo_piso,empresa_responsavel');
+    if (empresa && empresa !== 'TODAS') obrasQ = obrasQ.eq('empresa_responsavel', empresa);
+    const [{ data: obras }, { data: contas }, { data: movs }] = await Promise.all([
+      obrasQ,
+      sb('contas_bancarias').select('saldo_atual'),
+      sb('movimentacoes_caixa').select('categoria,tipo,valor,data_movimento').gte('data_movimento', iso(d0)).lte('data_movimento', iso(d1)),
+    ]);
+
+    const faturamento = (obras || []).reduce((s, o) => s + (o.valor_contrato || 0), 0);
+    const maoObraObra = (obras || []).reduce((s, o) => s + (o.custo_mao_obra || 0), 0);
+    const insumosObra = (obras || []).reduce((s, o) => s + (o.custo_insumos || 0), 0);
+
+    // movimentações de saída por categoria (dentro do período)
+    const saidaPor = {};
+    for (const mv of (movs || [])) if (mv.tipo === 'SAIDA') saidaPor[mv.categoria] = (saidaPor[mv.categoria] || 0) + mv.valor;
+
+    const custos_categoria = [
+      { nome: 'Mão de Obra (diárias, vales, salários)', valor: maoObraObra + (saidaPor.FOLHA_DP || 0) + (saidaPor.VALE_CAMPO || 0), orcamento: 8000000 },
+      { nome: 'Insumos & Materiais', valor: insumosObra + (saidaPor.COMPRA_INSUMOS || 0), orcamento: 5000000 },
+      { nome: 'Logística & Combustível', valor: (saidaPor.COMBUSTIVEL_LOGISTICA || 0), orcamento: 1500000 },
+      { nome: 'Manutenção de Maquinário', valor: (saidaPor.MANUTENCAO || 0), orcamento: 1000000 },
+      { nome: 'Custos Administrativos', valor: (saidaPor.IMPOSTOS || 0) + (saidaPor.OUTROS || 0), orcamento: 2000000 },
+    ].map(c => ({ ...c, pct_orcamento: c.orcamento ? Math.round((c.valor / c.orcamento) * 1000) / 10 : 0, estouro: c.valor > c.orcamento }));
+
+    const custos_totais = custos_categoria.reduce((s, c) => s + c.valor, 0);
+    const saldo_caixa = (contas || []).reduce((s, c) => s + c.saldo_atual, 0);
+    const lucro = faturamento - custos_totais;
+    const margem = faturamento ? Math.round((lucro / faturamento) * 1000) / 10 : 0;
+
+    // receitas por tipo de serviço (agrupa obras por tipo_piso)
+    const recPor = {};
+    for (const o of (obras || [])) { const k = o.tipo_piso || 'Outros'; recPor[k] = (recPor[k] || 0) + (o.valor_contrato || 0); }
+    const receitas_servico = Object.entries(recPor).map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor);
+
+    return {
+      periodo, empresa: empresa || 'TODAS',
+      cards: { faturamento, custos_totais, margem_pct: margem, saldo_caixa },
+      custos_categoria: custos_categoria.filter(c => c.valor > 0 || c.orcamento > 0),
+      receitas_servico,
+    };
+  },
+
   // ---- SST / PRONTUÁRIO / VACINAS / ANEXOS ----
   async getProntuario(id) {
     if (!USING_SUPABASE) return null;

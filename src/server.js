@@ -72,6 +72,7 @@ app.use('/api/dp/folha-fechamento', requireAdmin);
 app.use('/api/obras', requireAdmin);
 app.use('/api/bancos', requireAdmin);
 app.use('/api/fluxo-caixa', requireAdmin);
+app.use('/api/dashboard', requireAdmin);
 
 // ---------- PERFIL DO USUÁRIO LOGADO ----------
 app.get('/api/perfil', async (req, res, next) => {
@@ -487,6 +488,12 @@ app.post('/api/bancos/transferencia-interna', async (req, res, next) => {
 // Fluxo de caixa projetado (próximos N dias)
 app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
   try { res.json(await db.fluxoProjetado(Number(req.query.dias) || 30)); }
+  catch (e) { next(e); }
+});
+
+// Dashboard financeiro consolidado
+app.get('/api/dashboard', async (req, res, next) => {
+  try { res.json(await db.dashboardFinanceiro(req.query.empresa || 'TODAS', req.query.periodo || 'mes')); }
   catch (e) { next(e); }
 });
 
