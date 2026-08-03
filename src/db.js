@@ -96,6 +96,24 @@ export function sstStatus(dataVenc) {
   return { status: 'VALIDO', dias };
 }
 
+// Checklist padronizado de documentos do colaborador (padrão Inmeta)
+export const CATALOGO_DOCS = [
+  { codigo: '01', nome: 'Ficha de Registro', vencivel: false },
+  { codigo: '02', nome: 'CTPS / e-Social / Contrato', vencivel: false },
+  { codigo: '03', nome: 'ASO (Atestado de Saúde Ocupacional)', vencivel: true },
+  { codigo: '04', nome: 'Cartão de Vacina', vencivel: false },
+  { codigo: '05', nome: 'Ordem de Serviço', vencivel: false },
+  { codigo: '06', nome: 'Ficha de EPI', vencivel: true },
+  { codigo: '07', nome: 'NR 06', vencivel: true },
+  { codigo: '08', nome: 'NR 07', vencivel: true },
+  { codigo: '11', nome: 'NR 12', vencivel: true },
+  { codigo: '14', nome: 'NR 18', vencivel: true },
+  { codigo: '15', nome: 'NR 23', vencivel: true },
+  { codigo: '19', nome: 'NR 35', vencivel: true },
+  { codigo: '20', nome: 'Anuência da NR 35', vencivel: false },
+  { codigo: '21', nome: 'Proficiência da NR 35', vencivel: true },
+];
+
 // alerta de documento a partir da data de vencimento
 export function docStatus(dataVenc) {
   if (!dataVenc) return { nivel: 'pendente', dias: null };
@@ -223,6 +241,73 @@ export const db = {
     const avatar_url = data.publicUrl;
     await sb('profiles').update({ avatar_url }).eq('id', userId);
     return { avatar_url };
+  },
+
+  // ---- DOCUMENTOS (padrão Inmeta) ----
+  async getDocsColaborador(id) {
+    if (!USING_SUPABASE) return CATALOGO_DOCS.map(c => ({ ...c, presente: false, status_analise: 'NAO_VALIDADO' }));
+    const { data } = await sb('documentos_colaborador').select('*').eq('colaborador_id', id);
+    const porCodigo = Object.fromEntries((data || []).map(d => [d.codigo, d]));
+    return CATALOGO_DOCS.map(cat => {
+      const d = porCodigo[cat.codigo];
+      if (!d) return { ...cat, presente: false, versao: null, status_analise: 'NAO_VALIDADO', arquivo_url: null, data_vencimento: null, atualizado_em: null, venc: { status: 'PENDENTE' } };
+      return { ...cat, presente: true, id: d.id, versao: d.versao, data_emissao: d.data_emissao, tem_vencimento: d.tem_vencimento, data_vencimento: d.data_vencimento, status_analise: d.status_analise, arquivo_url: d.arquivo_url, atualizado_em: d.atualizado_em, venc: d.tem_vencimento && d.data_vencimento ? sstStatus(d.data_vencimento) : { status: 'SEM_VENCIMENTO' } };
+    });
+  },
+  _pastaStatus(docs) {
+    // amarelo se houver pendência: doc obrigatório ausente, reprovado, vencido ou prestes
+    let pendencias = 0, prox = null;
+    for (const d of docs) {
+      const problema = !d.presente || d.status_analise === 'REPROVADO' ||
+        (d.venc && (d.venc.status === 'VENCIDO' || d.venc.status === 'PRESTES_A_VENCER'));
+      if (problema) pendencias++;
+      if (d.presente && d.data_vencimento) {
+        if (!prox || d.data_vencimento < prox) prox = d.data_vencimento;
+      }
+    }
+    return { status: pendencias ? 'PENDENTE' : 'OK', pendencias, vencimento_geral: prox };
+  },
+  async listColaboradoresDocs(filtros = {}) {
+    if (!USING_SUPABASE) return [];
+    let q = sb('colaboradores').select('id,nome,cpf,cargo,empresa,status,obras_vinculadas');
+    if (filtros.empresa && filtros.empresa !== 'TODAS') q = q.eq('empresa', filtros.empresa);
+    const { data: colabs } = await q;
+    const { data: docs } = await sb('documentos_colaborador').select('*');
+    const porColab = {};
+    for (const d of (docs || [])) (porColab[d.colaborador_id] ||= []).push(d);
+    const out = (colabs || []).map(c => {
+      const catMerged = CATALOGO_DOCS.map(cat => {
+        const d = (porColab[c.id] || []).find(x => x.codigo === cat.codigo);
+        return d ? { ...cat, presente: true, status_analise: d.status_analise, data_vencimento: d.data_vencimento, venc: d.tem_vencimento && d.data_vencimento ? sstStatus(d.data_vencimento) : { status: 'SEM_VENCIMENTO' }, versao: d.versao } : { ...cat, presente: false, venc: { status: 'PENDENTE' }, versao: null };
+      });
+      const pasta = this._pastaStatus(catMerged);
+      const versaoMax = Math.max(0, ...catMerged.filter(x => x.versao).map(x => x.versao));
+      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, obras_vinculadas: c.obras_vinculadas || [], pasta, versao_atual: versaoMax || null };
+    });
+    let filtered = out;
+    if (filtros.pendencias) filtered = filtered.filter(c => c.pasta.status === 'PENDENTE');
+    if (filtros.q) { const s = filtros.q.toLowerCase(); filtered = filtered.filter(c => (c.nome || '').toLowerCase().includes(s) || (c.cpf || '').includes(s)); }
+    return filtered;
+  },
+  async upsertDocColaborador(colaboradorId, doc) {
+    if (!USING_SUPABASE) return { id: uid(), ...doc };
+    const { data: existente } = await sb('documentos_colaborador').select('versao').eq('colaborador_id', colaboradorId).eq('codigo', doc.codigo).maybeSingle();
+    const versao = existente ? (existente.versao + 1) : 1;
+    const row = {
+      colaborador_id: colaboradorId, codigo: doc.codigo, versao,
+      data_emissao: doc.data_emissao || null, tem_vencimento: !!doc.tem_vencimento,
+      data_vencimento: doc.tem_vencimento ? (doc.data_vencimento || null) : null,
+      arquivo_url: doc.arquivo_url || null, status_analise: 'NAO_VALIDADO', atualizado_em: new Date().toISOString(),
+    };
+    const { data, error } = await sb('documentos_colaborador').upsert(row, { onConflict: 'colaborador_id,codigo' }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async setStatusDoc(docId, status) {
+    if (!USING_SUPABASE) return { id: docId, status_analise: status };
+    const { data, error } = await sb('documentos_colaborador').update({ status_analise: status }).eq('id', docId).select().single();
+    if (error) throw error;
+    return data;
   },
 
   // ---- DASHBOARD FINANCEIRO ----

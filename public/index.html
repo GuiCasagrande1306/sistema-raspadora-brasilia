@@ -291,6 +291,45 @@
   .vt-add:hover{background:var(--laranja-50);color:var(--laranja-esc);border-color:var(--laranja-100);}
   .vt-cards{display:none;}
 
+  /* ---- Gestão de Documentos (Inmeta) ---- */
+  .docs-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 26px 0;flex-wrap:wrap;}
+  .docs-crumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-3);flex-wrap:wrap;}
+  .docs-crumb .cr{cursor:pointer;font-weight:600;}
+  .docs-crumb .cr:hover{color:var(--laranja-2);}
+  .docs-crumb .cr.atual{color:var(--ink);cursor:default;}
+  .docs-crumb .sep{opacity:.5;}
+  .docs-actions{display:flex;gap:8px;}
+  .docs-filtros{display:flex;align-items:center;gap:12px;padding:14px 26px 0;flex-wrap:wrap;}
+  .docs-search{position:relative;flex:1;max-width:340px;min-width:200px;}
+  .docs-search svg{position:absolute;left:11px;top:9px;width:16px;height:16px;color:var(--ink-3);}
+  .docs-search input{width:100%;padding:9px 12px 9px 36px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13px;font-family:inherit;}
+  .docs-toggle{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;}
+  .empresa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .empresa-card,.colab-row,.doc-row{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);}
+  .empresa-card{border-radius:var(--r);padding:20px;cursor:pointer;display:flex;align-items:center;gap:14px;border-left:4px solid var(--laranja);transition:.15s;}
+  .empresa-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
+  .empresa-card .ec-ic{width:46px;height:46px;border-radius:12px;background:var(--laranja-100);color:var(--laranja-esc);display:grid;place-items:center;}
+  .empresa-card h4{margin:0;font-size:15px;} .empresa-card .dv{font-size:12px;}
+  .colab-list,.doc-list{display:flex;flex-direction:column;gap:8px;}
+  .colab-row{border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.12s;}
+  .colab-row:hover{border-color:var(--laranja-100);background:var(--laranja-50);}
+  .folder{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;position:relative;}
+  .folder.ok{background:var(--ok-bg);color:var(--ok);} .folder.pend{background:var(--warn-bg);color:var(--warn);}
+  .folder svg{width:22px;height:22px;}
+  .colab-row .ci{flex:1;min-width:0;} .colab-row h4{margin:0;font-size:14px;font-weight:700;}
+  .colab-row .sub{font-size:12px;color:var(--ink-3);}
+  .colab-row .badges{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+  .doc-row{border-radius:11px;padding:11px 14px;display:grid;grid-template-columns:26px 1fr auto auto;gap:12px;align-items:center;}
+  .pdf-ic{width:26px;height:30px;background:var(--danger-bg);color:var(--danger);border-radius:4px;display:grid;place-items:center;font-size:8px;font-weight:800;position:relative;}
+  .doc-row .di h4{margin:0;font-size:13.5px;font-weight:600;}
+  .doc-row .di .sub{font-size:11.5px;color:var(--ink-3);margin-top:1px;}
+  .doc-cloud{border:0;background:none;cursor:pointer;color:var(--ink-3);padding:6px;border-radius:8px;}
+  .doc-cloud:hover{color:var(--laranja-2);background:var(--laranja-50);}
+  .doc-cloud svg{width:20px;height:20px;}
+  .an{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
+  .an-val{background:var(--ok-bg);color:var(--ok-ink);} .an-nao{background:var(--wait-bg);color:var(--wait-ink);} .an-rep{background:var(--danger-bg);color:var(--danger);}
+  .an-sel{border:1px solid var(--line-2);border-radius:8px;font-size:11px;padding:4px 6px;background:var(--surface-2);color:var(--ink-2);font-family:inherit;cursor:pointer;}
+
   /* ---- Dashboard Financeiro ---- */
   .dash-filtros{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 26px 0;flex-wrap:wrap;}
   .seg{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);padding:4px;border-radius:11px;}
@@ -555,6 +594,7 @@
       <button data-view="vt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M4 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 16v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M4 10h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="tip">Vale-Transporte</span></button>
       <button data-view="bancos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><path d="M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M9 14v3M15 14v3"/></svg><span class="tip">Bancos &amp; Fluxo</span></button>
       <button data-view="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg><span class="tip">Folha de Pagamento</span></button>
+      <button data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="tip">Documentos / SST</span></button>
       <button data-view="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span class="tip">Orçamentos</span></button>
       <button data-view="cfg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="tip">Configurações</span></button>
     </nav>
@@ -678,6 +718,24 @@
         <div class="metric"><div class="lbl">Vales abatidos</div><div class="val money" id="folha-vales">—</div><div class="sub">adiantados via PIX</div></div>
       </div>
       <div id="folha-content" style="padding:18px 26px 96px;"></div>
+    </section>
+
+    <!-- ===== GESTÃO DE DOCUMENTOS (Inmeta) ===== -->
+    <section id="view-docs" class="hidden">
+      <div class="modhead"><h1>Gestão de Documentos</h1><p>Prontuário e documentos SST/RH por empresa e colaborador — validação e vencimentos.</p></div>
+      <div class="docs-topbar">
+        <nav class="docs-crumb" id="docs-crumb"></nav>
+        <div class="docs-actions">
+          <button class="btn-ghost" id="docs-export">Exportar</button>
+          <button class="primary" id="docs-relatorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg> Relatório de pendências</button>
+        </div>
+      </div>
+      <div class="docs-filtros">
+        <div class="search docs-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="docs-q" placeholder="Buscar por nome ou CPF…"></div>
+        <select id="docs-status" class="dash-sel"><option value="">Status: todos</option><option value="ativo">Ativos</option><option value="desligamento">Inativos</option></select>
+        <label class="docs-toggle"><input type="checkbox" id="docs-pend"> Somente pendências</label>
+      </div>
+      <div id="docs-content" style="padding:18px 26px 96px;"></div>
     </section>
 
     <!-- ===== PERFIL & CONFIGURAÇÕES ===== -->
@@ -948,6 +1006,23 @@
   </div>
 </div>
 
+<!-- MODAL: Upload/atualização de documento (Inmeta) -->
+<div class="overlay" id="ov-docup">
+  <div class="modal">
+    <header><h3 id="docup-titulo">Atualizar documento</h3><button class="x" data-close>×</button></header>
+    <form id="form-docup">
+      <input type="hidden" name="codigo" id="docup-codigo">
+      <div class="body">
+        <div class="field"><label>Arquivo (PDF, PNG ou JPG)</label><input name="arquivo" type="file" accept="application/pdf,image/png,image/jpeg" required></div>
+        <div class="field"><label>Data de emissão / elaboração</label><input name="data_emissao" type="date" required></div>
+        <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" id="docup-temvenc" name="tem_vencimento"> Este documento tem data de vencimento</label>
+        <div class="field" id="docup-venc-wrap" style="display:none"><label>Data de vencimento</label><input name="data_vencimento" type="date"><span class="hint">Ativa lembretes e alertas automáticos.</span></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Ficha do Colaborador -->
 <div class="overlay" id="ov-ficha">
   <div class="modal wide">
@@ -971,6 +1046,7 @@
     if(view==='vt')loadVT().catch(e=>console.error(e));
     if(view==='orc')loadOrc().catch(e=>console.error(e));
     if(view==='dash')loadDashboard().catch(e=>console.error(e));
+    if(view==='docs')loadDocs().catch(e=>console.error(e));
     if(view==='bancos')loadBancos().catch(e=>console.error(e));
     if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
@@ -1472,6 +1548,87 @@
     }catch(err){showToast('Erro ao lançar');console.error(err);}
   });
 
+  // ================= GESTÃO DE DOCUMENTOS (Inmeta) =================
+  const EMPRESAS=[{id:'RB_PISOS',label:'R.B PISOS LTDA'},{id:'ECO_PISOS',label:'ECO PISOS'}];
+  const DOC_AN={VALIDADO:['an-val','Validado'],NAO_VALIDADO:['an-nao','Não validado'],REPROVADO:['an-rep','Reprovado']};
+  let docsState={nivel:'empresas'};
+  function renderCrumb(){
+    const c=document.getElementById('docs-crumb');const p=[`<span class="cr ${docsState.nivel==='empresas'?'atual':''}" data-crumb="empresas">Empresas / Construtoras</span>`];
+    if(docsState.empresa){p.push('<span class="sep">/</span>',`<span class="cr ${docsState.nivel==='colaboradores'?'atual':''}" data-crumb="colaboradores">${esc(docsState.empresaLabel)}</span>`);}
+    if(docsState.colabId){p.push('<span class="sep">/</span>',`<span class="cr atual">${esc(docsState.colabNome)}</span>`);}
+    c.innerHTML=p.join(' ');
+    c.querySelectorAll('[data-crumb]').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.crumb==='empresas')docsState={nivel:'empresas'};
+      else{docsState.nivel='colaboradores';docsState.colabId=null;}
+      renderDocs();}));
+  }
+  const folderSvg=ok=>ok
+    ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="m9 14 2 2 4-4"/></svg>'
+    :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M12 10v3M12 16h.01"/></svg>';
+  async function renderDocs(){
+    renderCrumb();const el=document.getElementById('docs-content');
+    if(docsState.nivel==='empresas'){
+      el.innerHTML='<div class="empresa-grid">'+EMPRESAS.map(e=>`<div class="empresa-card" data-emp="${e.id}"><div class="ec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg></div><div><h4>${e.label}</h4><div class="dv">Colaboradores &amp; documentos</div></div></div>`).join('')+'</div>';
+      el.querySelectorAll('[data-emp]').forEach(c=>c.addEventListener('click',()=>{docsState={nivel:'colaboradores',empresa:c.dataset.emp,empresaLabel:EMPRESAS.find(e=>e.id===c.dataset.emp).label};renderDocs();}));
+    }else if(docsState.nivel==='colaboradores'){
+      const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
+      let lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend);
+      if(st)lista=lista.filter(c=>st==='ativo'?c.status!=='desligamento':c.status==='desligamento');
+      el.innerHTML=lista.length?'<div class="colab-list">'+lista.map(c=>{
+        const ok=c.pasta.status==='OK',venc=c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—';
+        const obras=(c.obras_vinculadas||[]).slice(0,2).map(o=>`<span class="tag t-lar">${esc(o)}</span>`).join('');
+        return `<div class="colab-row" data-colab="${c.id}" data-nome="${esc(c.nome)}">
+          <div class="folder ${ok?'ok':'pend'}">${folderSvg(ok)}</div>
+          <div class="ci"><h4>${esc(c.nome)}</h4><div class="sub">${esc(c.cargo||'')}${c.cpf?' · '+esc(c.cpf):''} · v${c.versao_atual||'-'} · vence ${venc}</div></div>
+          <div class="badges">${obras}${ok?'<span class="an an-val">Em dia</span>':`<span class="an an-rep">${c.pasta.pendencias} pend.</span>`}</div></div>`;}).join('')+'</div>'
+        :'<div class="orc-empty">Nenhum colaborador encontrado.</div>';
+      el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>{docsState.nivel='docs';docsState.colabId=r.dataset.colab;docsState.colabNome=r.dataset.nome;renderDocs();}));
+    }else if(docsState.nivel==='docs'){
+      const docs=await api('/api/dp/colaborador/'+docsState.colabId+'/documentos');
+      el.innerHTML='<div class="doc-list">'+docs.map(d=>{
+        const v=d.venc||{status:'SEM_VENCIMENTO'};
+        const alerta=v.status==='VENCIDO'?' · ⚠ vencido':v.status==='PRESTES_A_VENCER'?' · ⚠ vence em '+v.dias+'d':'';
+        const l2=d.presente?`Versão ${d.versao} · ${d.atualizado_em?dtBR(d.atualizado_em.slice(0,10)):''}${d.data_vencimento?' · venc '+dtBR(d.data_vencimento)+alerta:''}`:'Não enviado';
+        const ctl=d.presente?`<select class="an-sel" data-status="${d.id}">
+            <option value="NAO_VALIDADO" ${d.status_analise==='NAO_VALIDADO'?'selected':''}>Não validado</option>
+            <option value="VALIDADO" ${d.status_analise==='VALIDADO'?'selected':''}>Validado</option>
+            <option value="REPROVADO" ${d.status_analise==='REPROVADO'?'selected':''}>Reprovado</option></select>`
+          :'<span class="an an-nao">Pendente</span>';
+        return `<div class="doc-row"><div class="pdf-ic">PDF</div>
+          <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2}</div></div>${ctl}
+          <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
+      el.querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click',()=>abrirDocUp(b.dataset.up,b.dataset.nome)));
+      el.querySelectorAll('[data-status]').forEach(s=>s.addEventListener('change',async()=>{
+        try{await api('/api/documentos/'+s.dataset.status+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status_analise:s.value})});showToast('Status: '+DOC_AN[s.value][1]);}
+        catch(err){showToast('Erro ao mudar status');console.error(err);}}));
+    }
+  }
+  function loadDocs(){docsState={nivel:'empresas'};return renderDocs();}
+  function abrirDocUp(codigo,nome){
+    document.getElementById('docup-titulo').textContent='Atualizar: '+codigo+' · '+nome;
+    document.getElementById('docup-codigo').value=codigo;
+    const f=document.getElementById('form-docup');f.reset();
+    document.getElementById('docup-venc-wrap').style.display='none';
+    document.querySelector('#form-docup [name=data_emissao]').value=hoje();
+    openModal('ov-docup');
+  }
+  document.getElementById('docup-temvenc').addEventListener('change',e=>{document.getElementById('docup-venc-wrap').style.display=e.target.checked?'':'none';});
+  document.getElementById('form-docup').addEventListener('submit',async e=>{
+    e.preventDefault();const fd=new FormData(e.target);
+    fd.set('tem_vencimento',document.getElementById('docup-temvenc').checked?'true':'false');
+    if(!document.getElementById('docup-temvenc').checked)fd.delete('data_vencimento');
+    try{const r=await fetch('/api/documentos/'+docsState.colabId+'/upload',{method:'POST',body:fd,headers:authHeaders()});
+      if(!r.ok)throw new Error(await r.text());
+      document.getElementById('ov-docup').classList.remove('open');renderDocs();showToast('Documento salvo');
+    }catch(err){showToast('Erro ao salvar documento');console.error(err);}
+  });
+  ['docs-q','docs-status'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(docsState.nivel==='colaboradores')renderDocs();}));
+  document.getElementById('docs-pend').addEventListener('change',()=>{if(docsState.nivel==='colaboradores')renderDocs();});
+  document.getElementById('docs-relatorio').addEventListener('click',async()=>{
+    try{const r=await api('/api/documentos/relatorio-pendencias'+(docsState.empresa?'?empresa='+docsState.empresa:''));
+      showToast(r.total_pendentes+' colaborador(es) com pendências');}catch(err){showToast('Erro no relatório');}});
+  document.getElementById('docs-export').addEventListener('click',()=>showToast('Exportação CSV/PDF — em breve'));
+
   // ================= DASHBOARD FINANCEIRO =================
   const DASH_CORES=['#F37021','#2563EB','#16A34A','#D97706','#8B5CF6','#0EA5E9','#EF5B25','#64748B'];
   let dashEmpresa='TODAS';
@@ -1705,7 +1862,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['dash','dp','fin','bancos','folha','vt','orc','cfg']:['orc','vt'];
+    const permitido=admin?['dash','dp','fin','bancos','folha','docs','vt','orc','cfg']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     // avatar / iniciais no topo (busca a foto do perfil em segundo plano)
     const av=document.querySelector('.avatar');

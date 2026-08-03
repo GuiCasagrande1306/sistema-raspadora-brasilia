@@ -4,7 +4,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, USING_SUPABASE, docStatus, supabase } from './db.js';
+import { db, USING_SUPABASE, docStatus, supabase, BUCKET } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -73,6 +73,7 @@ app.use('/api/obras', requireAdmin);
 app.use('/api/bancos', requireAdmin);
 app.use('/api/fluxo-caixa', requireAdmin);
 app.use('/api/dashboard', requireAdmin);
+app.use('/api/documentos', requireAdmin);
 
 // ---------- PERFIL DO USUÁRIO LOGADO ----------
 app.get('/api/perfil', async (req, res, next) => {
@@ -489,6 +490,53 @@ app.post('/api/bancos/transferencia-interna', async (req, res, next) => {
 app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
   try { res.json(await db.fluxoProjetado(Number(req.query.dias) || 30)); }
   catch (e) { next(e); }
+});
+
+// ---------- GESTÃO DE DOCUMENTOS (padrão Inmeta) ----------
+app.get('/api/documentos/colaboradores', async (req, res, next) => {
+  try {
+    res.json(await db.listColaboradoresDocs({
+      empresa: req.query.empresa, q: req.query.q,
+      pendencias: req.query.pendencias === 'true' || req.query.pendencias === '1',
+    }));
+  } catch (e) { next(e); }
+});
+app.get('/api/dp/colaborador/:id/documentos', async (req, res, next) => {
+  try { res.json(await db.getDocsColaborador(req.params.id)); }
+  catch (e) { next(e); }
+});
+app.post('/api/documentos/:colaboradorId/upload', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const { codigo } = req.body;
+    if (!codigo) return res.status(400).json({ erro: 'codigo é obrigatório' });
+    let arquivo_url = null;
+    if (req.file && USING_SUPABASE) {
+      const safe = (req.file.originalname || 'doc').replace(/[^\w.\-]+/g, '_');
+      const path = `docs/${req.params.colaboradorId}/${codigo}_${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, req.file.buffer, { contentType: req.file.mimetype });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+      arquivo_url = signed?.signedUrl || path;
+    }
+    const tem_vencimento = req.body.tem_vencimento === 'true' || req.body.tem_vencimento === '1' || req.body.tem_vencimento === true;
+    res.status(201).json(await db.upsertDocColaborador(req.params.colaboradorId, {
+      codigo, data_emissao: req.body.data_emissao || null, tem_vencimento,
+      data_vencimento: req.body.data_vencimento || null, arquivo_url,
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/documentos/:docId/status', async (req, res, next) => {
+  try {
+    const { status_analise } = req.body;
+    if (!['VALIDADO', 'NAO_VALIDADO', 'REPROVADO'].includes(status_analise)) return res.status(400).json({ erro: 'status_analise inválido' });
+    res.json(await db.setStatusDoc(req.params.docId, status_analise));
+  } catch (e) { next(e); }
+});
+app.get('/api/documentos/relatorio-pendencias', async (req, res, next) => {
+  try {
+    const lista = await db.listColaboradoresDocs({ empresa: req.query.empresa, pendencias: true });
+    res.json({ total_pendentes: lista.length, colaboradores: lista });
+  } catch (e) { next(e); }
 });
 
 // Dashboard financeiro consolidado
