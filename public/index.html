@@ -3,7 +3,10 @@
 <title>Raspadora Brasília — Sistema Interno</title>
 <meta name="description" content="Gestão de DP e Financeiro/Obras da Raspadora Brasília.">
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#F37021">
+<meta name="theme-color" content="#1E1E1E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- iOS Web App -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,21 +16,22 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
 <style>
   :root {
-    --laranja:#F37021; --laranja-2:#EF5B25; --laranja-esc:#D64E1A;
-    --laranja-100:#FEE9DC; --laranja-50:#FFF4EE;
-    --chumbo-900:#111827; --chumbo-800:#1F2937; --chumbo-700:#374151;
-    --ground:#F3F4F6; --surface:#FFFFFF; --surface-2:#F9FAFB; --concreto:#E5E7EB;
-    --ink:#111827; --ink-2:#4B5563; --ink-3:#9CA3AF;
+    /* Marca oficial Raspadora Brasília */
+    --laranja:#ED7118; --laranja-2:#EA630A; --laranja-esc:#D65E0B;
+    --laranja-100:#FCE4CF; --laranja-50:#FFF3E9;
+    --chumbo-900:#1E1E1E; --chumbo-800:#2A2A2A; --chumbo-700:#3A3A3A;
+    --ground:#F8F9FA; --surface:#FFFFFF; --surface-2:#F8F9FA; --concreto:#E5E7EB;
+    --ink:#1E1E1E; --ink-2:#6B7280; --ink-3:#9CA3AF;
     --line:#E5E7EB; --line-2:#D1D5DB;
     --ok:#16A34A; --ok-bg:#DCFCE7; --ok-ink:#166534;
     --warn:#D97706; --warn-bg:#FEF3C7; --warn-ink:#92400E;
     --info:#2563EB; --info-bg:#DBEAFE; --info-ink:#1E40AF;
     --wait:#6B7280; --wait-bg:#F3F4F6; --wait-ink:#374151;
     --danger:#DC2626; --danger-bg:#FEE2E2;
-    --shadow:0 1px 2px rgba(17,24,39,.06), 0 4px 12px rgba(17,24,39,.05);
-    --shadow-lg:0 8px 30px rgba(239,91,37,.15);
+    --shadow:0 1px 2px rgba(30,30,30,.06), 0 4px 12px rgba(30,30,30,.05);
+    --shadow-lg:0 8px 30px rgba(237,113,24,.16);
     --r:12px;
-    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --sans:'Inter','Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -49,9 +53,9 @@
     --shadow-lg:0 8px 30px rgba(0,0,0,.5);
   }
   :root[data-theme="light"]{
-    --ground:#F3F4F6; --surface:#FFFFFF; --surface-2:#F9FAFB; --concreto:#E5E7EB;
-    --ink:#111827; --ink-2:#4B5563; --ink-3:#9CA3AF; --line:#E5E7EB; --line-2:#D1D5DB;
-    --laranja-100:#FEE9DC; --laranja-50:#FFF4EE;
+    --ground:#F8F9FA; --surface:#FFFFFF; --surface-2:#F8F9FA; --concreto:#E5E7EB;
+    --ink:#1E1E1E; --ink-2:#6B7280; --ink-3:#9CA3AF; --line:#E5E7EB; --line-2:#D1D5DB;
+    --laranja-100:#FCE4CF; --laranja-50:#FFF3E9;
     --ok-bg:#DCFCE7; --warn-bg:#FEF3C7; --info-bg:#DBEAFE; --wait-bg:#F3F4F6; --danger-bg:#FEE2E2;
   }
   *{box-sizing:border-box;}
@@ -59,20 +63,20 @@
     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
   .app{display:grid;grid-template-columns:80px 1fr;min-height:100vh;}
 
-  /* ---------- SIDEBAR (laranja) ---------- */
-  .side{background:linear-gradient(180deg,var(--laranja),var(--laranja-2));
+  /* ---------- SIDEBAR (preto concreto + acento laranja) ---------- */
+  .side{background:var(--chumbo-900);border-right:1px solid #000;
     display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 0;
     position:sticky;top:0;height:100vh;}
-  .logo{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.16);
+  .logo{width:46px;height:46px;border-radius:12px;background:var(--laranja);
     display:grid;place-items:center;margin-bottom:14px;color:#fff;font-weight:800;font-size:17px;letter-spacing:-.5px;}
   .nav{display:flex;flex-direction:column;gap:4px;width:100%;align-items:center;}
   .nav button{width:50px;height:50px;border:0;border-radius:12px;background:transparent;
-    color:rgba(255,255,255,.82);display:grid;place-items:center;cursor:pointer;
+    color:rgba(255,255,255,.6);display:grid;place-items:center;cursor:pointer;
     transition:.15s;position:relative;}
-  .nav button:hover{background:rgba(255,255,255,.16);color:#fff;}
-  .nav button.on{background:#fff;color:var(--laranja-2);}
+  .nav button:hover{background:rgba(255,255,255,.09);color:#fff;}
+  .nav button.on{background:var(--laranja);color:#fff;}
   .nav button.on::before{content:"";position:absolute;left:-18px;width:4px;height:28px;
-    border-radius:0 4px 4px 0;background:#fff;}
+    border-radius:0 4px 4px 0;background:var(--laranja);}
   .nav .tip{position:absolute;left:58px;background:var(--chumbo-900);color:#fff;
     padding:5px 9px;border-radius:8px;font-size:12px;white-space:nowrap;opacity:0;
     pointer-events:none;transition:.15s;transform:translateX(-4px);z-index:20;font-weight:600;}
@@ -85,7 +89,7 @@
   /* ---------- MAIN ---------- */
   .main{display:flex;flex-direction:column;min-width:0;}
   .top{display:flex;align-items:center;gap:18px;padding:0 26px;background:var(--chumbo-900);
-    border-bottom:1px solid var(--chumbo-800);position:sticky;top:0;z-index:15;height:62px;}
+    border-bottom:2px solid var(--laranja);position:sticky;top:0;z-index:15;height:62px;}
   .brand{display:flex;flex-direction:column;line-height:1.15;white-space:nowrap;}
   .brand .nm{font-weight:800;color:#fff;font-size:15px;letter-spacing:-.01em;}
   .brand .sl{font-size:11px;color:var(--laranja);font-weight:600;}
