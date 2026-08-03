@@ -5,6 +5,7 @@ import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db, USING_SUPABASE, docStatus, supabase, BUCKET } from './db.js';
+import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -545,7 +546,17 @@ app.get('/api/dashboard', async (req, res, next) => {
   catch (e) { next(e); }
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock' }));
+// ---------- WHATSAPP (Evolution API) ----------
+app.post('/api/test-whatsapp', requireAdmin, async (req, res, next) => {
+  try {
+    const { number, message } = req.body;
+    if (!number || !message) return res.status(400).json({ erro: 'number e message são obrigatórios' });
+    const r = await sendTextMessage(number, message);
+    res.status(r.success ? 200 : 502).json(r);
+  } catch (e) { next(e); }
+});
+
+app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON }));
 
 app.use((err, _req, res, _next) => {
   if (err && err.status) return res.status(err.status).json({ erro: err.message });
