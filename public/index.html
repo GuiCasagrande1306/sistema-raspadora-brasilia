@@ -351,6 +351,32 @@
   .doc-tabs button{border:0;background:transparent;padding:8px 13px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--ink-2);white-space:nowrap;font-family:inherit;}
   .doc-tabs button.on{background:var(--surface);color:var(--laranja-2);box-shadow:var(--shadow);}
   .sem-validade{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--wait-bg);color:var(--wait-ink);white-space:nowrap;}
+  /* Lista customizável + Quadro (ClickUp/Airtable) */
+  .colab-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .colab-tr{display:flex;gap:8px;align-items:center;position:relative;}
+  .cols-menu{position:absolute;right:0;top:44px;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow-lg);padding:8px;z-index:30;min-width:210px;}
+  .cols-menu.hidden{display:none;}
+  .cols-menu .cm-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:800;padding:4px 8px;}
+  .cols-menu label{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:13px;border-radius:8px;cursor:pointer;}
+  .cols-menu label:hover{background:var(--surface-2);}
+  .lwrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow-x:auto;}
+  .ltable{width:100%;border-collapse:collapse;font-size:13px;}
+  .ltable th{text-align:left;padding:11px 13px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:800;background:var(--surface-2);border-bottom:1px solid var(--line);cursor:grab;user-select:none;white-space:nowrap;}
+  .ltable th.dragover{box-shadow:inset 3px 0 0 var(--laranja);}
+  .ltable th.dragging{opacity:.4;}
+  .ltable td{padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .ltable tbody tr:last-child td{border-bottom:0;}
+  .ltable tbody tr{cursor:pointer;} .ltable tbody tr:hover{background:var(--surface-2);}
+  .qboard{display:grid;grid-auto-flow:column;grid-auto-columns:280px;gap:14px;overflow-x:auto;padding-bottom:10px;}
+  .qcol .qhead{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--concreto);border-radius:10px;margin-bottom:10px;}
+  .qcol .qhead .sw{width:9px;height:9px;border-radius:3px;} .qcol .qhead h4{margin:0;font-size:12.5px;font-weight:800;flex:1;text-transform:uppercase;}
+  .qcol .qhead .cnt{background:var(--surface);font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;}
+  .qcard{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--laranja);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow);}
+  .qcard:hover{box-shadow:var(--shadow-lg);}
+  .qcard .qtop{display:flex;align-items:center;gap:10px;}
+  .qcard .ini{width:36px;height:36px;border-radius:10px;font-size:12px;}
+  .qcard h4{margin:0;font-size:13.5px;font-weight:700;} .qcard .qsub{font-size:11.5px;color:var(--ink-3);}
+  .qcard .qbadges{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
   .an-sel{border:1px solid var(--line-2);border-radius:8px;font-size:11px;padding:4px 6px;background:var(--surface-2);color:var(--ink-2);font-family:inherit;cursor:pointer;}
 
   /* ---- Cofre / página bancária protegida ---- */
@@ -1657,6 +1683,75 @@
   const STATUS_COLAB={ATIVO:['an-val','🟢 Ativo'],DESLIGADO:['an-rep','🔴 Desligado'],DIARIA:['an-aten','🟡 Diária']};
   const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['transferencia','Docs. Transferência'],['encerramento','Docs. Encerramento'],['treinamento','Treinamento'],['certificacao','Certificações']];
   let docTabAtiva='unico';
+  let docsViewMode='lista', docsGroupBy='status_colaborador';
+  const stTag=c=>{const[s,l]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;return `<span class="an ${s}">${l}</span>`;};
+  const farolTag=c=>{const[,l,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;return `<span class="an ${fan}">${l}</span>`;};
+  const COLS_DEF=[
+    {k:'nome',label:'Nome',get:c=>`<b>${esc(c.nome)}</b>`},
+    {k:'cpf',label:'CPF',get:c=>esc(c.cpf||'—')},
+    {k:'cargo',label:'Cargo',get:c=>esc(c.cargo||'—')},
+    {k:'status',label:'Status',get:stTag},
+    {k:'farol',label:'Farol',get:farolTag},
+    {k:'versao',label:'Versão',get:c=>'v'+(c.versao_atual||'-')},
+    {k:'vencimento',label:'Vencimento',get:c=>c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—'},
+    {k:'empresa',label:'Empresa',get:c=>esc(c.empresa||'—')},
+  ];
+  function colsState(){
+    let s;try{s=JSON.parse(localStorage.getItem('rb_docs_cols'));}catch{}
+    if(!s||!Array.isArray(s.order))s={order:COLS_DEF.map(c=>c.k),hidden:['empresa']};
+    // garante que colunas novas apareçam
+    COLS_DEF.forEach(c=>{if(!s.order.includes(c.k))s.order.push(c.k);});
+    return s;
+  }
+  function saveCols(s){localStorage.setItem('rb_docs_cols',JSON.stringify(s));}
+  function abrirColab(id,nome){docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=id;docsState.colabNome=nome;renderDocs();}
+  let docsListaCache=[];
+  function renderColabView(lista){
+    docsListaCache=lista;const el=document.getElementById('colab-view');if(!el)return;
+    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum colaborador encontrado.</div>';return;}
+    if(docsViewMode==='quadro')renderColabQuadro(el,lista);else renderColabLista(el,lista);
+  }
+  function renderColabLista(el,lista){
+    const s=colsState();
+    const cols=s.order.map(k=>COLS_DEF.find(c=>c.k===k)).filter(c=>c&&!s.hidden.includes(c.k));
+    const ths=cols.map(c=>`<th draggable="true" data-col="${c.k}">${c.label}</th>`).join('');
+    const rows=lista.map(c=>`<tr data-colab="${c.id}" data-nome="${esc(c.nome)}">${cols.map(col=>`<td>${col.get(c)}</td>`).join('')}</tr>`).join('');
+    el.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    el.querySelectorAll('tbody tr').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
+    let dragCol=null;
+    el.querySelectorAll('th[draggable]').forEach(th=>{
+      th.addEventListener('dragstart',()=>{dragCol=th.dataset.col;th.classList.add('dragging');});
+      th.addEventListener('dragend',()=>{th.classList.remove('dragging');el.querySelectorAll('th').forEach(x=>x.classList.remove('dragover'));});
+      th.addEventListener('dragover',e=>{e.preventDefault();th.classList.add('dragover');});
+      th.addEventListener('dragleave',()=>th.classList.remove('dragover'));
+      th.addEventListener('drop',e=>{e.preventDefault();const target=th.dataset.col;if(!dragCol||dragCol===target)return;
+        const st=colsState(),from=st.order.indexOf(dragCol),to=st.order.indexOf(target);
+        st.order.splice(from,1);st.order.splice(to,0,dragCol);saveCols(st);renderColabLista(el,lista);});
+    });
+  }
+  function renderColsMenu(){
+    const m=document.getElementById('docs-cols-menu');if(!m)return;const s=colsState();
+    m.innerHTML='<div class="cm-h">Colunas visíveis</div>'+COLS_DEF.map(c=>`<label><input type="checkbox" data-colk="${c.k}" ${s.hidden.includes(c.k)?'':'checked'}> ${c.label}</label>`).join('');
+    m.querySelectorAll('[data-colk]').forEach(cb=>cb.addEventListener('change',()=>{
+      const st=colsState(),k=cb.dataset.colk;
+      if(cb.checked)st.hidden=st.hidden.filter(x=>x!==k);else if(!st.hidden.includes(k))st.hidden.push(k);
+      saveCols(st);renderColabView(docsListaCache);}));
+  }
+  function renderColabQuadro(el,lista){
+    const groups=docsGroupBy==='farol'
+      ?[['OK','Em dia','var(--ok)'],['A_VENCER','A vencer','var(--laranja)'],['BLOQUEADO','Bloqueado','var(--danger)']]
+      :[['ATIVO','Ativo','var(--ok)'],['DIARIA','Diária','var(--laranja)'],['DESLIGADO','Desligado','var(--danger)']];
+    const keyOf=c=>docsGroupBy==='farol'?c.pasta.status:(c.status_colaborador||'ATIVO');
+    el.innerHTML='<div class="qboard">'+groups.map(([k,label,color])=>{
+      const items=lista.filter(c=>keyOf(c)===k);
+      const cards=items.map(c=>`<div class="qcard" data-colab="${c.id}" data-nome="${esc(c.nome)}">
+        <div class="qtop"><div class="ini" style="background:${hue(c.nome)}">${ini(c.nome)}</div>
+          <div><h4>${esc(c.nome)}</h4><div class="qsub">${esc(c.cargo||'—')}${c.cpf?' · '+esc(c.cpf):''}</div></div></div>
+        <div class="qbadges">${stTag(c)}${farolTag(c)}</div></div>`).join('')||'<div class="dv" style="padding:8px 4px">Nenhum</div>';
+      return `<div class="qcol"><div class="qhead"><span class="sw" style="background:${color}"></span><h4>${label}</h4><span class="cnt">${items.length}</span></div>${cards}</div>`;
+    }).join('')+'</div>';
+    el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
+  }
   let docsState={nivel:'empresas'};
   function renderCrumb(){
     const c=document.getElementById('docs-crumb');const p=[`<span class="cr ${docsState.nivel==='empresas'?'atual':''}" data-crumb="empresas">Empresas / Construtoras</span>`];
@@ -1679,16 +1774,18 @@
     }else if(docsState.nivel==='colaboradores'){
       const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
       const lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
-      el.innerHTML=lista.length?'<div class="colab-list">'+lista.map(c=>{
-        const[fcls,flbl,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;
-        const[scls,slbl]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;
-        const venc=c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—';
-        return `<div class="colab-row" data-colab="${c.id}" data-nome="${esc(c.nome)}">
-          <div class="folder ${fcls}">${folderSvg(c.pasta.status==='OK')}</div>
-          <div class="ci"><h4>${esc(c.nome)}</h4><div class="sub">${esc(c.cargo||'')}${c.cpf?' · '+esc(c.cpf):''} · v${c.versao_atual||'-'} · vence ${venc}</div></div>
-          <div class="badges"><span class="an ${scls}">${slbl}</span><span class="an ${fan}">${flbl}</span></div></div>`;}).join('')+'</div>'
-        :'<div class="orc-empty">Nenhum colaborador encontrado.</div>';
-      el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>{docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=r.dataset.colab;docsState.colabNome=r.dataset.nome;renderDocs();}));
+      const groupSel=docsViewMode==='quadro'?`<select id="docs-groupby" class="dash-sel"><option value="status_colaborador" ${docsGroupBy==='status_colaborador'?'selected':''}>Agrupar: Status</option><option value="farol" ${docsGroupBy==='farol'?'selected':''}>Agrupar: Farol</option></select>`:'';
+      const colsBtn=docsViewMode==='lista'?`<button class="btn-ghost" id="docs-cols-btn" style="min-height:38px">⚙️ Colunas</button><div class="cols-menu hidden" id="docs-cols-menu"></div>`:'';
+      el.innerHTML=`<div class="colab-toolbar">
+        <div class="seg" id="docs-viewmode"><button data-vm="lista" class="${docsViewMode==='lista'?'on':''}">☰ Lista</button><button data-vm="quadro" class="${docsViewMode==='quadro'?'on':''}">▦ Quadro</button></div>
+        <div class="colab-tr">${groupSel}${colsBtn}</div></div>
+        <div id="colab-view"></div>`;
+      // toolbar wiring
+      el.querySelectorAll('#docs-viewmode button').forEach(b=>b.addEventListener('click',()=>{docsViewMode=b.dataset.vm;renderDocs();}));
+      const gb=document.getElementById('docs-groupby');if(gb)gb.addEventListener('change',()=>{docsGroupBy=gb.value;renderColabView(lista);});
+      const cb=document.getElementById('docs-cols-btn');
+      if(cb)cb.addEventListener('click',()=>{const m=document.getElementById('docs-cols-menu');m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderColsMenu();});
+      renderColabView(lista);
     }else if(docsState.nivel==='docs'){
       const [resumo,docs]=await Promise.all([api('/api/dp/colaborador/'+docsState.colabId+'/resumo-docs'),api('/api/dp/colaborador/'+docsState.colabId+'/documentos')]);
       const c=resumo.colaborador,ct=resumo.contadores,[fcls,flbl,fan]=FAROL[resumo.farol.status]||FAROL.BLOQUEADO;
