@@ -333,6 +333,8 @@
   .an{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
   .an-val{background:var(--ok-bg);color:var(--ok-ink);} .an-nao{background:var(--wait-bg);color:var(--wait-ink);} .an-rep{background:var(--danger-bg);color:var(--danger);}
   .an-aten{background:var(--laranja-100);color:var(--laranja-esc);}
+  .an-fer{background:var(--info-bg);color:var(--info-ink);} .an-inss{background:#EDE9FE;color:#6D28D9;}
+  :root[data-theme="dark"] .an-inss{background:#2E2352;color:#C4B5FD;}
   .folder.avencer{background:var(--laranja-100);color:var(--laranja-esc);} .folder.bloq{background:var(--danger-bg);color:var(--danger);}
   /* Ficha-resumo GD4 */
   .ficha-banner{background:var(--chumbo-900);color:#fff;border-radius:var(--r);padding:18px 20px;display:flex;gap:16px;align-items:center;margin-bottom:16px;border-left:4px solid var(--laranja);flex-wrap:wrap;}
@@ -824,7 +826,7 @@
       </div>
       <div class="docs-filtros">
         <div class="search docs-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="docs-q" placeholder="Buscar por nome ou CPF…"></div>
-        <select id="docs-status" class="dash-sel"><option value="">Status: todos</option><option value="ATIVO">🟢 Ativo</option><option value="DESLIGADO">🔴 Desligado</option><option value="DIARIA">🟡 Diária</option></select>
+        <select id="docs-status" class="dash-sel"><option value="">Status: todos</option><option value="ATIVO">🟢 Ativo</option><option value="DIARIA">🟡 Diária</option><option value="FERIAS">🔵 Férias</option><option value="INSS">🟣 INSS</option><option value="DESLIGADO">🔴 Desligado</option></select>
         <label class="docs-toggle"><input type="checkbox" id="docs-pend"> Somente pendências</label>
       </div>
       <div id="docs-content" style="padding:18px 26px 96px;"></div>
@@ -948,7 +950,7 @@
         <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Contratação</h5>
         <div class="grid2">
           <div class="field"><label>Status do colaborador *</label>
-            <select name="status_colaborador" required><option value="ATIVO">🟢 Ativo</option><option value="DESLIGADO">🔴 Desligado</option><option value="DIARIA">🟡 Diária</option></select>
+            <select name="status_colaborador" required><option value="ATIVO">🟢 Ativo</option><option value="DIARIA">🟡 Diária</option><option value="FERIAS">🔵 Férias</option><option value="INSS">🟣 INSS</option><option value="DESLIGADO">🔴 Desligado</option></select>
           </div>
           <div class="field"><label>Empresa *</label><select name="empresa" required><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
         </div>
@@ -1680,7 +1682,7 @@
   const EMPRESAS=[{id:'RB_PISOS',label:'R.B PISOS LTDA'},{id:'ECO_PISOS',label:'ECO PISOS'}];
   const DOC_AN={VALIDADO:['an-val','Validado'],NAO_VALIDADO:['an-nao','Não validado'],REPROVADO:['an-rep','Reprovado']};
   const FAROL={OK:['ok','Em dia','an-val'],A_VENCER:['avencer','A vencer','an-aten'],BLOQUEADO:['bloq','Bloqueado','an-rep']};
-  const STATUS_COLAB={ATIVO:['an-val','🟢 Ativo'],DESLIGADO:['an-rep','🔴 Desligado'],DIARIA:['an-aten','🟡 Diária']};
+  const STATUS_COLAB={ATIVO:['an-val','🟢 Ativo'],DESLIGADO:['an-rep','🔴 Desligado'],DIARIA:['an-aten','🟡 Diária'],FERIAS:['an-fer','🔵 Férias'],INSS:['an-inss','🟣 INSS']};
   const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['transferencia','Docs. Transferência'],['encerramento','Docs. Encerramento'],['treinamento','Treinamento'],['certificacao','Certificações']];
   let docTabAtiva='unico';
   let docsViewMode='lista', docsGroupBy='status_colaborador';
@@ -1740,7 +1742,7 @@
   function renderColabQuadro(el,lista){
     const groups=docsGroupBy==='farol'
       ?[['OK','Em dia','var(--ok)'],['A_VENCER','A vencer','var(--laranja)'],['BLOQUEADO','Bloqueado','var(--danger)']]
-      :[['ATIVO','Ativo','var(--ok)'],['DIARIA','Diária','var(--laranja)'],['DESLIGADO','Desligado','var(--danger)']];
+      :[['ATIVO','Ativo','var(--ok)'],['DIARIA','Diária','var(--laranja)'],['FERIAS','Férias','var(--info)'],['INSS','INSS','#8B5CF6'],['DESLIGADO','Desligado','var(--danger)']];
     const keyOf=c=>docsGroupBy==='farol'?c.pasta.status:(c.status_colaborador||'ATIVO');
     el.innerHTML='<div class="qboard">'+groups.map(([k,label,color])=>{
       const items=lista.filter(c=>keyOf(c)===k);
