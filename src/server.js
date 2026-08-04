@@ -64,6 +64,7 @@ app.use('/api/dp/documento', requireAdmin);
 app.use('/api/dp/vt/balanco', requireAdmin);     // valores totais p/ PIX/carteirinha
 app.use('/api/dp/vt/registro', requireAuth);     // presença de campo (operacional)
 app.use('/api/dp/vt/colaboradores', requireAuth);
+app.use('/api/dp/vt/semana', requireAuth);       // VT semanal editável
 app.use('/api/orcamentos', requireAuth);         // orçamentos & medições (operacional)
 app.use('/api/perfil', requireAuth);             // cada usuário edita o próprio perfil
 // Gestão v2
@@ -265,6 +266,22 @@ app.get('/api/dp/vt/colaboradores', async (_req, res, next) => {
   try {
     const cs = await db.listColaboradores();
     res.json(cs.map(c => ({ id: c.id, nome: c.nome })));
+  } catch (e) { next(e); }
+});
+
+// VT semanal — lista de edição inline
+app.get('/api/dp/vt/semana', async (req, res, next) => {
+  try {
+    const ano_mes = req.query.ano_mes || new Date().toISOString().slice(0, 7);
+    const semana = parseInt(req.query.semana, 10) || 1;
+    res.json(await db.getVTSemana(ano_mes, semana));
+  } catch (e) { next(e); }
+});
+app.post('/api/dp/vt/semana', async (req, res, next) => {
+  try {
+    const { colaborador_id, ano_mes, semana } = req.body;
+    if (!colaborador_id || !ano_mes || !semana) return res.status(400).json({ erro: 'colaborador_id, ano_mes e semana são obrigatórios' });
+    res.json(await db.upsertVTSemana(req.body));
   } catch (e) { next(e); }
 });
 

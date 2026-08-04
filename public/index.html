@@ -294,6 +294,23 @@
     padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap;}
   .vt-add:hover{background:var(--laranja-50);color:var(--laranja-esc);border-color:var(--laranja-100);}
   .vt-cards{display:none;}
+  /* VT editável inline */
+  .vte-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow-x:auto;}
+  .vte{width:100%;border-collapse:collapse;font-size:13px;min-width:720px;}
+  .vte th{text-align:left;padding:11px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:800;background:var(--surface-2);border-bottom:1px solid var(--line);white-space:nowrap;}
+  .vte td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .vte tbody tr:last-child td{border-bottom:0;}
+  .vte .num{text-align:right;font-variant-numeric:tabular-nums;}
+  .vte-inp{width:70px;padding:7px 9px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13px;font-family:inherit;text-align:center;font-variant-numeric:tabular-nums;}
+  .vte-obs{width:100%;min-width:140px;padding:7px 10px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:12.5px;font-family:inherit;}
+  .vte-inp:focus,.vte-obs:focus{outline:2px solid var(--laranja);outline-offset:0;border-color:transparent;}
+  .vte-total{font-weight:800;color:var(--laranja-esc);font-variant-numeric:tabular-nums;}
+  .pgtoggle{display:inline-flex;border:1px solid var(--line-2);border-radius:20px;overflow:hidden;}
+  .pgtoggle button{border:0;background:var(--surface-2);color:var(--ink-3);font-size:11px;font-weight:800;padding:5px 12px;cursor:pointer;font-family:inherit;}
+  .pgtoggle button.on-cart{background:var(--laranja);color:#fff;} .pgtoggle button.on-conta{background:var(--info);color:#fff;}
+  .vte-nome{display:flex;align-items:center;gap:9px;} .vte-nome .ini{width:30px;height:30px;border-radius:8px;font-size:11px;}
+  #vt-metrics{grid-template-columns:repeat(5,1fr);}
+  @media (max-width:1100px){ #vt-metrics{grid-template-columns:repeat(2,1fr);} }
 
   /* ---- Gestão de Documentos (Inmeta) ---- */
   .docs-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 26px 0;flex-wrap:wrap;}
@@ -739,16 +756,19 @@
 
     <!-- ===== VALE-TRANSPORTE ===== -->
     <section id="view-vt" class="hidden">
-      <div class="modhead"><h1>Vale-Transporte (VT)</h1><p>Controle diário de viagens e balanço semanal por colaborador — passagem R$ 4,30.</p></div>
-      <div class="tabsrow">
-        <div class="tabs"><button class="on">Balanço Semanal</button><button>Histórico</button></div>
-        <button class="primary" id="btn-vt-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Registrar viagens</button>
+      <div class="modhead"><h1>Vale-Transporte (VT)</h1><p>Lista editável por semana — altere viagens, pagamento e observações direto na tabela (salva automático).</p></div>
+      <div class="dash-filtros">
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Mês<input type="month" id="vt-mes" class="dash-sel"></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Semana<select id="vt-semana" class="dash-sel"></select></label>
+        </div>
       </div>
-      <div class="metrics">
-        <div class="metric"><div class="lbl">Total Semanal (VT)</div><div class="val money" id="vt-total">—</div><div class="sub">a repassar às carteirinhas</div></div>
-        <div class="metric"><div class="lbl">Viagens no período</div><div class="val" id="vt-viagens">—</div><div class="sub">ida + volta por dia</div></div>
-        <div class="metric"><div class="lbl">Valor da passagem</div><div class="val money">R$ 4,30</div><div class="sub">DFTrans / rodoviário</div></div>
-        <div class="metric"><div class="lbl">Colaboradores</div><div class="val" id="vt-colabs">—</div><div class="sub">no balanço</div></div>
+      <div class="metrics" id="vt-metrics">
+        <div class="metric"><div class="lbl">Total Semanal (VT)</div><div class="val money" id="vt-total">—</div><div class="sub">soma da semana</div></div>
+        <div class="metric"><div class="lbl">Total Carteirinha</div><div class="val money" id="vt-carteirinha">—</div><div class="sub">pagamento carteirinha</div></div>
+        <div class="metric"><div class="lbl">Total Conta</div><div class="val money" id="vt-conta">—</div><div class="sub">pagamento em conta</div></div>
+        <div class="metric"><div class="lbl">Colaboradores</div><div class="val" id="vt-colabs">—</div><div class="sub">no período</div></div>
+        <div class="metric"><div class="lbl">Balanço Mensal</div><div class="val money" id="vt-mensal">—</div><div class="sub">todas as semanas do mês</div></div>
       </div>
       <div id="vt-content" style="padding:18px 26px 96px;"></div>
     </section>
@@ -1391,54 +1411,77 @@
     }catch(err){showToast('Erro ao salvar orçamento');console.error(err);}
   });
 
-  // ---------- VALE-TRANSPORTE ----------
-  const formaCls=f=>/DINHEIRO/i.test(f)?'din':/ELETR/i.test(f)?'ele':'';
-  async function loadVT(){
-    const {linhas,resumo}=await api('/api/dp/vt/balanco');
-    document.getElementById('vt-total').textContent=brlN(resumo.total_geral);
-    document.getElementById('vt-viagens').textContent=resumo.total_viagens;
-    document.getElementById('vt-colabs').textContent=linhas.length;
-    const rows=linhas.map(l=>`<tr>
-      <td><div class="vt-nome"><div class="ini" style="background:${hue(l.funcionario)}">${ini(l.funcionario)}</div>${esc(l.funcionario)}</div></td>
-      <td class="num">${l.total_viagens}</td>
-      <td class="num">${brlN(l.valor_passagem)}</td>
-      <td class="num money">${brlN(l.valor_total)}</td>
-      <td><span class="vt-pill ${formaCls(l.forma_pagamento)}">${esc(l.forma_pagamento)}</span></td>
-      <td>${l.observacoes?esc(l.observacoes):'<span style="color:var(--ink-3)">—</span>'}</td>
-      <td><button class="vt-add" data-vtadd="${l.colaborador_id}">+ Registrar</button></td></tr>`).join('');
-    const cards=linhas.map(l=>`<div class="vt-card">
-      <div class="vt-top"><div class="ini" style="background:${hue(l.funcionario)}">${ini(l.funcionario)}</div>
-        <h4>${esc(l.funcionario)}</h4><span class="vt-val">${brlN(l.valor_total)}</span></div>
-      <div class="vt-meta"><span>${l.total_viagens} viagens · <span class="vt-pill ${formaCls(l.forma_pagamento)}">${esc(l.forma_pagamento)}</span></span>
-        <button class="vt-add" data-vtadd="${l.colaborador_id}">+ Registrar</button></div></div>`).join('');
-    document.getElementById('vt-content').innerHTML=
-      `<div class="vt-wrap"><table class="vt-table"><thead><tr>
-        <th>Funcionário</th><th class="num">Viagens</th><th class="num">Passagem</th><th class="num">Total</th><th>Pagamento</th><th>Observações</th><th></th>
-      </tr></thead><tbody>${rows}</tbody></table></div><div class="vt-cards">${cards}</div>`;
-    const sel=document.getElementById('vt-colab');
-    sel.innerHTML='<option value="">Selecione…</option>'+linhas.map(l=>`<option value="${l.colaborador_id}">${esc(l.funcionario)}</option>`).join('');
-  }
+  // ---------- VALE-TRANSPORTE (lista editável por semana, auto-save) ----------
   const hoje=()=>new Date().toISOString().slice(0,10);
-  function abrirVT(colabId){
-    document.querySelector('#form-vt [name=data_registro]').value=hoje();
-    if(colabId)document.getElementById('vt-colab').value=colabId;
-    openModal('ov-vt');
-  }
-  document.getElementById('btn-vt-novo').addEventListener('click',()=>abrirVT());
-  // atalho para a tela de VT (funciona no mobile, onde a sidebar some)
   document.querySelectorAll('[data-goto="vt"]').forEach(b=>b.addEventListener('click',()=>irParaView('vt')));
+  let VT_STATE={ano_mes:null,semana:1,linhas:[],resumo:{}};
+  const vtDebounce={};
+  function vtSemanasDoMes(ano_mes){
+    const [y,m]=ano_mes.split('-').map(Number),ult=new Date(y,m,0).getDate();
+    const out=[];let ini=1,n=1;
+    while(ini<=ult){const fim=Math.min(ini+6,ult);out.push({n,label:`Semana ${n} (${String(ini).padStart(2,'0')} a ${String(fim).padStart(2,'0')})`});ini=fim+1;n++;}
+    return out;
+  }
+  function vtInitFiltros(){
+    const mesEl=document.getElementById('vt-mes');if(!mesEl.value)mesEl.value=new Date().toISOString().slice(0,7);
+    const semanas=vtSemanasDoMes(mesEl.value),semEl=document.getElementById('vt-semana');
+    const atual=parseInt(semEl.value,10)||Math.min(Math.ceil(new Date().getDate()/7),semanas.length);
+    semEl.innerHTML=semanas.map(s=>`<option value="${s.n}">${s.label}</option>`).join('');
+    semEl.value=Math.min(atual,semanas.length)||1;
+  }
+  async function loadVT(){vtInitFiltros();await vtFetch();}
+  async function vtFetch(){
+    const ano_mes=document.getElementById('vt-mes').value,semana=parseInt(document.getElementById('vt-semana').value,10)||1;
+    const r=await api('/api/dp/vt/semana?ano_mes='+ano_mes+'&semana='+semana);
+    VT_STATE={ano_mes,semana,linhas:r.linhas,resumo:r.resumo};vtRenderCards();vtRenderTabela();
+  }
+  function vtRenderCards(){const R=VT_STATE.resumo;
+    document.getElementById('vt-total').textContent=brlN(R.total_semanal||0);
+    document.getElementById('vt-carteirinha').textContent=brlN(R.total_carteirinha||0);
+    document.getElementById('vt-conta').textContent=brlN(R.total_conta||0);
+    document.getElementById('vt-colabs').textContent=R.total_colaboradores||0;
+    document.getElementById('vt-mensal').textContent=brlN(R.balanco_mensal||0);
+  }
+  function vtRecalc(){const L=VT_STATE.linhas,R=VT_STATE.resumo;
+    R.total_semanal=+L.reduce((s,l)=>s+l.total,0).toFixed(2);
+    R.total_carteirinha=+L.filter(l=>l.forma_pagamento==='CARTEIRINHA').reduce((s,l)=>s+l.total,0).toFixed(2);
+    R.total_conta=+L.filter(l=>l.forma_pagamento==='CONTA').reduce((s,l)=>s+l.total,0).toFixed(2);
+    vtRenderCards();
+  }
+  function vtRenderTabela(){
+    const rows=VT_STATE.linhas.map((l,i)=>`<tr data-i="${i}">
+      <td><div class="vte-nome"><div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}</div></td>
+      <td><input class="vte-inp" type="number" min="0" step="1" data-f="qtd" value="${l.qtd_viagens}"></td>
+      <td class="num">${brlN(l.valor_passagem)}</td>
+      <td class="num vte-total" data-total>${brlN(l.total)}</td>
+      <td><span class="pgtoggle"><button data-pg="CARTEIRINHA" class="${l.forma_pagamento==='CARTEIRINHA'?'on-cart':''}">Carteirinha</button><button data-pg="CONTA" class="${l.forma_pagamento==='CONTA'?'on-conta':''}">Conta</button></span></td>
+      <td><input class="vte-obs" data-f="obs" value="${esc(l.observacao||'')}" placeholder="Observações…"></td></tr>`).join('');
+    document.getElementById('vt-content').innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr>
+      <th>Funcionário</th><th>Qtd. Viagens</th><th class="num">Passagem</th><th class="num">Total</th><th>Pagamento</th><th>Observações</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  function vtSave(l){api('/api/dp/vt/semana',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({colaborador_id:l.colaborador_id,ano_mes:VT_STATE.ano_mes,semana:VT_STATE.semana,qtd_viagens:l.qtd_viagens,forma_pagamento:l.forma_pagamento,observacao:l.observacao})})
+    .catch(e=>{showToast('Erro ao salvar VT');console.error(e);});}
+  document.getElementById('vt-content').addEventListener('input',e=>{
+    const tr=e.target.closest('tr[data-i]');if(!tr)return;const l=VT_STATE.linhas[+tr.dataset.i];
+    if(e.target.dataset.f==='qtd'){
+      const q=Math.max(0,parseInt(e.target.value,10)||0),delta=+(q*l.valor_passagem-l.total).toFixed(2);
+      l.qtd_viagens=q;l.total=+(q*l.valor_passagem).toFixed(2);
+      tr.querySelector('[data-total]').textContent=brlN(l.total);
+      VT_STATE.resumo.balanco_mensal=+((VT_STATE.resumo.balanco_mensal||0)+delta).toFixed(2);vtRecalc();
+      clearTimeout(vtDebounce[l.colaborador_id]);vtDebounce[l.colaborador_id]=setTimeout(()=>vtSave(l),500);
+    }else if(e.target.dataset.f==='obs'){l.observacao=e.target.value;
+      clearTimeout(vtDebounce['o'+l.colaborador_id]);vtDebounce['o'+l.colaborador_id]=setTimeout(()=>vtSave(l),700);}
+  });
   document.getElementById('vt-content').addEventListener('click',e=>{
-    const b=e.target.closest('[data-vtadd]');if(b)abrirVT(b.dataset.vtadd);
+    const b=e.target.closest('[data-pg]');if(!b)return;const tr=b.closest('tr[data-i]'),l=VT_STATE.linhas[+tr.dataset.i];
+    if(l.forma_pagamento===b.dataset.pg)return;l.forma_pagamento=b.dataset.pg;
+    tr.querySelectorAll('[data-pg]').forEach(x=>x.className=x.dataset.pg===l.forma_pagamento?(l.forma_pagamento==='CARTEIRINHA'?'on-cart':'on-conta'):'');
+    vtRecalc();vtSave(l);
   });
-  document.getElementById('form-vt').addEventListener('submit',async e=>{
-    e.preventDefault();const f=new FormData(e.target);
-    const payload={colaborador_id:f.get('colaborador_id'),data_registro:f.get('data_registro'),
-      qtd_viagens:parseInt(f.get('qtd_viagens'),10),forma_pagamento:f.get('forma_pagamento'),observacao:f.get('observacao')||null};
-    try{await api('/api/dp/vt/registro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-vt').classList.remove('open');e.target.reset();
-      await loadVT();showToast('Viagens registradas');
-    }catch(err){showToast('Erro ao registrar');console.error(err);}
-  });
+  document.getElementById('vt-mes').addEventListener('change',()=>{vtInitFiltros();vtFetch().catch(e=>console.error(e));});
+  document.getElementById('vt-semana').addEventListener('change',()=>vtFetch().catch(e=>console.error(e)));
 
   // ---------- BOTTOM NAV (mobile) ----------
   document.getElementById('bottomnav').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{

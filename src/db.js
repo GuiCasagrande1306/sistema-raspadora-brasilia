@@ -538,6 +538,46 @@ export const db = {
       };
     });
   },
+  // VT semanal (edição inline): lista pré-carregada de ativos + resumo dos 5 cards
+  async getVTSemana(ano_mes, semana) {
+    if (!USING_SUPABASE) return { linhas: [], resumo: {} };
+    const [{ data: colabs }, { data: semRows }, { data: mesRows }] = await Promise.all([
+      sb('colaboradores').select('id,nome,status_colaborador').neq('status_colaborador', 'DESLIGADO').order('nome'),
+      sb('vt_semanal').select('*').eq('ano_mes', ano_mes).eq('semana', semana),
+      sb('vt_semanal').select('qtd_viagens,valor_passagem').eq('ano_mes', ano_mes),
+    ]);
+    const porColab = Object.fromEntries((semRows || []).map(r => [r.colaborador_id, r]));
+    const linhas = (colabs || []).map(c => {
+      const r = porColab[c.id];
+      const qtd = r ? r.qtd_viagens : 0;
+      const vp = r ? Number(r.valor_passagem) : 4.30;
+      return {
+        colaborador_id: c.id, nome: c.nome,
+        qtd_viagens: qtd, valor_passagem: vp, total: +(qtd * vp).toFixed(2),
+        forma_pagamento: r ? r.forma_pagamento : 'CARTEIRINHA', observacao: r ? r.observacao : '',
+      };
+    });
+    const soma = (f) => linhas.filter(f).reduce((s, l) => s + l.total, 0);
+    const resumo = {
+      total_semanal: +soma(() => true).toFixed(2),
+      total_carteirinha: +soma(l => l.forma_pagamento === 'CARTEIRINHA').toFixed(2),
+      total_conta: +soma(l => l.forma_pagamento === 'CONTA').toFixed(2),
+      total_colaboradores: linhas.length,
+      balanco_mensal: +(mesRows || []).reduce((s, r) => s + r.qtd_viagens * Number(r.valor_passagem), 0).toFixed(2),
+    };
+    return { linhas, resumo, ano_mes, semana };
+  },
+  async upsertVTSemana({ colaborador_id, ano_mes, semana, qtd_viagens, valor_passagem, forma_pagamento, observacao }) {
+    if (!USING_SUPABASE) return { ok: true };
+    const row = { colaborador_id, ano_mes, semana, atualizado_em: new Date().toISOString() };
+    if (qtd_viagens !== undefined) row.qtd_viagens = Math.max(0, parseInt(qtd_viagens, 10) || 0);
+    if (valor_passagem !== undefined) row.valor_passagem = Number(valor_passagem) || 4.30;
+    if (forma_pagamento !== undefined) row.forma_pagamento = ['CARTEIRINHA', 'CONTA'].includes(forma_pagamento) ? forma_pagamento : 'CARTEIRINHA';
+    if (observacao !== undefined) row.observacao = observacao;
+    const { data, error } = await sb('vt_semanal').upsert(row, { onConflict: 'colaborador_id,ano_mes,semana' }).select().single();
+    if (error) throw error;
+    return data;
+  },
   async upsertRegistroVT({ colaborador_id, data_registro, qtd_viagens, forma_pagamento, observacao }) {
     const dia = data_registro || new Date().toISOString().slice(0, 10);
     if (USING_SUPABASE) {
