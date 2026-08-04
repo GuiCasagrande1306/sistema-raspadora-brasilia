@@ -353,6 +353,25 @@
   .sem-validade{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--wait-bg);color:var(--wait-ink);white-space:nowrap;}
   .an-sel{border:1px solid var(--line-2);border-radius:8px;font-size:11px;padding:4px 6px;background:var(--surface-2);color:var(--ink-2);font-family:inherit;cursor:pointer;}
 
+  /* ---- Cofre / página bancária protegida ---- */
+  .cofre-lock{display:grid;place-items:center;padding:60px 24px;min-height:60vh;}
+  .cofre-lock.hidden{display:none;}
+  .cofre-card{width:100%;max-width:420px;background:var(--chumbo-900);color:#fff;border-radius:20px;
+    padding:36px 30px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);border-top:4px solid var(--laranja);}
+  .cofre-ic{width:76px;height:76px;border-radius:50%;background:rgba(237,113,24,.15);color:var(--laranja);
+    display:grid;place-items:center;margin:0 auto 18px;}
+  .cofre-ic svg{width:38px;height:38px;}
+  .cofre-card h2{margin:0;font-size:19px;font-weight:800;}
+  .cofre-card p{margin:8px 0 22px;font-size:13px;color:#B4BCC8;line-height:1.5;}
+  .cofre-input{position:relative;margin-bottom:12px;}
+  .cofre-input input{width:100%;padding:12px 44px 12px 14px;border-radius:11px;border:1px solid var(--chumbo-700);
+    background:var(--chumbo-800);color:#fff;font-size:14px;font-family:inherit;}
+  .cofre-input input:focus{outline:2px solid var(--laranja);outline-offset:0;border-color:transparent;}
+  .cofre-input button{position:absolute;right:6px;top:6px;width:34px;height:34px;border:0;background:none;
+    color:#9CA3AF;cursor:pointer;display:grid;place-items:center;border-radius:8px;}
+  .cofre-input button:hover{color:#fff;}
+  #cofre-err{min-height:16px;text-align:left;margin-bottom:8px;}
+
   /* ---- Dashboard Financeiro ---- */
   .dash-filtros{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 26px 0;flex-wrap:wrap;}
   .seg{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);padding:4px;border-radius:11px;}
@@ -617,7 +636,7 @@
       <button data-view="dp" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="tip">DP — Colaboradores</span></button>
       <button data-view="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="tip">Financeiro — Obras &amp; DRE</span></button>
       <button data-view="vt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M4 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 16v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M4 10h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="tip">Vale-Transporte</span></button>
-      <button data-view="bancos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><path d="M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M9 14v3M15 14v3"/></svg><span class="tip">Bancos &amp; Fluxo</span></button>
+      <button data-view="bancos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="tip">Conta Bancária 🔒</span></button>
       <button data-view="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg><span class="tip">Folha de Pagamento</span></button>
       <button data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="tip">Documentos / SST</span></button>
       <button data-view="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span class="tip">Orçamentos</span></button>
@@ -708,18 +727,40 @@
 
     <!-- ===== BANCOS & FLUXO DE CAIXA ===== -->
     <section id="view-bancos" class="hidden">
-      <div class="modhead"><h1>Bancos &amp; Fluxo de Caixa</h1><p>Saldos das contas, projeção dos próximos 30 dias e transferências internas.</p></div>
-      <div class="tabsrow">
-        <div class="tabs"><button class="on">Contas &amp; Fluxo</button><button>Movimentações</button></div>
-        <button class="primary" id="btn-transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/></svg> Transferência</button>
+      <!-- TELA DE BLOQUEIO (cofre) -->
+      <div class="cofre-lock" id="bancos-lock">
+        <div class="cofre-card">
+          <div class="cofre-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <h2>Área Restrita — Acesso Bancário</h2>
+          <p>Digite a senha master/financeira para visualizar saldo, extrato e contas bancárias da empresa.</p>
+          <form id="form-cofre">
+            <div class="cofre-input">
+              <input type="password" id="cofre-senha" placeholder="Senha financeira" autocomplete="off" required>
+              <button type="button" id="cofre-ver" title="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <div class="login-err" id="cofre-err"></div>
+            <button type="submit" class="primary" id="cofre-btn" style="width:100%;justify-content:center;min-height:48px">Desbloquear</button>
+          </form>
+        </div>
       </div>
-      <div class="metrics">
-        <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
-        <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
-        <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores</div></div>
-        <div class="metric"><div class="lbl">Saldo projetado</div><div class="val money" id="bancos-proj">—</div><div class="sub">ao fim de 30 dias</div></div>
+      <!-- CONTEÚDO PROTEGIDO -->
+      <div id="bancos-protegido" class="hidden">
+        <div class="modhead"><h1>Conta Bancária</h1><p>Saldos, chaves PIX, dados das contas, projeção 30 dias e transferências.</p></div>
+        <div class="tabsrow">
+          <div class="tabs"><button class="on">Contas &amp; Fluxo</button><button>Movimentações</button></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-ghost" id="btn-bloquear" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Bloquear agora</button>
+            <button class="primary" id="btn-transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/></svg> Transferência</button>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
+          <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
+          <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores</div></div>
+          <div class="metric"><div class="lbl">Saldo projetado</div><div class="val money" id="bancos-proj">—</div><div class="sub">ao fim de 30 dias</div></div>
+        </div>
+        <div id="bancos-content" style="padding:18px 26px 96px;"></div>
       </div>
-      <div id="bancos-content" style="padding:18px 26px 96px;"></div>
     </section>
 
     <!-- ===== FOLHA DE PAGAMENTO ===== -->
@@ -1762,8 +1803,28 @@
     document.getElementById(id).innerHTML='<option value="">Selecione…</option>'+COLABS_NOMES.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   }
 
-  // ---- Bancos & Fluxo de Caixa ----
-  async function loadBancos(){
+  // ---- Bancos & Fluxo de Caixa (área protegida / cofre) ----
+  let bancosUnlocked=false;
+  function bancosGate(){
+    const lock=document.getElementById('bancos-lock'),prot=document.getElementById('bancos-protegido');
+    if(bancosUnlocked){lock.classList.add('hidden');prot.classList.remove('hidden');loadBancosData().catch(e=>console.error(e));}
+    else{prot.classList.add('hidden');lock.classList.remove('hidden');document.getElementById('cofre-err').textContent='';
+      setTimeout(()=>{try{document.getElementById('cofre-senha').focus();}catch{}},100);}
+  }
+  const loadBancos=async()=>bancosGate();
+  document.getElementById('cofre-ver').addEventListener('click',()=>{const i=document.getElementById('cofre-senha');i.type=i.type==='password'?'text':'password';});
+  document.getElementById('form-cofre').addEventListener('submit',async e=>{
+    e.preventDefault();const err=document.getElementById('cofre-err');err.textContent='';
+    const btn=document.getElementById('cofre-btn');btn.disabled=true;btn.textContent='Verificando…';
+    try{const r=await fetch('/api/bancos/desbloquear',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({senha:document.getElementById('cofre-senha').value})});
+      if(!r.ok){err.textContent='Senha financeira incorreta.';showToast('Senha incorreta');return;}
+      bancosUnlocked=true;document.getElementById('cofre-senha').value='';bancosGate();showToast('Área bancária desbloqueada');
+    }catch(ex){err.textContent='Erro ao validar.';console.error(ex);}
+    finally{btn.disabled=false;btn.textContent='Desbloquear';}
+  });
+  document.getElementById('btn-bloquear').addEventListener('click',()=>{bancosUnlocked=false;bancosGate();showToast('Área bancária bloqueada');});
+
+  async function loadBancosData(){
     const [saldos,fluxo]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30')]);
     document.getElementById('bancos-total').textContent=brl(saldos.total_consolidado);
     document.getElementById('bancos-ent').textContent=brl(fluxo.resumo.entradas_previstas||0);

@@ -466,6 +466,13 @@ app.post('/api/obras/:id/insumos', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Bancos — desbloqueio da área protegida (senha financeira)
+app.post('/api/bancos/desbloquear', (req, res) => {
+  const esperada = process.env.FINANCE_PASSWORD || 'raspadora@fin';
+  if (!req.body || req.body.senha !== esperada) return res.status(401).json({ ok: false, erro: 'Senha incorreta' });
+  res.json({ ok: true });
+});
+
 // Bancos — saldos consolidados
 app.get('/api/bancos/saldos', async (_req, res, next) => {
   try {
