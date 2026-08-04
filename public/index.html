@@ -798,7 +798,7 @@
       </div>
       <div class="docs-filtros">
         <div class="search docs-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="docs-q" placeholder="Buscar por nome ou CPF…"></div>
-        <select id="docs-status" class="dash-sel"><option value="">Status: todos</option><option value="ativo">Ativos</option><option value="desligamento">Inativos</option></select>
+        <select id="docs-status" class="dash-sel"><option value="">Status: todos</option><option value="ATIVO">🟢 Ativo</option><option value="DESLIGADO">🔴 Desligado</option><option value="DIARIA">🟡 Diária</option></select>
         <label class="docs-toggle"><input type="checkbox" id="docs-pend"> Somente pendências</label>
       </div>
       <div id="docs-content" style="padding:18px 26px 96px;"></div>
@@ -899,11 +899,15 @@
         <div class="field"><label>Nome completo *</label><input name="nome" required placeholder="Ex: João da Silva"></div>
         <div class="grid2">
           <div class="field"><label>CPF *</label><input name="cpf" required placeholder="000.000.000-00"></div>
-          <div class="field"><label>RG</label><input name="rg" placeholder="0.000.000"></div>
+          <div class="field"><label>Apelido</label><input name="apelido"></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>RNE (estrangeiro)</label><input name="rne"></div>
-          <div class="field"><label>Apelido</label><input name="apelido"></div>
+          <div class="field"><label>RG</label><input name="rg" placeholder="0.000.000"></div>
+          <div class="field"><label>Órgão emissor / UF do RG</label><input name="orgao_emissor_rg" placeholder="SSP/DF"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>PIS</label><input name="pis" placeholder="000.00000.00-0"></div>
+          <div class="field"><label>Título de eleitor</label><input name="titulo_eleitor"></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Data de nascimento</label><input name="data_nascimento" type="date"></div>
@@ -913,45 +917,34 @@
           <div class="field"><label>Estado (UF)</label><input name="estado_residencia" maxlength="2" placeholder="DF"></div>
           <div class="field"><label>Cidade</label><input name="cidade_residencia" placeholder="Brasília"></div>
         </div>
-        <div class="grid2">
-          <div class="field"><label>Identidade de gênero</label><select name="genero"><option value="">—</option><option>Masculino</option><option>Feminino</option><option>Não-binário</option><option>Prefiro não informar</option></select></div>
-          <div class="field"><label>Etnia</label><select name="etnia"><option value="">—</option><option>Branca</option><option>Preta</option><option>Parda</option><option>Amarela</option><option>Indígena</option></select></div>
-        </div>
         <label class="docs-toggle"><input type="checkbox" name="pcd"> PCD (Pessoa com Deficiência)</label>
 
         <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Contratação</h5>
         <div class="grid2">
+          <div class="field"><label>Status do colaborador *</label>
+            <select name="status_colaborador" required><option value="ATIVO">🟢 Ativo</option><option value="DESLIGADO">🔴 Desligado</option><option value="DIARIA">🟡 Diária</option></select>
+          </div>
           <div class="field"><label>Empresa *</label><select name="empresa" required><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
+        </div>
+        <div class="grid2">
           <div class="field"><label>Nº de registro</label><input name="numero_registro"></div>
+          <div class="field"><label>Escolaridade</label><select name="escolaridade"><option value="">—</option><option>Fundamental</option><option>Médio</option><option>Técnico</option><option>Superior</option></select></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Data de admissão *</label><input name="data_admissao" type="date" required></div>
           <div class="field"><label>Data de demissão</label><input name="data_demissao" type="date"></div>
         </div>
         <label class="docs-toggle"><input type="checkbox" name="primeiro_emprego"> Primeiro emprego</label>
-        <div class="grid2">
-          <div class="field"><label>Escolaridade</label><select name="escolaridade"><option value="">—</option><option>Fundamental</option><option>Médio</option><option>Técnico</option><option>Superior</option></select></div>
-          <div class="field"><label>Qualificação profissional</label><input name="qualificacao_profissional"></div>
-        </div>
+        <div class="field"><label>Qualificação profissional</label><input name="qualificacao_profissional"></div>
 
         <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Acesso à obra</h5>
         <div class="grid2">
           <div class="field"><label>Cargo / Serviço *</label>
-            <select name="cargo" required>
-              <option value="">Selecione…</option><option>Raspador Master</option><option>Lixador</option><option>Oficial Raspador</option><option>Operador de Fulget</option><option>Aplicador de Epóxi</option><option>Operador de Piso Industrial</option><option>Encarregado de Obra</option><option>Pedreiro</option><option>Vistoriador / Orçamentista</option><option>Ajudante Geral</option><option>Financeiro / Compras</option>
-            </select>
+            <select name="cargo" required><option value="">Selecione…</option><option>Servente</option><option>Pedreiro</option></select>
           </div>
-          <div class="field"><label>Função (CBO)</label><input name="cbo" placeholder="ex: 7155-05"></div>
-        </div>
-        <div class="grid2">
-          <div class="field"><label>Diária base (R$)</label><input name="valor_diaria" type="number" min="0" step="10" placeholder="240"></div>
-          <div class="field"><label>Chave PIX</label><input name="chave_pix" placeholder="(61) 9…"></div>
-        </div>
-        <div class="grid2">
           <div class="field"><label>Telefone / Celular</label><input name="telefone" placeholder="(61) 9…"></div>
-          <div class="field"><label>E-mail</label><input name="email" type="email"></div>
         </div>
-        <div class="field"><label>Obras vinculadas</label><input name="obras_vinculadas" placeholder="Ex: Autêntico Residencial, Legítimo Residencial"><span class="hint">Separe por vírgula</span></div>
+        <div class="field"><label>E-mail</label><input name="email" type="email"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar</button></footer>
     </form>
@@ -1631,15 +1624,15 @@
   document.getElementById('form-colab').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     const g=k=>f.get(k)||null;
-    const obras=(f.get('obras_vinculadas')||'').split(',').map(s=>s.trim()).filter(Boolean);
     const payload={nome:f.get('nome'),cargo:f.get('cargo'),empresa:f.get('empresa')||'RB_PISOS',
-      cpf:g('cpf'),rg:g('rg'),rne:g('rne'),apelido:g('apelido'),data_nascimento:g('data_nascimento'),
-      nacionalidade:g('nacionalidade'),estado_residencia:g('estado_residencia'),cidade_residencia:g('cidade_residencia'),
-      genero:g('genero'),etnia:g('etnia'),pcd:f.get('pcd')==='on',primeiro_emprego:f.get('primeiro_emprego')==='on',
+      status_colaborador:f.get('status_colaborador')||'ATIVO',
+      cpf:g('cpf'),rg:g('rg'),orgao_emissor_rg:g('orgao_emissor_rg'),pis:g('pis'),titulo_eleitor:g('titulo_eleitor'),
+      apelido:g('apelido'),data_nascimento:g('data_nascimento'),nacionalidade:g('nacionalidade'),
+      estado_residencia:g('estado_residencia'),cidade_residencia:g('cidade_residencia'),
+      pcd:f.get('pcd')==='on',primeiro_emprego:f.get('primeiro_emprego')==='on',
       numero_registro:g('numero_registro'),data_admissao:g('data_admissao'),data_demissao:g('data_demissao'),
-      escolaridade:g('escolaridade'),qualificacao_profissional:g('qualificacao_profissional'),cbo:g('cbo'),
-      chave_pix:g('chave_pix'),telefone:g('telefone'),email:g('email'),obras_vinculadas:obras,
-      valor_diaria:f.get('valor_diaria')?Math.round(parseFloat(f.get('valor_diaria'))*100):null};
+      escolaridade:g('escolaridade'),qualificacao_profissional:g('qualificacao_profissional'),
+      telefone:g('telefone'),email:g('email')};
     try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       e.target.reset();document.getElementById('ov-colab').classList.remove('open');
       await loadDP();showToast('Colaborador cadastrado em Aguardando Preenchimento');
@@ -1661,6 +1654,7 @@
   const EMPRESAS=[{id:'RB_PISOS',label:'R.B PISOS LTDA'},{id:'ECO_PISOS',label:'ECO PISOS'}];
   const DOC_AN={VALIDADO:['an-val','Validado'],NAO_VALIDADO:['an-nao','Não validado'],REPROVADO:['an-rep','Reprovado']};
   const FAROL={OK:['ok','Em dia','an-val'],A_VENCER:['avencer','A vencer','an-aten'],BLOQUEADO:['bloq','Bloqueado','an-rep']};
+  const STATUS_COLAB={ATIVO:['an-val','🟢 Ativo'],DESLIGADO:['an-rep','🔴 Desligado'],DIARIA:['an-aten','🟡 Diária']};
   const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['transferencia','Docs. Transferência'],['encerramento','Docs. Encerramento'],['treinamento','Treinamento'],['certificacao','Certificações']];
   let docTabAtiva='unico';
   let docsState={nivel:'empresas'};
@@ -1684,16 +1678,15 @@
       el.querySelectorAll('[data-emp]').forEach(c=>c.addEventListener('click',()=>{docsState={nivel:'colaboradores',empresa:c.dataset.emp,empresaLabel:EMPRESAS.find(e=>e.id===c.dataset.emp).label};renderDocs();}));
     }else if(docsState.nivel==='colaboradores'){
       const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
-      let lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend);
-      if(st)lista=lista.filter(c=>st==='ativo'?c.status!=='desligamento':c.status==='desligamento');
+      const lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
       el.innerHTML=lista.length?'<div class="colab-list">'+lista.map(c=>{
         const[fcls,flbl,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;
+        const[scls,slbl]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;
         const venc=c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—';
-        const obras=(c.obras_vinculadas||[]).slice(0,2).map(o=>`<span class="tag t-lar">${esc(o)}</span>`).join('');
         return `<div class="colab-row" data-colab="${c.id}" data-nome="${esc(c.nome)}">
           <div class="folder ${fcls}">${folderSvg(c.pasta.status==='OK')}</div>
           <div class="ci"><h4>${esc(c.nome)}</h4><div class="sub">${esc(c.cargo||'')}${c.cpf?' · '+esc(c.cpf):''} · v${c.versao_atual||'-'} · vence ${venc}</div></div>
-          <div class="badges">${obras}<span class="an ${fan}">${flbl}</span></div></div>`;}).join('')+'</div>'
+          <div class="badges"><span class="an ${scls}">${slbl}</span><span class="an ${fan}">${flbl}</span></div></div>`;}).join('')+'</div>'
         :'<div class="orc-empty">Nenhum colaborador encontrado.</div>';
       el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>{docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=r.dataset.colab;docsState.colabNome=r.dataset.nome;renderDocs();}));
     }else if(docsState.nivel==='docs'){
@@ -1702,7 +1695,7 @@
       const foto=c.avatar_url?`<img src="${c.avatar_url}" alt="">`:ini(c.nome);
       const banner=`<div class="ficha-banner"><div class="fb-foto">${foto}</div>
         <div><h3>${esc(c.nome)}</h3><div class="fb-meta"><span>CPF ${esc(c.cpf||'—')}</span><span>RG ${esc(c.rg||'—')}</span><span>${esc(c.cargo||'—')}</span><span>Admissão ${c.data_admissao?dtBR(c.data_admissao):'—'}</span><span>${esc(c.empresa||'')}</span></div></div>
-        <div class="fb-right"><span class="an ${fan}">${flbl}</span><div class="fb-actions"><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button></div></div></div>`;
+        <div class="fb-right"><div style="display:flex;gap:6px"><span class="an ${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[0]}">${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[1]}</span><span class="an ${fan}">${flbl}</span></div><div class="fb-actions"><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button></div></div></div>`;
       const counts=`<div class="fb-counts">
         <div class="fb-count"><b>${ct.documentos}/${ct.documentos_total}</b><span>Documentos</span></div>
         <div class="fb-count"><b>${ct.treinamentos}</b><span>Treinamento</span></div>

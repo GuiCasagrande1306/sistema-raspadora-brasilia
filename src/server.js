@@ -504,7 +504,7 @@ app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
 app.get('/api/documentos/colaboradores', async (req, res, next) => {
   try {
     res.json(await db.listColaboradoresDocs({
-      empresa: req.query.empresa, q: req.query.q,
+      empresa: req.query.empresa, q: req.query.q, status_colaborador: req.query.status_colaborador || null,
       pendencias: req.query.pendencias === 'true' || req.query.pendencias === '1',
     }));
   } catch (e) { next(e); }

@@ -269,8 +269,9 @@ export const db = {
   },
   async listColaboradoresDocs(filtros = {}) {
     if (!USING_SUPABASE) return [];
-    let q = sb('colaboradores').select('id,nome,cpf,cargo,empresa,status,obras_vinculadas');
+    let q = sb('colaboradores').select('id,nome,cpf,cargo,empresa,status,status_colaborador,obras_vinculadas');
     if (filtros.empresa && filtros.empresa !== 'TODAS') q = q.eq('empresa', filtros.empresa);
+    if (filtros.status_colaborador) q = q.eq('status_colaborador', filtros.status_colaborador);
     const { data: colabs } = await q;
     const { data: docs } = await sb('documentos_colaborador').select('*');
     const porColab = {};
@@ -282,7 +283,7 @@ export const db = {
       });
       const pasta = this._pastaStatus(catMerged);
       const versaoMax = Math.max(0, ...catMerged.filter(x => x.versao).map(x => x.versao));
-      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, obras_vinculadas: c.obras_vinculadas || [], pasta, versao_atual: versaoMax || null };
+      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', obras_vinculadas: c.obras_vinculadas || [], pasta, versao_atual: versaoMax || null };
     });
     let filtered = out;
     if (filtros.pendencias) filtered = filtered.filter(c => c.pasta.status === 'PENDENTE');
