@@ -255,17 +255,17 @@ export const db = {
     });
   },
   _pastaStatus(docs) {
-    // amarelo se houver pendência: doc obrigatório ausente, reprovado, vencido ou prestes
-    let pendencias = 0, prox = null;
+    // Farol GD4: BLOQUEADO (vencido/reprovado/sem docs) · A_VENCER (≤30d) · OK
+    let bloqueio = 0, prestes = 0, presentes = 0, pendencias = 0, prox = null;
     for (const d of docs) {
-      const problema = !d.presente || d.status_analise === 'REPROVADO' ||
-        (d.venc && (d.venc.status === 'VENCIDO' || d.venc.status === 'PRESTES_A_VENCER'));
-      if (problema) pendencias++;
-      if (d.presente && d.data_vencimento) {
-        if (!prox || d.data_vencimento < prox) prox = d.data_vencimento;
-      }
+      if (!d.presente) { pendencias++; continue; }
+      presentes++;
+      if (d.status_analise === 'REPROVADO' || (d.venc && d.venc.status === 'VENCIDO')) bloqueio++;
+      else if (d.venc && d.venc.status === 'PRESTES_A_VENCER') prestes++;
+      if (d.data_vencimento && (!prox || d.data_vencimento < prox)) prox = d.data_vencimento;
     }
-    return { status: pendencias ? 'PENDENTE' : 'OK', pendencias, vencimento_geral: prox };
+    const status = (!presentes || bloqueio) ? 'BLOQUEADO' : prestes ? 'A_VENCER' : 'OK';
+    return { status, bloqueios: bloqueio, prestes, pendencias, vencimento_geral: prox };
   },
   async listColaboradoresDocs(filtros = {}) {
     if (!USING_SUPABASE) return [];
@@ -288,6 +288,22 @@ export const db = {
     if (filtros.pendencias) filtered = filtered.filter(c => c.pasta.status === 'PENDENTE');
     if (filtros.q) { const s = filtros.q.toLowerCase(); filtered = filtered.filter(c => (c.nome || '').toLowerCase().includes(s) || (c.cpf || '').includes(s)); }
     return filtered;
+  },
+  async resumoColaboradorDocs(id) {
+    if (!USING_SUPABASE) return null;
+    const { data: c } = await sb('colaboradores').select('*').eq('id', id).single();
+    if (!c) return null;
+    const docs = await this.getDocsColaborador(id);
+    const farol = this._pastaStatus(docs);
+    return {
+      colaborador: c,
+      farol,
+      contadores: {
+        documentos: docs.filter(d => d.presente).length,
+        documentos_total: docs.length,
+        treinamentos: 0, treinamentos_expirados: 0, certificacoes: 0, ferias: 0, licencas: 0,
+      },
+    };
   },
   async upsertDocColaborador(colaboradorId, doc) {
     if (!USING_SUPABASE) return { id: uid(), ...doc };

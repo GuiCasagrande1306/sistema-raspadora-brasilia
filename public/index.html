@@ -332,6 +332,25 @@
   .doc-cloud svg{width:20px;height:20px;}
   .an{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
   .an-val{background:var(--ok-bg);color:var(--ok-ink);} .an-nao{background:var(--wait-bg);color:var(--wait-ink);} .an-rep{background:var(--danger-bg);color:var(--danger);}
+  .an-aten{background:var(--laranja-100);color:var(--laranja-esc);}
+  .folder.avencer{background:var(--laranja-100);color:var(--laranja-esc);} .folder.bloq{background:var(--danger-bg);color:var(--danger);}
+  /* Ficha-resumo GD4 */
+  .ficha-banner{background:var(--chumbo-900);color:#fff;border-radius:var(--r);padding:18px 20px;display:flex;gap:16px;align-items:center;margin-bottom:16px;border-left:4px solid var(--laranja);flex-wrap:wrap;}
+  .fb-foto{width:64px;height:64px;border-radius:14px;background:var(--laranja);display:grid;place-items:center;font-weight:800;font-size:22px;overflow:hidden;flex-shrink:0;color:#fff;}
+  .fb-foto img{width:100%;height:100%;object-fit:cover;}
+  .ficha-banner h3{margin:0;font-size:18px;}
+  .fb-meta{font-size:12.5px;color:#B4BCC8;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px 14px;}
+  .fb-right{margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+  .fb-actions{display:flex;gap:8px;}
+  .fb-actions button{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .fb-actions button:hover{background:rgba(255,255,255,.2);}
+  .fb-counts{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px;}
+  .fb-count{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;box-shadow:var(--shadow);}
+  .fb-count b{display:block;font-size:20px;font-weight:800;} .fb-count span{font-size:10.5px;color:var(--ink-3);}
+  .doc-tabs{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);padding:4px;border-radius:11px;margin-bottom:14px;overflow-x:auto;}
+  .doc-tabs button{border:0;background:transparent;padding:8px 13px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--ink-2);white-space:nowrap;font-family:inherit;}
+  .doc-tabs button.on{background:var(--surface);color:var(--laranja-2);box-shadow:var(--shadow);}
+  .sem-validade{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--wait-bg);color:var(--wait-ink);white-space:nowrap;}
   .an-sel{border:1px solid var(--line-2);border-radius:8px;font-size:11px;padding:4px 6px;background:var(--surface-2);color:var(--ink-2);font-family:inherit;cursor:pointer;}
 
   /* ---- Dashboard Financeiro ---- */
@@ -511,6 +530,8 @@
     .chart-card{margin-left:0;margin-right:0;}
     .cat-row{grid-template-columns:1fr auto;gap:6px 10px;}
     .cat-row .cat-nome{grid-column:1/-1;} .cat-row>div:nth-child(3){grid-column:1/-1;}
+    .fb-counts{grid-template-columns:repeat(3,1fr);}
+    .fb-right{margin-left:0;width:100%;align-items:flex-start;}
     #folha-content .vt-wrap,#bancos-content{overflow-x:auto;}
     #folha-content .vt-table{display:table;min-width:660px;}
     .vt-cards{display:flex;flex-direction:column;gap:12px;}
@@ -833,27 +854,63 @@
     <header><h3>Novo Colaborador</h3><button class="x" data-close>×</button></header>
     <form id="form-colab">
       <div class="body">
-        <div class="field"><label>Nome completo</label><input name="nome" required placeholder="Ex: João da Silva"></div>
-        <div class="field"><label>Cargo</label>
-          <select name="cargo" required>
-            <option value="">Selecione…</option>
-            <option>Operador de Fulget</option>
-            <option>Aplicador de Epóxi</option>
-            <option>Operador de Piso Industrial</option>
-            <option>Encarregado de Obra</option>
-            <option>Vistoriador / Orçamentista</option>
-            <option>Ajudante Geral</option>
-            <option>Financeiro / Compras</option>
-          </select>
+        <h5 style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Dados pessoais</h5>
+        <div class="field"><label>Nome completo *</label><input name="nome" required placeholder="Ex: João da Silva"></div>
+        <div class="grid2">
+          <div class="field"><label>CPF *</label><input name="cpf" required placeholder="000.000.000-00"></div>
+          <div class="field"><label>RG</label><input name="rg" placeholder="0.000.000"></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Diária base (R$)</label><input name="valor_diaria" type="number" min="0" step="10" placeholder="240"><span class="hint">Em reais</span></div>
+          <div class="field"><label>RNE (estrangeiro)</label><input name="rne"></div>
+          <div class="field"><label>Apelido</label><input name="apelido"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Data de nascimento</label><input name="data_nascimento" type="date"></div>
+          <div class="field"><label>Nacionalidade</label><input name="nacionalidade" value="Brasileira"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Estado (UF)</label><input name="estado_residencia" maxlength="2" placeholder="DF"></div>
+          <div class="field"><label>Cidade</label><input name="cidade_residencia" placeholder="Brasília"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Identidade de gênero</label><select name="genero"><option value="">—</option><option>Masculino</option><option>Feminino</option><option>Não-binário</option><option>Prefiro não informar</option></select></div>
+          <div class="field"><label>Etnia</label><select name="etnia"><option value="">—</option><option>Branca</option><option>Preta</option><option>Parda</option><option>Amarela</option><option>Indígena</option></select></div>
+        </div>
+        <label class="docs-toggle"><input type="checkbox" name="pcd"> PCD (Pessoa com Deficiência)</label>
+
+        <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Contratação</h5>
+        <div class="grid2">
+          <div class="field"><label>Empresa *</label><select name="empresa" required><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
+          <div class="field"><label>Nº de registro</label><input name="numero_registro"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Data de admissão *</label><input name="data_admissao" type="date" required></div>
+          <div class="field"><label>Data de demissão</label><input name="data_demissao" type="date"></div>
+        </div>
+        <label class="docs-toggle"><input type="checkbox" name="primeiro_emprego"> Primeiro emprego</label>
+        <div class="grid2">
+          <div class="field"><label>Escolaridade</label><select name="escolaridade"><option value="">—</option><option>Fundamental</option><option>Médio</option><option>Técnico</option><option>Superior</option></select></div>
+          <div class="field"><label>Qualificação profissional</label><input name="qualificacao_profissional"></div>
+        </div>
+
+        <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Acesso à obra</h5>
+        <div class="grid2">
+          <div class="field"><label>Cargo / Serviço *</label>
+            <select name="cargo" required>
+              <option value="">Selecione…</option><option>Raspador Master</option><option>Lixador</option><option>Oficial Raspador</option><option>Operador de Fulget</option><option>Aplicador de Epóxi</option><option>Operador de Piso Industrial</option><option>Encarregado de Obra</option><option>Pedreiro</option><option>Vistoriador / Orçamentista</option><option>Ajudante Geral</option><option>Financeiro / Compras</option>
+            </select>
+          </div>
+          <div class="field"><label>Função (CBO)</label><input name="cbo" placeholder="ex: 7155-05"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Diária base (R$)</label><input name="valor_diaria" type="number" min="0" step="10" placeholder="240"></div>
           <div class="field"><label>Chave PIX</label><input name="chave_pix" placeholder="(61) 9…"></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Telefone</label><input name="telefone" placeholder="(61) 9…"></div>
-          <div class="field"><label>Contato de emergência</label><input name="contato_emergencia" placeholder="Nome · telefone"></div>
+          <div class="field"><label>Telefone / Celular</label><input name="telefone" placeholder="(61) 9…"></div>
+          <div class="field"><label>E-mail</label><input name="email" type="email"></div>
         </div>
+        <div class="field"><label>Obras vinculadas</label><input name="obras_vinculadas" placeholder="Ex: Autêntico Residencial, Legítimo Residencial"><span class="hint">Separe por vírgula</span></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar</button></footer>
     </form>
@@ -1532,8 +1589,15 @@
   // Submit: Novo Colaborador
   document.getElementById('form-colab').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
-    const payload={nome:f.get('nome'),cargo:f.get('cargo'),chave_pix:f.get('chave_pix')||null,
-      telefone:f.get('telefone')||null,contato_emergencia:f.get('contato_emergencia')||null,
+    const g=k=>f.get(k)||null;
+    const obras=(f.get('obras_vinculadas')||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const payload={nome:f.get('nome'),cargo:f.get('cargo'),empresa:f.get('empresa')||'RB_PISOS',
+      cpf:g('cpf'),rg:g('rg'),rne:g('rne'),apelido:g('apelido'),data_nascimento:g('data_nascimento'),
+      nacionalidade:g('nacionalidade'),estado_residencia:g('estado_residencia'),cidade_residencia:g('cidade_residencia'),
+      genero:g('genero'),etnia:g('etnia'),pcd:f.get('pcd')==='on',primeiro_emprego:f.get('primeiro_emprego')==='on',
+      numero_registro:g('numero_registro'),data_admissao:g('data_admissao'),data_demissao:g('data_demissao'),
+      escolaridade:g('escolaridade'),qualificacao_profissional:g('qualificacao_profissional'),cbo:g('cbo'),
+      chave_pix:g('chave_pix'),telefone:g('telefone'),email:g('email'),obras_vinculadas:obras,
       valor_diaria:f.get('valor_diaria')?Math.round(parseFloat(f.get('valor_diaria'))*100):null};
     try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       e.target.reset();document.getElementById('ov-colab').classList.remove('open');
@@ -1555,6 +1619,9 @@
   // ================= GESTÃO DE DOCUMENTOS (Inmeta) =================
   const EMPRESAS=[{id:'RB_PISOS',label:'R.B PISOS LTDA'},{id:'ECO_PISOS',label:'ECO PISOS'}];
   const DOC_AN={VALIDADO:['an-val','Validado'],NAO_VALIDADO:['an-nao','Não validado'],REPROVADO:['an-rep','Reprovado']};
+  const FAROL={OK:['ok','Em dia','an-val'],A_VENCER:['avencer','A vencer','an-aten'],BLOQUEADO:['bloq','Bloqueado','an-rep']};
+  const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['transferencia','Docs. Transferência'],['encerramento','Docs. Encerramento'],['treinamento','Treinamento'],['certificacao','Certificações']];
+  let docTabAtiva='unico';
   let docsState={nivel:'empresas'};
   function renderCrumb(){
     const c=document.getElementById('docs-crumb');const p=[`<span class="cr ${docsState.nivel==='empresas'?'atual':''}" data-crumb="empresas">Empresas / Construtoras</span>`];
@@ -1579,31 +1646,54 @@
       let lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend);
       if(st)lista=lista.filter(c=>st==='ativo'?c.status!=='desligamento':c.status==='desligamento');
       el.innerHTML=lista.length?'<div class="colab-list">'+lista.map(c=>{
-        const ok=c.pasta.status==='OK',venc=c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—';
+        const[fcls,flbl,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;
+        const venc=c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—';
         const obras=(c.obras_vinculadas||[]).slice(0,2).map(o=>`<span class="tag t-lar">${esc(o)}</span>`).join('');
         return `<div class="colab-row" data-colab="${c.id}" data-nome="${esc(c.nome)}">
-          <div class="folder ${ok?'ok':'pend'}">${folderSvg(ok)}</div>
+          <div class="folder ${fcls}">${folderSvg(c.pasta.status==='OK')}</div>
           <div class="ci"><h4>${esc(c.nome)}</h4><div class="sub">${esc(c.cargo||'')}${c.cpf?' · '+esc(c.cpf):''} · v${c.versao_atual||'-'} · vence ${venc}</div></div>
-          <div class="badges">${obras}${ok?'<span class="an an-val">Em dia</span>':`<span class="an an-rep">${c.pasta.pendencias} pend.</span>`}</div></div>`;}).join('')+'</div>'
+          <div class="badges">${obras}<span class="an ${fan}">${flbl}</span></div></div>`;}).join('')+'</div>'
         :'<div class="orc-empty">Nenhum colaborador encontrado.</div>';
-      el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>{docsState.nivel='docs';docsState.colabId=r.dataset.colab;docsState.colabNome=r.dataset.nome;renderDocs();}));
+      el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>{docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=r.dataset.colab;docsState.colabNome=r.dataset.nome;renderDocs();}));
     }else if(docsState.nivel==='docs'){
-      const docs=await api('/api/dp/colaborador/'+docsState.colabId+'/documentos');
-      el.innerHTML='<div class="doc-list">'+docs.map(d=>{
-        const v=d.venc||{status:'SEM_VENCIMENTO'};
-        const alerta=v.status==='VENCIDO'?' · ⚠ vencido':v.status==='PRESTES_A_VENCER'?' · ⚠ vence em '+v.dias+'d':'';
-        const l2=d.presente?`Versão ${d.versao} · ${d.atualizado_em?dtBR(d.atualizado_em.slice(0,10)):''}${d.data_vencimento?' · venc '+dtBR(d.data_vencimento)+alerta:''}`:'Não enviado';
-        const ctl=d.presente?`<select class="an-sel" data-status="${d.id}">
-            <option value="NAO_VALIDADO" ${d.status_analise==='NAO_VALIDADO'?'selected':''}>Não validado</option>
-            <option value="VALIDADO" ${d.status_analise==='VALIDADO'?'selected':''}>Validado</option>
-            <option value="REPROVADO" ${d.status_analise==='REPROVADO'?'selected':''}>Reprovado</option></select>`
-          :'<span class="an an-nao">Pendente</span>';
-        return `<div class="doc-row"><div class="pdf-ic">PDF</div>
-          <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2}</div></div>${ctl}
-          <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
+      const [resumo,docs]=await Promise.all([api('/api/dp/colaborador/'+docsState.colabId+'/resumo-docs'),api('/api/dp/colaborador/'+docsState.colabId+'/documentos')]);
+      const c=resumo.colaborador,ct=resumo.contadores,[fcls,flbl,fan]=FAROL[resumo.farol.status]||FAROL.BLOQUEADO;
+      const foto=c.avatar_url?`<img src="${c.avatar_url}" alt="">`:ini(c.nome);
+      const banner=`<div class="ficha-banner"><div class="fb-foto">${foto}</div>
+        <div><h3>${esc(c.nome)}</h3><div class="fb-meta"><span>CPF ${esc(c.cpf||'—')}</span><span>RG ${esc(c.rg||'—')}</span><span>${esc(c.cargo||'—')}</span><span>Admissão ${c.data_admissao?dtBR(c.data_admissao):'—'}</span><span>${esc(c.empresa||'')}</span></div></div>
+        <div class="fb-right"><span class="an ${fan}">${flbl}</span><div class="fb-actions"><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button></div></div></div>`;
+      const counts=`<div class="fb-counts">
+        <div class="fb-count"><b>${ct.documentos}/${ct.documentos_total}</b><span>Documentos</span></div>
+        <div class="fb-count"><b>${ct.treinamentos}</b><span>Treinamento</span></div>
+        <div class="fb-count"><b>${ct.treinamentos_expirados}</b><span>Trein. Expirados</span></div>
+        <div class="fb-count"><b>${ct.certificacoes}</b><span>Certificações</span></div>
+        <div class="fb-count"><b>${ct.ferias}</b><span>Férias</span></div>
+        <div class="fb-count"><b>${ct.licencas}</b><span>Licenças</span></div></div>`;
+      const tabs='<div class="doc-tabs">'+DOC_TABS.map(([k,l])=>`<button data-doctab="${k}" class="${k===docTabAtiva?'on':''}">${l}</button>`).join('')+'</div>';
+      let tabela;
+      if(docTabAtiva==='unico'){
+        tabela='<div class="doc-list">'+docs.map(d=>{
+          const[cls,lbl]=DOC_AN[d.status_analise]||['an-nao','—'];
+          const v=d.venc||{status:'SEM_VENCIMENTO'};
+          const validade=!d.vencivel?'<span class="sem-validade">Sem Validade</span>'
+            :(d.presente&&d.data_vencimento?`<span class="sub" style="font-size:11.5px">${v.dias<0?'⚠ vencido há '+(-v.dias)+'d':v.dias+' dias · '+dtBR(d.data_vencimento)}</span>`:'<span class="sub" style="font-size:11.5px">—</span>');
+          const l2=d.presente?`Versão ${d.versao} · atualizado ${d.atualizado_em?dtBR(d.atualizado_em.slice(0,10)):''}`:'Não enviado';
+          const ctl=d.presente?`<select class="an-sel" data-status="${d.id}">
+              <option value="NAO_VALIDADO" ${d.status_analise==='NAO_VALIDADO'?'selected':''}>Pendente</option>
+              <option value="VALIDADO" ${d.status_analise==='VALIDADO'?'selected':''}>Aprovado</option>
+              <option value="REPROVADO" ${d.status_analise==='REPROVADO'?'selected':''}>Reprovado</option></select>`
+            :'<span class="an an-nao">Pendente</span>';
+          return `<div class="doc-row"><div class="pdf-ic">PDF</div>
+            <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}</div></div>${ctl}
+            <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
+      }else tabela='<div class="orc-empty">Nenhum item nesta aba ainda.</div>';
+      el.innerHTML=banner+counts+tabs+tabela;
+      el.querySelectorAll('[data-doctab]').forEach(b=>b.addEventListener('click',()=>{docTabAtiva=b.dataset.doctab;renderDocs();}));
+      el.querySelector('[data-backup]')?.addEventListener('click',()=>showToast('Backup do dossiê — em breve'));
+      el.querySelector('[data-pdf]')?.addEventListener('click',()=>showToast('Exportar PDF — em breve'));
       el.querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click',()=>abrirDocUp(b.dataset.up,b.dataset.nome)));
       el.querySelectorAll('[data-status]').forEach(s=>s.addEventListener('change',async()=>{
-        try{await api('/api/documentos/'+s.dataset.status+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status_analise:s.value})});showToast('Status: '+DOC_AN[s.value][1]);}
+        try{await api('/api/documentos/'+s.dataset.status+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status_analise:s.value})});showToast('Status atualizado');renderDocs();}
         catch(err){showToast('Erro ao mudar status');console.error(err);}}));
     }
   }

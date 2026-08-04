@@ -506,6 +506,13 @@ app.get('/api/dp/colaborador/:id/documentos', async (req, res, next) => {
   try { res.json(await db.getDocsColaborador(req.params.id)); }
   catch (e) { next(e); }
 });
+app.get('/api/dp/colaborador/:id/resumo-docs', async (req, res, next) => {
+  try {
+    const r = await db.resumoColaboradorDocs(req.params.id);
+    if (!r) return res.status(404).json({ erro: 'colaborador não encontrado' });
+    res.json(r);
+  } catch (e) { next(e); }
+});
 app.post('/api/documentos/:colaboradorId/upload', upload.single('arquivo'), async (req, res, next) => {
   try {
     const { codigo } = req.body;
