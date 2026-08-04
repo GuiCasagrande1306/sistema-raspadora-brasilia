@@ -61,28 +61,29 @@
   *{box-sizing:border-box;}
   body{margin:0;font-family:var(--sans);background:var(--ground);color:var(--ink);
     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
-  .app{display:grid;grid-template-columns:80px 1fr;min-height:100vh;}
+  .app{display:grid;grid-template-columns:244px 1fr;min-height:100vh;}
 
-  /* ---------- SIDEBAR (preto concreto + acento laranja) ---------- */
+  /* ---------- SIDEBAR (menu agrupado, preto concreto) ---------- */
   .side{background:var(--chumbo-900);border-right:1px solid #000;
-    display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 0;
-    position:sticky;top:0;height:100vh;}
-  .logo{width:46px;height:46px;border-radius:12px;background:var(--laranja);
-    display:grid;place-items:center;margin-bottom:14px;color:#fff;font-weight:800;font-size:17px;letter-spacing:-.5px;}
-  .nav{display:flex;flex-direction:column;gap:4px;width:100%;align-items:center;}
-  .nav button{width:50px;height:50px;border:0;border-radius:12px;background:transparent;
-    color:rgba(255,255,255,.6);display:grid;place-items:center;cursor:pointer;
-    transition:.15s;position:relative;}
-  .nav button:hover{background:rgba(255,255,255,.09);color:#fff;}
+    display:flex;flex-direction:column;gap:2px;padding:16px 0;
+    position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .side-brand{display:flex;align-items:center;gap:11px;padding:0 16px 14px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,.08);}
+  .logo{width:40px;height:40px;border-radius:11px;background:var(--laranja);flex-shrink:0;
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;letter-spacing:-.5px;}
+  .side-name{color:#fff;font-weight:800;font-size:14px;letter-spacing:-.01em;line-height:1.1;}
+  .side-name small{display:block;color:var(--laranja);font-size:10px;font-weight:600;}
+  .nav{display:flex;flex-direction:column;gap:1px;}
+  .nav-group{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.38);
+    font-weight:800;padding:14px 18px 5px;}
+  .nav button{display:flex;align-items:center;gap:11px;width:auto;margin:0 8px;padding:9px 12px;border:0;border-radius:9px;
+    background:transparent;color:rgba(255,255,255,.72);cursor:pointer;transition:.12s;font-family:inherit;
+    font-size:13px;font-weight:600;text-align:left;}
+  .nav button .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nav button:hover{background:rgba(255,255,255,.08);color:#fff;}
   .nav button.on{background:var(--laranja);color:#fff;}
-  .nav button.on::before{content:"";position:absolute;left:-18px;width:4px;height:28px;
-    border-radius:0 4px 4px 0;background:var(--laranja);}
-  .nav .tip{position:absolute;left:58px;background:var(--chumbo-900);color:#fff;
-    padding:5px 9px;border-radius:8px;font-size:12px;white-space:nowrap;opacity:0;
-    pointer-events:none;transition:.15s;transform:translateX(-4px);z-index:20;font-weight:600;}
-  .nav button:hover .tip{opacity:1;transform:translateX(0);}
-  .side .foot{margin-top:auto;}
-  .side svg{width:23px;height:23px;}
+  .nav .tip{display:none;}
+  .side .foot{margin-top:auto;padding:8px;}
+  .side svg{width:19px;height:19px;flex-shrink:0;}
   .side .foot button{width:50px;height:50px;border:0;border-radius:12px;background:transparent;color:rgba(255,255,255,.82);display:grid;place-items:center;cursor:pointer;}
   .side .foot button:hover{background:rgba(255,255,255,.16);color:#fff;}
 
@@ -519,8 +520,8 @@
   .bottomnav{display:none;}
 
   @media (max-width:1100px){ .metrics{grid-template-columns:repeat(2,1fr);} }
-  @media (max-width:820px) and (min-width:768px){
-    .app{grid-template-columns:66px 1fr;}
+  @media (max-width:1000px) and (min-width:768px){
+    .app{grid-template-columns:200px 1fr;}
     .search{display:none;}
     .top{justify-content:space-between;}
   }
@@ -675,17 +676,25 @@
 
 <div class="app" id="app" style="visibility:hidden">
   <aside class="side">
-    <div class="logo" title="Raspadora Brasília">RB</div>
+    <div class="side-brand"><div class="logo">RB</div><div class="side-name">Raspadora Brasília<small>Sistema interno</small></div></div>
     <nav class="nav" id="nav">
-      <button data-view="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="tip">Dashboard Geral</span></button>
-      <button data-view="dp" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="tip">DP — Colaboradores</span></button>
-      <button data-view="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="tip">Financeiro — Obras &amp; DRE</span></button>
-      <button data-view="vt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M4 16v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 16v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M4 10h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="tip">Vale-Transporte</span></button>
-      <button data-view="bancos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="tip">Conta Bancária 🔒</span></button>
-      <button data-view="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg><span class="tip">Folha de Pagamento</span></button>
-      <button data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="tip">Documentos / SST</span></button>
-      <button data-view="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span class="tip">Orçamentos</span></button>
-      <button data-view="cfg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="tip">Configurações</span></button>
+      <div class="nav-group" data-group="dp">Departamento Pessoal</div>
+      <button data-view="docs" data-g="dp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="lbl">Gestão de Colaboradores</span></button>
+      <button data-view="dp" data-g="dp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 11h6"/></svg><span class="lbl">Prontuário &amp; Docs SST</span></button>
+      <button data-view="hist" data-g="dp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 3"/></svg><span class="lbl">Histórico &amp; Registros</span></button>
+
+      <div class="nav-group" data-group="fin">Financeiro</div>
+      <button data-view="vt" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="lbl">Vale-Transporte</span></button>
+      <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Conta Bancária 🔒</span></button>
+      <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="lbl">Lançamentos &amp; Pagamentos</span></button>
+
+      <div class="nav-group" data-group="com">Comercial &amp; Operações</div>
+      <button data-view="fin" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras &amp; Clientes</span></button>
+      <button data-view="orc" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span class="lbl">CRM Comercial</span></button>
+
+      <div class="nav-group" data-group="sis">Análise &amp; Sistema</div>
+      <button data-view="dash" data-g="sis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="lbl">Relatórios &amp; Consolidado</span></button>
+      <button data-view="cfg" data-g="sis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="lbl">Configurações</span></button>
     </nav>
     <div class="foot">
       <button id="theme" title="Alternar tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
@@ -923,7 +932,8 @@
       </div>
       <div id="orc-content" style="padding:18px 26px 96px;"></div>
     </section>
-    <section id="view-cfg" class="hidden"><div class="modhead"><h1>Configurações</h1><p>Insumos (resinas, agregados de fulget, lixas), tabela de diárias e usuários.</p></div></section>
+    <section id="view-hist" class="hidden"><div class="modhead"><h1>Histórico &amp; Registros</h1><p>Histórico individual de ocorrências, alterações de status e movimentações — abra a ficha de um colaborador em <b>Gestão de Colaboradores</b> para ver o histórico funcional.</p></div></section>
+    <section id="view-cfg" class="hidden"><div class="modhead"><h1>Configurações</h1><p>Parâmetros do sistema, cadastro de usuários e regras de validação.</p></div></section>
   </div>
 
   <!-- Bottom Navigation (mobile) -->
@@ -2152,8 +2162,13 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['dash','dp','fin','bancos','folha','docs','vt','orc','cfg']:['orc','vt'];
+    const permitido=admin?['dash','dp','hist','fin','bancos','folha','docs','vt','orc','cfg']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
+    // esconde cabeçalhos de grupo sem itens visíveis
+    document.querySelectorAll('.nav-group').forEach(h=>{
+      const algum=[...document.querySelectorAll('.nav button[data-g="'+h.dataset.group+'"]')].some(b=>b.style.display!=='none');
+      h.style.display=algum?'':'none';
+    });
     // avatar / iniciais no topo (busca a foto do perfil em segundo plano)
     const av=document.querySelector('.avatar');
     if(av){av.innerHTML='<span>'+ini((SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'US')+'</span>';av.title=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';}
