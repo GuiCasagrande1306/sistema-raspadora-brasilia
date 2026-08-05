@@ -183,7 +183,7 @@ app.get('/api/dp/documento/:id/url', async (req, res, next) => {
 });
 
 // ---------- ORÇAMENTOS & MEDIÇÕES ----------
-const STATUS_ORC = ['PENDENTE_MEDICAO', 'MEDIDO', 'APROVADO', 'CANCELADO'];
+const STATUS_ORC = ['PENDENTE_MEDICAO', 'MEDIDO', 'AGUARDANDO_PROPOSTA', 'APROVADO', 'CANCELADO'];
 // normaliza itens de medição e calcula totais (área × valor unitário)
 const prepararItens = (itens) => {
   const lista = Array.isArray(itens) ? itens : [];
@@ -217,17 +217,33 @@ app.get('/api/orcamentos/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-app.post('/api/orcamentos', async (req, res, next) => {
+// Medição de orçamento (multipart: fotos/vídeos de campo)
+app.post('/api/orcamentos', upload.array('midias', 15), async (req, res, next) => {
   try {
     const { cliente_nome, cliente_fone, endereco_obra, servico_tipo, data_orcamento, observacoes } = req.body;
     if (!cliente_nome) return res.status(400).json({ erro: 'cliente_nome é obrigatório' });
-    const { itens, valor_total } = prepararItens(req.body.itens);
-    const status = STATUS_ORC.includes(req.body.status) ? req.body.status : (itens.length ? 'MEDIDO' : 'PENDENTE_MEDICAO');
+    let itensRaw = req.body.itens;
+    if (typeof itensRaw === 'string') { try { itensRaw = JSON.parse(itensRaw); } catch { itensRaw = []; } }
+    const { itens, valor_total } = prepararItens(itensRaw);
+    // upload das mídias de campo para o Storage
+    const midias = [];
+    if (req.files && req.files.length && USING_SUPABASE) {
+      for (const f of req.files) {
+        const safe = (f.originalname || 'midia').replace(/[^\w.\-]+/g, '_');
+        const path = `orcamentos/${Date.now()}_${safe}`;
+        const { error } = await supabase.storage.from(BUCKET).upload(path, f.buffer, { contentType: f.mimetype });
+        if (!error) {
+          const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+          midias.push({ nome: f.originalname, url: data?.signedUrl || path, tipo: f.mimetype });
+        }
+      }
+    }
+    const status = STATUS_ORC.includes(req.body.status) ? req.body.status : 'AGUARDANDO_PROPOSTA';
     const novo = await db.createOrcamento({
       cliente_nome, cliente_fone, endereco_obra, servico_tipo, data_orcamento, observacoes,
-      itens, valor_total, status,
+      itens, valor_total, status, midias,
     });
-    res.status(201).json(novo);
+    res.status(201).json({ ...novo, notificacao: `O Orçamento N° ${novo.numero_orcamento} está pronto para desenvolver a proposta!` });
   } catch (e) { next(e); }
 });
 

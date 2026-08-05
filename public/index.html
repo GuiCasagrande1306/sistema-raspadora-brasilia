@@ -494,6 +494,21 @@
   .st{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
   .st-pend{background:var(--warn-bg);color:var(--warn-ink);} .st-medi{background:var(--info-bg);color:var(--info-ink);}
   .st-aprov{background:var(--ok-bg);color:var(--ok-ink);} .st-canc{background:var(--danger-bg);color:var(--danger);}
+  .st-aguard{background:var(--laranja-100);color:var(--laranja-esc);}
+  /* Medição de orçamento */
+  .serv-checks{display:flex;flex-wrap:wrap;gap:8px;}
+  .serv-chk{display:flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--line-2);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:var(--surface-2);}
+  .serv-chk:hover{border-color:var(--laranja-100);}
+  #orc-outro-txt{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);font-size:13px;font-family:inherit;}
+  .orc-item-med{display:grid;grid-template-columns:1fr 180px;gap:12px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--surface-2);}
+  .orc-item-med textarea{width:100%;min-height:78px;padding:10px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13px;font-family:inherit;resize:vertical;}
+  .orc-item-med textarea:focus,.orc-item-med input:focus{outline:2px solid var(--laranja);outline-offset:0;border-color:transparent;}
+  .orc-area{display:flex;flex-direction:column;gap:6px;}
+  .orc-area label{font-size:11px;font-weight:700;color:var(--ink-2);}
+  .orc-area input{padding:10px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:14px;font-family:inherit;font-variant-numeric:tabular-nums;}
+  .orc-area .it-del{border:0;background:none;color:var(--ink-3);font-size:12px;font-weight:700;cursor:pointer;text-align:left;padding:2px;}
+  .orc-area .it-del:hover{color:var(--danger);}
+  .orc-midias-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
   .orc-empty{text-align:center;color:var(--ink-3);padding:40px;border:1.5px dashed var(--line-2);border-radius:14px;}
 
   /* bloco de papel dentro do modal */
@@ -690,7 +705,8 @@
 
       <div class="nav-group" data-group="com">Comercial &amp; Operações</div>
       <button data-view="fin" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras &amp; Clientes</span></button>
-      <button data-view="orc" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span class="lbl">CRM Comercial</span></button>
+      <button data-view="orc" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Medição de Orçamentos</span></button>
+      <button data-view="prop" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span class="lbl">Propostas Comerciais</span></button>
 
       <div class="nav-group" data-group="sis">Análise &amp; Sistema</div>
       <button data-view="dash" data-g="sis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="lbl">Relatórios &amp; Consolidado</span></button>
@@ -914,15 +930,15 @@
     </section>
     <!-- ===== ORÇAMENTOS & MEDIÇÕES ===== -->
     <section id="view-orc" class="hidden">
-      <div class="modhead"><h1>Orçamentos &amp; Medições</h1><p>Bloco de orçamento de campo — cabeçalho do cliente, itens medidos por m² e total do serviço.</p></div>
+      <div class="modhead"><h1>Medição de Orçamentos</h1><p>Medição de campo — cliente, tipo de serviço, itens medidos por m² e fotos/vídeos do local (os valores entram depois, em Propostas).</p></div>
       <div class="tabsrow">
         <div class="tabs" id="orc-filtros">
           <button class="on" data-filtro="">Todos</button>
           <button data-filtro="PENDENTE_MEDICAO">A medir</button>
-          <button data-filtro="MEDIDO">Medidos</button>
+          <button data-filtro="AGUARDANDO_PROPOSTA">Aguardando proposta</button>
           <button data-filtro="APROVADO">Aprovados</button>
         </div>
-        <button class="primary" id="btn-orc-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Orçamento</button>
+        <button class="primary" id="btn-orc-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nova Medição</button>
       </div>
       <div class="metrics">
         <div class="metric"><div class="lbl">Orçamentos</div><div class="val" id="orc-total">—</div><div class="sub">no total</div></div>
@@ -932,6 +948,7 @@
       </div>
       <div id="orc-content" style="padding:18px 26px 96px;"></div>
     </section>
+    <section id="view-prop" class="hidden"><div class="modhead"><h1>Propostas Comerciais</h1><p>Elaboração e envio da proposta final — inserir R$/m² e totais sobre a medição de campo. Orçamentos com status <b>Aguardando Proposta</b> aparecem aqui para precificação. (Etapa de precificação — em construção.)</p></div></section>
     <section id="view-hist" class="hidden"><div class="modhead"><h1>Histórico &amp; Registros</h1><p>Histórico individual de ocorrências, alterações de status e movimentações — abra a ficha de um colaborador em <b>Gestão de Colaboradores</b> para ver o histórico funcional.</p></div></section>
     <section id="view-cfg" class="hidden"><div class="modhead"><h1>Configurações</h1><p>Parâmetros do sistema, cadastro de usuários e regras de validação.</p></div></section>
   </div>
@@ -1064,36 +1081,40 @@
         <div class="orc-block">
           <div class="orc-block-head">
             <span class="orc-marca">RASPADORA BRASÍLIA</span>
-            <span class="orc-num">Nº <b id="orc-numero">—</b></span>
+            <span class="orc-num">Nº <b id="orc-numero">(auto)</b></span>
           </div>
           <div class="grid2">
-            <div class="field"><label>Cliente</label><input name="cliente_nome" required placeholder="Nome do cliente"></div>
+            <div class="field"><label>Cliente *</label><input name="cliente_nome" required placeholder="Nome do cliente"></div>
             <div class="field"><label>Telefone</label><input name="cliente_fone" placeholder="(61) 9…"></div>
           </div>
-          <div class="field"><label>Endereço da obra</label><input name="endereco_obra" placeholder="Endereço / quadra / lote"></div>
           <div class="grid2">
-            <div class="field"><label>Tipo de serviço</label>
-              <select name="servico_tipo"><option value="">—</option><option>FULGET</option><option>RASPAGEM</option><option>SINTECO</option><option>EPÓXI</option><option>CONCRETO POLIDO</option><option>RESTAURAÇÃO MADEIRA</option></select>
+            <div class="field"><label>Endereço da obra</label><input name="endereco_obra" placeholder="Endereço / quadra / lote"></div>
+            <div class="field"><label>Data da medição</label><input name="data_orcamento" type="date"></div>
+          </div>
+          <div class="field"><label>Tipo de serviço</label>
+            <div class="serv-checks" id="orc-servicos">
+              <label class="serv-chk"><input type="checkbox" value="FULGET"> Fulget</label>
+              <label class="serv-chk"><input type="checkbox" value="RASPAGEM"> Raspagem</label>
+              <label class="serv-chk"><input type="checkbox" value="CONCRETO"> Concreto</label>
+              <label class="serv-chk"><input type="checkbox" value="LIMPEZA"> Limpeza</label>
+              <label class="serv-chk"><input type="checkbox" value="OUTRO" id="orc-outro-chk"> Outro</label>
             </div>
-            <div class="field"><label>Data</label><input name="data_orcamento" type="date"></div>
+            <input id="orc-outro-txt" placeholder="Descreva o serviço…" style="display:none;margin-top:8px">
           </div>
         </div>
 
         <div class="orc-itens">
-          <div class="orc-itens-head"><h5>Itens medidos</h5><button type="button" class="vt-add" id="orc-add-item">+ Adicionar item</button></div>
-          <div class="orc-itens-cols"><span>Descrição</span><span>Área m²</span><span>R$/m²</span><span>Total</span><span></span></div>
+          <div class="orc-itens-head"><h5>Itens medidos (campo)</h5><button type="button" class="vt-add" id="orc-add-item">+ Adicionar item</button></div>
           <div id="orc-itens-body"></div>
-          <div class="orc-total"><span>Valor total do orçamento</span><b id="orc-valor-total">R$ 0,00</b></div>
         </div>
 
-        <div class="grid2">
-          <div class="field"><label>Status</label>
-            <select name="status"><option value="PENDENTE_MEDICAO">Pendente medição</option><option value="MEDIDO">Medido</option><option value="APROVADO">Aprovado</option><option value="CANCELADO">Cancelado</option></select>
-          </div>
-          <div class="field"><label>Observações</label><input name="observacoes" placeholder="Opcional"></div>
+        <div class="field"><label>Fotos e vídeos da medição</label>
+          <input type="file" id="orc-midias" multiple accept="image/*,video/*" capture="environment">
+          <span class="hint">Tire foto/filme no local ou envie da galeria — múltiplos arquivos (imagens/MP4/MOV).</span>
+          <div class="orc-midias-preview" id="orc-midias-preview"></div>
         </div>
       </div>
-      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar orçamento</button></footer>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar Orçamento</button></footer>
     </form>
   </div>
 </div>
@@ -1329,7 +1350,7 @@
 
   // ---------- ORÇAMENTOS & MEDIÇÕES ----------
   const brlN=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2});
-  const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],APROVADO:['st-aprov','Aprovado'],CANCELADO:['st-canc','Cancelado']};
+  const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],AGUARDANDO_PROPOSTA:['st-aguard','Aguardando proposta'],APROVADO:['st-aprov','Aprovado'],CANCELADO:['st-canc','Cancelado']};
   let ORC=[], orcFiltro='';
   function renderOrcLista(){
     const lista=orcFiltro?ORC.filter(o=>o.status===orcFiltro):ORC;
@@ -1360,42 +1381,37 @@
     b.classList.add('on');orcFiltro=b.dataset.filtro;renderOrcLista();
   }));
 
-  // --- Modal do bloco de orçamento ---
+  // --- Modal de Medição de Orçamento (campo, sem preços) ---
   let orcEditId=null;
-  function itemRow(it={descricao:'',area_m2:'',valor_unit:'',total:0}){
-    const div=document.createElement('div');div.className='orc-item';
-    div.innerHTML=`<input name="descricao" placeholder="Ex: Sala + quartos" value="${esc(it.descricao)}">
-      <input name="area_m2" type="number" step="0.01" min="0" placeholder="0" value="${it.area_m2||''}">
-      <input name="valor_unit" type="number" step="0.01" min="0" placeholder="0,00" value="${it.valor_unit||''}">
-      <span class="it-total">${brlN(it.total||0)}</span>
-      <button type="button" class="it-del" title="Remover">×</button>`;
-    const recalc=()=>{const a=parseFloat(div.querySelector('[name=area_m2]').value)||0;
-      const v=parseFloat(div.querySelector('[name=valor_unit]').value)||0;
-      div.querySelector('.it-total').textContent=brlN(a*v);recalcOrcTotal();};
-    div.querySelector('[name=area_m2]').addEventListener('input',recalc);
-    div.querySelector('[name=valor_unit]').addEventListener('input',recalc);
-    div.querySelector('.it-del').addEventListener('click',()=>{div.remove();recalcOrcTotal();});
+  const SERV_FIXOS=['FULGET','RASPAGEM','CONCRETO','LIMPEZA','OUTRO'];
+  function itemRow(it={descricao:'',area_m2:''}){
+    const div=document.createElement('div');div.className='orc-item-med';
+    div.innerHTML=`<textarea name="descricao" rows="3" placeholder="Descreva o espaço, medidas, detalhes técnicos e observações da medição…">${esc(it.descricao||'')}</textarea>
+      <div class="orc-area"><label>Área (m²)</label><input name="area_m2" type="number" step="0.01" min="0" placeholder="0"${it.area_m2?` value="${it.area_m2}"`:''}><button type="button" class="it-del" title="Remover">× remover</button></div>`;
+    div.querySelector('.it-del').addEventListener('click',()=>div.remove());
     return div;
   }
-  function recalcOrcTotal(){
-    let t=0;document.querySelectorAll('#orc-itens-body .orc-item').forEach(r=>{
-      const a=parseFloat(r.querySelector('[name=area_m2]').value)||0;
-      const v=parseFloat(r.querySelector('[name=valor_unit]').value)||0;t+=a*v;});
-    document.getElementById('orc-valor-total').textContent=brlN(t);
-  }
+  document.getElementById('orc-outro-chk').addEventListener('change',e=>{document.getElementById('orc-outro-txt').style.display=e.target.checked?'':'none';});
+  document.getElementById('orc-midias').addEventListener('change',e=>{
+    document.getElementById('orc-midias-preview').innerHTML=[...e.target.files].map(fl=>`<span class="tag t-lar">${/video/i.test(fl.type)?'🎬':'🖼️'} ${esc(fl.name)}</span>`).join('');
+  });
   function abrirOrc(orc){
     orcEditId=orc?orc.id:null;
-    document.getElementById('orc-title').textContent=orc?('Orçamento Nº '+orc.numero_orcamento):'Novo Orçamento';
+    document.getElementById('orc-title').textContent=orc?('Medição — Orçamento Nº '+orc.numero_orcamento):'Nova Medição de Orçamento';
     document.getElementById('orc-numero').textContent=orc?orc.numero_orcamento:'(auto)';
     const f=document.getElementById('form-orc');f.reset();
     f.cliente_nome.value=orc?.cliente_nome||'';f.cliente_fone.value=orc?.cliente_fone||'';
-    f.endereco_obra.value=orc?.endereco_obra||'';f.servico_tipo.value=orc?.servico_tipo||'';
-    f.data_orcamento.value=(orc?.data_orcamento)||hoje();f.status.value=orc?.status||'PENDENTE_MEDICAO';
-    f.observacoes.value=orc?.observacoes||'';
+    f.endereco_obra.value=orc?.endereco_obra||'';f.data_orcamento.value=(orc?.data_orcamento)||hoje();
+    const servs=(orc?.servico_tipo||'').split(',').map(s=>s.trim()).filter(Boolean);
+    document.querySelectorAll('#orc-servicos input').forEach(cb=>cb.checked=servs.includes(cb.value));
+    const outros=servs.filter(s=>!SERV_FIXOS.includes(s)),outroTxt=document.getElementById('orc-outro-txt');
+    if(outros.length){document.getElementById('orc-outro-chk').checked=true;outroTxt.value=outros.join(', ');outroTxt.style.display='';}else{outroTxt.value='';outroTxt.style.display='none';}
     const body=document.getElementById('orc-itens-body');body.innerHTML='';
     const itens=(orc?.itens&&orc.itens.length)?orc.itens:[{}];
     itens.forEach(it=>body.appendChild(itemRow(it)));
-    recalcOrcTotal();openModal('ov-orc');
+    document.getElementById('orc-midias').value='';
+    document.getElementById('orc-midias-preview').innerHTML=(orc?.midias||[]).map(m=>`<a href="${m.url}" target="_blank" rel="noopener" class="tag t-info">${/video/i.test(m.tipo||'')?'🎬':'🖼️'} ${esc(m.nome||'mídia')}</a>`).join('');
+    openModal('ov-orc');
   }
   document.getElementById('btn-orc-novo').addEventListener('click',()=>abrirOrc(null));
   document.getElementById('orc-add-item').addEventListener('click',()=>document.getElementById('orc-itens-body').appendChild(itemRow()));
@@ -1403,22 +1419,41 @@
     const c=e.target.closest('[data-orc]');if(!c)return;
     try{abrirOrc(await api('/api/orcamentos/'+c.dataset.orc));}catch(err){showToast('Erro ao abrir');console.error(err);}
   });
+  function orcColetaServicos(){
+    const servs=[...document.querySelectorAll('#orc-servicos input:checked')].map(c=>c.value).filter(v=>v!=='OUTRO');
+    const outro=document.getElementById('orc-outro-chk').checked?document.getElementById('orc-outro-txt').value.trim():'';
+    if(outro)servs.push(outro);return servs.join(', ');
+  }
+  function orcColetaItens(){
+    return [...document.querySelectorAll('#orc-itens-body .orc-item-med')].map(r=>({
+      descricao:r.querySelector('[name=descricao]').value,area_m2:parseFloat(r.querySelector('[name=area_m2]').value)||0,
+    })).filter(i=>i.descricao||i.area_m2);
+  }
   document.getElementById('form-orc').addEventListener('submit',async e=>{
-    e.preventDefault();const f=new FormData(e.target);
-    const itens=[...document.querySelectorAll('#orc-itens-body .orc-item')].map(r=>({
-      descricao:r.querySelector('[name=descricao]').value,
-      area_m2:parseFloat(r.querySelector('[name=area_m2]').value)||0,
-      valor_unit:parseFloat(r.querySelector('[name=valor_unit]').value)||0,
-    })).filter(i=>i.descricao||i.area_m2||i.valor_unit);
-    const payload={cliente_nome:f.get('cliente_nome'),cliente_fone:f.get('cliente_fone')||null,
-      endereco_obra:f.get('endereco_obra')||null,servico_tipo:f.get('servico_tipo')||null,
-      data_orcamento:f.get('data_orcamento')||null,status:f.get('status'),observacoes:f.get('observacoes')||null,itens};
+    e.preventDefault();const f=e.target;
+    if(!f.cliente_nome.value.trim()){showToast('Informe o cliente');return;}
+    const servico_tipo=orcColetaServicos(),itens=orcColetaItens();
     try{
-      if(orcEditId)await api('/api/orcamentos/'+orcEditId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      else await api('/api/orcamentos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-orc').classList.remove('open');
-      await loadOrc();showToast(orcEditId?'Orçamento atualizado':'Orçamento criado');
-    }catch(err){showToast('Erro ao salvar orçamento');console.error(err);}
+      if(orcEditId){
+        await api('/api/orcamentos/'+orcEditId,{method:'PATCH',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({cliente_nome:f.cliente_nome.value,cliente_fone:f.cliente_fone.value||null,endereco_obra:f.endereco_obra.value||null,data_orcamento:f.data_orcamento.value||null,servico_tipo,itens})});
+        document.getElementById('ov-orc').classList.remove('open');await loadOrc();showToast('Medição atualizada');
+      }else{
+        const fd=new FormData();
+        fd.append('cliente_nome',f.cliente_nome.value);
+        if(f.cliente_fone.value)fd.append('cliente_fone',f.cliente_fone.value);
+        if(f.endereco_obra.value)fd.append('endereco_obra',f.endereco_obra.value);
+        if(f.data_orcamento.value)fd.append('data_orcamento',f.data_orcamento.value);
+        fd.append('servico_tipo',servico_tipo);fd.append('itens',JSON.stringify(itens));
+        [...document.getElementById('orc-midias').files].forEach(fl=>fd.append('midias',fl));
+        const r=await fetch('/api/orcamentos',{method:'POST',body:fd,headers:authHeaders()});
+        if(!r.ok)throw new Error(await r.text());
+        const nv=await r.json();
+        document.getElementById('ov-orc').classList.remove('open');await loadOrc();
+        const dot=document.querySelector('.iconbtn .dot');if(dot)dot.style.display='';
+        showToast('🔔 '+(nv.notificacao||('Orçamento N° '+nv.numero_orcamento+' salvo')));
+      }
+    }catch(err){showToast('Erro ao salvar medição');console.error(err);}
   });
 
   // ---------- VALE-TRANSPORTE (lista editável por semana, auto-save) ----------
@@ -2162,7 +2197,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['dash','dp','hist','fin','bancos','folha','docs','vt','orc','cfg']:['orc','vt'];
+    const permitido=admin?['dash','dp','hist','fin','bancos','folha','docs','vt','orc','prop','cfg']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     // esconde cabeçalhos de grupo sem itens visíveis
     document.querySelectorAll('.nav-group').forEach(h=>{
