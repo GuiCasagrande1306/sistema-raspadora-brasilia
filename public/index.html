@@ -693,24 +693,31 @@
   <aside class="side">
     <div class="side-brand"><div class="logo">RB</div><div class="side-name">Raspadora Brasília<small>Sistema interno</small></div></div>
     <nav class="nav" id="nav">
-      <div class="nav-group" data-group="dp">Departamento Pessoal</div>
-      <button data-view="docs" data-g="dp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="lbl">Gestão de Colaboradores</span></button>
-      <button data-view="dp" data-g="dp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 11h6"/></svg><span class="lbl">Prontuário &amp; Docs SST</span></button>
-      <button data-view="hist" data-g="dp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 3"/></svg><span class="lbl">Histórico &amp; Registros</span></button>
+      <div class="nav-group" data-group="rh">RH</div>
+      <button data-view="docs" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="lbl">Colaboradores</span></button>
+      <button data-view="dp" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 11h6"/></svg><span class="lbl">Documentos</span></button>
+      <button data-view="vt" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="lbl">Vale Transporte</span></button>
+
+      <div class="nav-group" data-group="com">Comercial</div>
+      <button data-view="leads" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg><span class="lbl">Leads</span></button>
+      <button data-view="prop" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span class="lbl">Propostas</span></button>
+      <button data-view="clientes" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="lbl">Clientes</span></button>
+      <button data-view="contratos" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 17c1 1 2 1 3 0s2-1 3 0"/></svg><span class="lbl">Contratos</span></button>
+
+      <div class="nav-group" data-group="os">Visita Técnica (O.S)</div>
+      <button data-view="orc" data-g="os"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Medição de Campo &amp; Orçamento</span></button>
 
       <div class="nav-group" data-group="fin">Financeiro</div>
-      <button data-view="vt" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="lbl">Vale-Transporte</span></button>
-      <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Conta Bancária 🔒</span></button>
-      <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="lbl">Lançamentos &amp; Pagamentos</span></button>
-
-      <div class="nav-group" data-group="com">Comercial &amp; Operações</div>
-      <button data-view="fin" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras &amp; Clientes</span></button>
-      <button data-view="orc" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Medição de Orçamentos</span></button>
-      <button data-view="prop" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span class="lbl">Propostas Comerciais</span></button>
-
-      <div class="nav-group" data-group="sis">Análise &amp; Sistema</div>
-      <button data-view="dash" data-g="sis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="lbl">Relatórios &amp; Consolidado</span></button>
-      <button data-view="cfg" data-g="sis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="lbl">Configurações</span></button>
+      <button data-view="fin" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras e DRE</span></button>
+      <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="lbl">Bancos &amp; Fluxo de Caixa</span></button>
+      <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Folha de Ponto</span></button>
+      <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
+      <button data-view="recibos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 8h8M8 12h6"/></svg><span class="lbl">Recibos</span></button>
+      <button data-view="prestacao" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="lbl">Prestação de Contas</span></button>
+      <button data-view="nfrbmo" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB — Mão de Obra</span></button>
+      <button data-view="nfrbmat" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB — Materiais</span></button>
+      <button data-view="nfecomo" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF Eco Pisos — Mão de Obra</span></button>
+      <button data-view="nfecomat" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF Eco Pisos — Materiais</span></button>
     </nav>
     <div class="foot">
       <button id="theme" title="Alternar tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
@@ -948,7 +955,16 @@
       </div>
       <div id="orc-content" style="padding:18px 26px 96px;"></div>
     </section>
-    <section id="view-prop" class="hidden"><div class="modhead"><h1>Propostas Comerciais</h1><p>Elaboração e envio da proposta final — inserir R$/m² e totais sobre a medição de campo. Orçamentos com status <b>Aguardando Proposta</b> aparecem aqui para precificação. (Etapa de precificação — em construção.)</p></div></section>
+    <section id="view-prop" class="hidden"><div class="modhead"><h1>Propostas Comerciais</h1><p>Elaboração e precificação (R$/m² e totais) sobre a medição de campo. Orçamentos <b>Aguardando Proposta</b> entram aqui. (Precificação — em construção.)</p></div></section>
+    <section id="view-leads" class="hidden"><div class="modhead"><h1>Leads</h1><p>Gestão de novos contatos e prospecção comercial. (Módulo em construção.)</p></div></section>
+    <section id="view-clientes" class="hidden"><div class="modhead"><h1>Clientes</h1><p>Cadastro e histórico completo dos clientes. (Módulo em construção.)</p></div></section>
+    <section id="view-contratos" class="hidden"><div class="modhead"><h1>Contratos</h1><p>Gestão de contratos fechados e assinaturas. (Módulo em construção.)</p></div></section>
+    <section id="view-recibos" class="hidden"><div class="modhead"><h1>Recibos</h1><p>Emissão e gestão de recibos de pagamento/recebimento. (Módulo em construção.)</p></div></section>
+    <section id="view-prestacao" class="hidden"><div class="modhead"><h1>Prestação de Contas</h1><p>Lançamento de despesas operacionais e reembolsos de equipe. (Módulo em construção.)</p></div></section>
+    <section id="view-nfrbmo" class="hidden"><div class="modhead"><h1>NF RB — Mão de Obra</h1><p>Notas Fiscais de serviço prestado pela Raspadora Brasília. (Módulo em construção.)</p></div></section>
+    <section id="view-nfrbmat" class="hidden"><div class="modhead"><h1>NF RB — Materiais</h1><p>Notas Fiscais de venda/compra de materiais da Raspadora Brasília. (Módulo em construção.)</p></div></section>
+    <section id="view-nfecomo" class="hidden"><div class="modhead"><h1>NF Eco Pisos — Mão de Obra</h1><p>Notas Fiscais de serviço da Eco Pisos. (Módulo em construção.)</p></div></section>
+    <section id="view-nfecomat" class="hidden"><div class="modhead"><h1>NF Eco Pisos — Materiais</h1><p>Notas Fiscais de materiais da Eco Pisos. (Módulo em construção.)</p></div></section>
     <section id="view-hist" class="hidden"><div class="modhead"><h1>Histórico &amp; Registros</h1><p>Histórico individual de ocorrências, alterações de status e movimentações — abra a ficha de um colaborador em <b>Gestão de Colaboradores</b> para ver o histórico funcional.</p></div></section>
     <section id="view-cfg" class="hidden"><div class="modhead"><h1>Configurações</h1><p>Parâmetros do sistema, cadastro de usuários e regras de validação.</p></div></section>
   </div>
@@ -2197,7 +2213,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['dash','dp','hist','fin','bancos','folha','docs','vt','orc','prop','cfg']:['orc','vt'];
+    const permitido=admin?['docs','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','folha','recibos','prestacao','nfrbmo','nfrbmat','nfecomo','nfecomat']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     // esconde cabeçalhos de grupo sem itens visíveis
     document.querySelectorAll('.nav-group').forEach(h=>{
@@ -2212,7 +2228,7 @@
     const mostra=admin?{dp:1,fin:1,novo:1,perfil:1}:{orc:1,vt:1,perfil:1};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(b=>b.style.display=mostra[b.dataset.bn]?'':'none');
     // esconde o atalho de VT na aba do DP para operacional (não usa DP)
-    irParaView(admin?'dp':'orc');
+    irParaView(admin?'docs':'orc');
     if(admin)loadFin().catch(e=>console.error(e)); // popula select do modal de lançamento
   }
 
