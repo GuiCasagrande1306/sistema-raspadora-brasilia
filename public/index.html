@@ -756,7 +756,7 @@
     <section id="view-dp">
       <div class="modhead"><h1>Departamento Pessoal</h1><p>Equipes operacionais de campo e administrativas — admissão, EPIs e escala de obras por m².</p></div>
       <div class="tabsrow">
-        <div class="tabs"><button class="on">Colaboradores</button><button>Admissão</button><button>Escala de Obras</button><button>Desligamento</button><button data-goto="vt">🚌 Vale-Transporte</button></div>
+        <div class="tabs"><button class="on">Colaboradores</button><button>Documentos</button><button>Escala de Obras</button><button>Visitas Técnicas</button><button data-goto="vt">🚌 Vale-Transporte</button></div>
         <button class="primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Colaborador</button>
       </div>
       <div class="metrics">
@@ -1107,6 +1107,10 @@
             <div class="field"><label>Endereço da obra</label><input name="endereco_obra" placeholder="Endereço / quadra / lote"></div>
             <div class="field"><label>Data da medição</label><input name="data_orcamento" type="date"></div>
           </div>
+          <div class="grid2">
+            <div class="field"><label>Responsável técnico</label><input name="responsavel_tecnico" placeholder="Quem fez a medição"></div>
+            <div class="field"><label>Link do Google Maps</label><input name="google_maps_link" type="url" placeholder="https://maps.google.com/…"></div>
+          </div>
           <div class="field"><label>Tipo de serviço</label>
             <div class="serv-checks" id="orc-servicos">
               <label class="serv-chk"><input type="checkbox" value="FULGET"> Fulget</label>
@@ -1418,6 +1422,7 @@
     const f=document.getElementById('form-orc');f.reset();
     f.cliente_nome.value=orc?.cliente_nome||'';f.cliente_fone.value=orc?.cliente_fone||'';
     f.endereco_obra.value=orc?.endereco_obra||'';f.data_orcamento.value=(orc?.data_orcamento)||hoje();
+    f.responsavel_tecnico.value=orc?.responsavel_tecnico||'';f.google_maps_link.value=orc?.google_maps_link||'';
     const servs=(orc?.servico_tipo||'').split(',').map(s=>s.trim()).filter(Boolean);
     document.querySelectorAll('#orc-servicos input').forEach(cb=>cb.checked=servs.includes(cb.value));
     const outros=servs.filter(s=>!SERV_FIXOS.includes(s)),outroTxt=document.getElementById('orc-outro-txt');
@@ -1452,7 +1457,7 @@
     try{
       if(orcEditId){
         await api('/api/orcamentos/'+orcEditId,{method:'PATCH',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({cliente_nome:f.cliente_nome.value,cliente_fone:f.cliente_fone.value||null,endereco_obra:f.endereco_obra.value||null,data_orcamento:f.data_orcamento.value||null,servico_tipo,itens})});
+          body:JSON.stringify({cliente_nome:f.cliente_nome.value,cliente_fone:f.cliente_fone.value||null,endereco_obra:f.endereco_obra.value||null,data_orcamento:f.data_orcamento.value||null,servico_tipo,itens,responsavel_tecnico:f.responsavel_tecnico.value||null,google_maps_link:f.google_maps_link.value||null})});
         document.getElementById('ov-orc').classList.remove('open');await loadOrc();showToast('Medição atualizada');
       }else{
         const fd=new FormData();
@@ -1461,6 +1466,8 @@
         if(f.endereco_obra.value)fd.append('endereco_obra',f.endereco_obra.value);
         if(f.data_orcamento.value)fd.append('data_orcamento',f.data_orcamento.value);
         fd.append('servico_tipo',servico_tipo);fd.append('itens',JSON.stringify(itens));
+        if(f.responsavel_tecnico.value)fd.append('responsavel_tecnico',f.responsavel_tecnico.value);
+        if(f.google_maps_link.value)fd.append('google_maps_link',f.google_maps_link.value);
         [...document.getElementById('orc-midias').files].forEach(fl=>fd.append('midias',fl));
         const r=await fetch('/api/orcamentos',{method:'POST',body:fd,headers:authHeaders()});
         if(!r.ok)throw new Error(await r.text());
@@ -1787,7 +1794,7 @@
   const DOC_AN={VALIDADO:['an-val','Validado'],NAO_VALIDADO:['an-nao','Não validado'],REPROVADO:['an-rep','Reprovado']};
   const FAROL={OK:['ok','Em dia','an-val'],A_VENCER:['avencer','A vencer','an-aten'],BLOQUEADO:['bloq','Bloqueado','an-rep']};
   const STATUS_COLAB={ATIVO:['an-val','🟢 Ativo'],DESLIGADO:['an-rep','🔴 Desligado'],DIARIA:['an-aten','🟡 Diária'],FERIAS:['an-fer','🔵 Férias'],INSS:['an-inss','🟣 INSS']};
-  const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['transferencia','Docs. Transferência'],['encerramento','Docs. Encerramento'],['treinamento','Treinamento'],['certificacao','Certificações']];
+  const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['desligamento','Docs. Desligamento']];
   let docTabAtiva='unico';
   let docsViewMode='lista', docsGroupBy='status_colaborador';
   const stTag=c=>{const[s,l]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;return `<span class="an ${s}">${l}</span>`;};
@@ -1908,8 +1915,9 @@
         <div class="fb-count"><b>${ct.licencas}</b><span>Licenças</span></div></div>`;
       const tabs='<div class="doc-tabs">'+DOC_TABS.map(([k,l])=>`<button data-doctab="${k}" class="${k===docTabAtiva?'on':''}">${l}</button>`).join('')+'</div>';
       let tabela;
-      if(docTabAtiva==='unico'){
-        tabela='<div class="doc-list">'+docs.map(d=>{
+      const docsAba=docs.filter(d=>(d.tab||'unico')===docTabAtiva);
+      if(docsAba.length){
+        tabela='<div class="doc-list">'+docsAba.map(d=>{
           const[cls,lbl]=DOC_AN[d.status_analise]||['an-nao','—'];
           const v=d.venc||{status:'SEM_VENCIMENTO'};
           const validade=!d.vencivel?'<span class="sem-validade">Sem Validade</span>'
@@ -1923,7 +1931,7 @@
           return `<div class="doc-row"><div class="pdf-ic">PDF</div>
             <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}</div></div>${ctl}
             <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
-      }else tabela='<div class="orc-empty">Nenhum item nesta aba ainda.</div>';
+      }else tabela='<div class="orc-empty">Nenhum documento nesta aba.</div>';
       el.innerHTML=banner+counts+tabs+tabela;
       el.querySelectorAll('[data-doctab]').forEach(b=>b.addEventListener('click',()=>{docTabAtiva=b.dataset.doctab;renderDocs();}));
       el.querySelector('[data-backup]')?.addEventListener('click',()=>showToast('Backup do dossiê — em breve'));

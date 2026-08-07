@@ -98,20 +98,34 @@ export function sstStatus(dataVenc) {
 
 // Checklist padronizado de documentos do colaborador (padrão Inmeta)
 export const CATALOGO_DOCS = [
-  { codigo: '01', nome: 'Ficha de Registro', vencivel: false },
-  { codigo: '02', nome: 'CTPS / e-Social / Contrato', vencivel: false },
-  { codigo: '03', nome: 'ASO (Atestado de Saúde Ocupacional)', vencivel: true },
-  { codigo: '04', nome: 'Cartão de Vacina', vencivel: false },
-  { codigo: '05', nome: 'Ordem de Serviço', vencivel: false },
-  { codigo: '06', nome: 'Ficha de EPI', vencivel: true },
-  { codigo: '07', nome: 'NR 06', vencivel: true },
-  { codigo: '08', nome: 'NR 07', vencivel: true },
-  { codigo: '11', nome: 'NR 12', vencivel: true },
-  { codigo: '14', nome: 'NR 18', vencivel: true },
-  { codigo: '15', nome: 'NR 23', vencivel: true },
-  { codigo: '19', nome: 'NR 35', vencivel: true },
-  { codigo: '20', nome: 'Anuência da NR 35', vencivel: false },
-  { codigo: '21', nome: 'Proficiência da NR 35', vencivel: true },
+  // Docs. Únicos
+  { codigo: '01', nome: 'Ficha de Registro', vencivel: false, tab: 'unico' },
+  { codigo: '02', nome: 'CTPS / e-Social / Contrato', vencivel: false, tab: 'unico' },
+  { codigo: '03', nome: 'ASO (Atestado de Saúde Ocupacional)', vencivel: true, tab: 'unico' },
+  { codigo: '04', nome: 'Cartão de Vacina', vencivel: false, tab: 'unico' },
+  { codigo: '05', nome: 'Ordem de Serviço', vencivel: false, tab: 'unico' },
+  { codigo: '07', nome: 'NR 06', vencivel: true, tab: 'unico' },
+  { codigo: '08', nome: 'NR 07', vencivel: true, tab: 'unico' },
+  { codigo: '11', nome: 'NR 12', vencivel: true, tab: 'unico' },
+  { codigo: '14', nome: 'NR 18', vencivel: true, tab: 'unico' },
+  { codigo: '15', nome: 'NR 23', vencivel: true, tab: 'unico' },
+  { codigo: '19', nome: 'NR 35', vencivel: true, tab: 'unico' },
+  { codigo: '20', nome: 'Anuência da NR 35', vencivel: false, tab: 'unico' },
+  { codigo: '21', nome: 'Proficiência da NR 35', vencivel: true, tab: 'unico' },
+  { codigo: 'CE', nome: 'Comprovante de Endereço', vencivel: false, tab: 'unico' },
+  { codigo: 'F34', nome: 'Foto 3x4', vencivel: false, tab: 'unico' },
+  // Docs. Mensais (vencimento mensal)
+  { codigo: 'M06', nome: 'Ficha de EPI', vencivel: true, tab: 'mensal' },
+  // Docs. Desligamento
+  { codigo: 'D01', nome: 'ASO Demissional', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D02', nome: 'Aviso Prévio', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D03', nome: 'Multa FGTS', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D04', nome: 'Relatório Multa FGTS', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D05', nome: 'Requerimento Seguro Desemprego', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D06', nome: 'Termo de Quitação', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D07', nome: 'Termo de Rescisão', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D08', nome: 'Comprovante TRCT', vencivel: false, tab: 'desligamento' },
+  { codigo: 'D09', nome: 'Informativo de Rescisão', vencivel: false, tab: 'desligamento' },
 ];
 
 // alerta de documento a partir da data de vencimento

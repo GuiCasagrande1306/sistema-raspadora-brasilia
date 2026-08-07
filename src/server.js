@@ -241,6 +241,7 @@ app.post('/api/orcamentos', upload.array('midias', 15), async (req, res, next) =
     const status = STATUS_ORC.includes(req.body.status) ? req.body.status : 'AGUARDANDO_PROPOSTA';
     const novo = await db.createOrcamento({
       cliente_nome, cliente_fone, endereco_obra, servico_tipo, data_orcamento, observacoes,
+      responsavel_tecnico: req.body.responsavel_tecnico || null, google_maps_link: req.body.google_maps_link || null,
       itens, valor_total, status, midias,
     });
     res.status(201).json({ ...novo, notificacao: `O Orçamento N° ${novo.numero_orcamento} está pronto para desenvolver a proposta!` });
@@ -250,7 +251,7 @@ app.post('/api/orcamentos', upload.array('midias', 15), async (req, res, next) =
 app.patch('/api/orcamentos/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['cliente_nome', 'cliente_fone', 'endereco_obra', 'servico_tipo', 'data_orcamento', 'observacoes']) {
+    for (const k of ['cliente_nome', 'cliente_fone', 'endereco_obra', 'servico_tipo', 'data_orcamento', 'observacoes', 'responsavel_tecnico', 'google_maps_link']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
     if (req.body.status !== undefined) {
