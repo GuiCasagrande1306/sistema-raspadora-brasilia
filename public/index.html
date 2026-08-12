@@ -710,6 +710,8 @@
       <div class="nav-group" data-group="rh">RH</div>
       <button data-view="docs" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="lbl">Colaboradores</span></button>
       <button data-view="dp" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 11h6"/></svg><span class="lbl">Documentos</span></button>
+      <button data-view="docemp" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Doc. Empresarial</span></button>
+      <button data-view="agenda" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span class="lbl">Agenda</span></button>
       <button data-view="vt" data-g="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg><span class="lbl">Vale Transporte</span></button>
 
       <div class="nav-group" data-group="com">Comercial</div>
@@ -950,14 +952,9 @@
     </section>
     <!-- ===== ORÇAMENTOS & MEDIÇÕES ===== -->
     <section id="view-orc" class="hidden">
-      <div class="modhead"><h1>Medição de Orçamentos</h1><p>Medição de campo — cliente, tipo de serviço, itens medidos por m² e fotos/vídeos do local (os valores entram depois, em Propostas).</p></div>
+      <div class="modhead"><h1>Visita Técnica (O.S)</h1><p>Fluxo comercial da ordem de serviço — da visita técnica de campo até a proposta aprovada. Arraste os cards entre as etapas.</p></div>
       <div class="tabsrow">
-        <div class="tabs" id="orc-filtros">
-          <button class="on" data-filtro="">Todos</button>
-          <button data-filtro="PENDENTE_MEDICAO">A medir</button>
-          <button data-filtro="AGUARDANDO_PROPOSTA">Aguardando proposta</button>
-          <button data-filtro="APROVADO">Aprovados</button>
-        </div>
+        <div></div>
         <button class="primary" id="btn-orc-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Nova Medição</button>
       </div>
       <div class="metrics">
@@ -966,10 +963,29 @@
         <div class="metric"><div class="lbl">Aprovados</div><div class="val" id="orc-aprov">—</div><div class="sub">viram obra</div></div>
         <div class="metric"><div class="lbl">Valor Aprovado</div><div class="val money" id="orc-valor">—</div><div class="sub">soma dos aprovados</div></div>
       </div>
-      <div id="orc-content" style="padding:18px 26px 96px;"></div>
+      <div class="coltabs" id="tabs-orc"></div>
+      <div class="board" id="board-orc" style="padding-bottom:96px;"></div>
     </section>
     <section id="view-prop" class="hidden"><div class="modhead"><h1>Propostas Comerciais</h1><p>Elaboração e precificação (R$/m² e totais) sobre a medição de campo. Orçamentos <b>Aguardando Proposta</b> entram aqui. (Precificação — em construção.)</p></div></section>
-    <section id="view-leads" class="hidden"><div class="modhead"><h1>Leads</h1><p>Gestão de novos contatos e prospecção comercial. (Módulo em construção.)</p></div></section>
+    <section id="view-agenda" class="hidden">
+      <div class="modhead"><h1>Agenda</h1><p>Agenda da equipe integrada ao Google Calendar (visitas técnicas, reuniões e prazos).</p></div>
+      <div id="agenda-content" style="padding:18px 26px 96px;"></div>
+    </section>
+    <section id="view-docemp" class="hidden"><div class="modhead"><h1>Documentos Empresariais</h1><p>Documentos da empresa (CNPJ, contrato social, certidões/CND, etc.) em PDF — por empresa e pasta.</p></div><div id="docemp" class="nf-wrap"></div></section>
+    <section id="view-leads" class="hidden">
+      <div class="modhead"><h1>Leads</h1><p>Novos contatos e prospecção comercial — registre a origem de cada lead.</p></div>
+      <div class="tabsrow">
+        <div class="tabs" id="leads-filtros">
+          <button class="on" data-origem="">Todos</button>
+          <button data-origem="GOOGLE">Google</button>
+          <button data-origem="INSTAGRAM">Instagram</button>
+          <button data-origem="INDICACAO">Indicações</button>
+          <button data-origem="PARCEIRO">Parceiros</button>
+        </div>
+        <button class="primary" id="btn-lead-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lead</button>
+      </div>
+      <div id="leads-content" style="padding:18px 26px 96px;"></div>
+    </section>
     <section id="view-clientes" class="hidden"><div class="modhead"><h1>Clientes</h1><p>Cadastro e histórico completo dos clientes. (Módulo em construção.)</p></div></section>
     <section id="view-contratos" class="hidden"><div class="modhead"><h1>Contratos</h1><p>Gestão de contratos fechados e assinaturas. (Módulo em construção.)</p></div></section>
     <section id="view-recibos" class="hidden"><div class="modhead"><h1>Recibos</h1><p>Emissão e gestão de recibos de pagamento/recebimento. (Módulo em construção.)</p></div></section>
@@ -1228,6 +1244,39 @@
   </div>
 </div>
 
+<!-- MODAL: Lead -->
+<div class="overlay" id="ov-lead">
+  <div class="modal">
+    <header><h3 id="lead-titulo">Novo Lead</h3><button class="x" data-close>×</button></header>
+    <form id="form-lead">
+      <input type="hidden" name="id" id="lead-id">
+      <div class="body">
+        <div class="field"><label>Nome / Contato *</label><input name="nome" required placeholder="Nome do cliente ou empresa"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(61) 9____-____"></div>
+        <div class="field"><label>Origem do lead</label>
+          <select name="origem">
+            <option value="">— selecione —</option>
+            <option value="GOOGLE">Google</option>
+            <option value="INSTAGRAM">Instagram</option>
+            <option value="INDICACAO">Indicações</option>
+            <option value="PARCEIRO">Parceiros</option>
+          </select></div>
+        <div class="field"><label>Serviço de interesse</label><input name="servico" placeholder="Ex.: Fulget, raspagem, concreto polido…"></div>
+        <div class="field"><label>Situação</label>
+          <select name="status">
+            <option value="NOVO">Novo</option>
+            <option value="EM_CONTATO">Em contato</option>
+            <option value="QUALIFICADO">Qualificado</option>
+            <option value="GANHO">Ganho</option>
+            <option value="PERDIDO">Perdido</option>
+          </select></div>
+        <div class="field"><label>Observações</label><textarea name="observacao" rows="3" placeholder="Detalhes do contato, necessidade, prazo…"></textarea></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Ficha do Colaborador -->
 <div class="overlay" id="ov-ficha">
   <div class="modal wide">
@@ -1256,6 +1305,9 @@
     if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='nfrb')loadNF('RB');
     if(view==='nfeco')loadNF('ECO');
+    if(view==='docemp')loadDocEmp();
+    if(view==='agenda')loadAgenda();
+    if(view==='leads')loadLeads().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
     const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
@@ -1313,7 +1365,7 @@
   }
   function renderCol(col,items,fn,add){
     return `<div class="col" data-status="${col.k}"><div class="colhead"><span class="swatch" style="background:${col.c}"></span><h3>${col.t}</h3><span class="count">${items.length}</span></div>
-      <div class="cards">${items.map(fn).join('')}<button class="addcard">+ ${add}</button></div></div>`;
+      <div class="cards">${items.map(fn).join('')}${add?`<button class="addcard">+ ${add}</button>`:''}</div></div>`;
   }
   async function loadDP(){
     const data=await api('/api/dp/kanban');
@@ -1383,22 +1435,30 @@
 
   // ---------- ORÇAMENTOS & MEDIÇÕES ----------
   const brlN=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2});
-  const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],AGUARDANDO_PROPOSTA:['st-aguard','Aguardando proposta'],APROVADO:['st-aprov','Aprovado'],CANCELADO:['st-canc','Cancelado']};
-  let ORC=[], orcFiltro='';
-  function renderOrcLista(){
-    const lista=orcFiltro?ORC.filter(o=>o.status===orcFiltro):ORC;
-    const el=document.getElementById('orc-content');
-    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum orçamento aqui ainda. Clique em <b>Novo Orçamento</b> para começar a medição.</div>';return;}
-    el.innerHTML='<div class="orc-grid">'+lista.map(o=>{
-      const[cls,lbl]=ST[o.status]||['st-pend',o.status];
-      const nitens=(o.itens||[]).length;
-      return `<div class="orc-card" data-orc="${o.id}">
-        <div class="oc-top"><span class="oc-num">Nº ${o.numero_orcamento}</span><span class="st ${cls}">${lbl}</span></div>
-        <h4>${esc(o.cliente_nome)}</h4>
-        <div class="oc-end">${esc(o.servico_tipo||'—')}${o.endereco_obra?' · '+esc(o.endereco_obra):''}</div>
-        <div class="oc-foot"><span style="font-size:12px;color:var(--ink-3)">${nitens} ${nitens===1?'item':'itens'} · ${new Date((o.data_orcamento||o.criado_em)+'T00:00:00').toLocaleDateString('pt-BR')}</span>
-          <span class="oc-val">${brlN(o.valor_total||0)}</span></div></div>`;
-    }).join('')+'</div>';
+  const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],AGUARDANDO_PROPOSTA:['st-aguard','Aguardando proposta'],PROPOSTA_ENVIADA:['st-medi','Proposta enviada'],APROVADO:['st-aprov','Aprovado'],CANCELADO:['st-canc','Cancelado']};
+  const ORC_COLS=[
+    {k:'PENDENTE_MEDICAO',t:'1º Visita Técnica',c:'var(--wait)'},
+    {k:'AGUARDANDO_PROPOSTA',t:'2º Aguardando Proposta',c:'var(--laranja)'},
+    {k:'PROPOSTA_ENVIADA',t:'3º Proposta Enviada',c:'var(--info)'},
+    {k:'APROVADO',t:'4º Proposta Aprovada',c:'var(--ok)'},
+  ];
+  let ORC=[];
+  function orcCard(o){
+    const nitens=(o.itens||[]).length;
+    const maps=o.google_maps_link?`<a class="tag t-info" href="${o.google_maps_link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Mapa</a>`:'';
+    const resp=o.responsavel_tecnico?`<span class="tag t-lar">👷 ${esc(o.responsavel_tecnico)}</span>`:'';
+    const fone=o.cliente_fone?`<span class="tag">📞 ${esc(o.cliente_fone)}</span>`:'';
+    return `<div class="card" draggable="true" data-card="${o.id}">
+      <div class="crow" style="justify-content:space-between;align-items:center"><span class="oc-num">Nº ${o.numero_orcamento}</span><span style="font-size:11.5px;color:var(--ink-3)">${new Date((o.data_orcamento||o.criado_em)+'T00:00:00').toLocaleDateString('pt-BR')}</span></div>
+      <h4 style="margin:6px 0 2px">${esc(o.cliente_nome)}</h4>
+      <div class="role">${esc(o.servico_tipo||'—')}${o.endereco_obra?' · '+esc(o.endereco_obra):''}</div>
+      <div class="tags" style="margin-top:8px">${resp}${fone}${maps}<span class="tag">${nitens} ${nitens===1?'item':'itens'}</span></div>
+      <div class="cardfoot"><button class="miniact" data-orc="${o.id}">Abrir medição</button></div></div>`;
+  }
+  function renderOrcBoard(){
+    const board=document.getElementById('board-orc');
+    board.innerHTML=ORC_COLS.map(c=>renderCol(c,ORC.filter(o=>o.status===c.k),orcCard,null)).join('');
+    buildColTabs('tabs-orc','board-orc',ORC_COLS);
   }
   async function loadOrc(){
     const {orcamentos,resumo}=await api('/api/orcamentos');
@@ -1407,12 +1467,12 @@
     document.getElementById('orc-pend').textContent=resumo.pendentes;
     document.getElementById('orc-aprov').textContent=resumo.aprovados;
     document.getElementById('orc-valor').textContent=brlN(resumo.valor_aprovado);
-    renderOrcLista();
+    renderOrcBoard();
   }
-  document.getElementById('orc-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    document.getElementById('orc-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');orcFiltro=b.dataset.filtro;renderOrcLista();
-  }));
+  document.getElementById('board-orc').addEventListener('click',async e=>{
+    const b=e.target.closest('[data-orc]');if(!b)return;
+    try{abrirOrc(await api('/api/orcamentos/'+b.dataset.orc));}catch(err){showToast('Erro ao abrir');console.error(err);}
+  });
 
   // --- Modal de Medição de Orçamento (campo, sem preços) ---
   let orcEditId=null;
@@ -1449,10 +1509,6 @@
   }
   document.getElementById('btn-orc-novo').addEventListener('click',()=>abrirOrc(null));
   document.getElementById('orc-add-item').addEventListener('click',()=>document.getElementById('orc-itens-body').appendChild(itemRow()));
-  document.getElementById('orc-content').addEventListener('click',async e=>{
-    const c=e.target.closest('[data-orc]');if(!c)return;
-    try{abrirOrc(await api('/api/orcamentos/'+c.dataset.orc));}catch(err){showToast('Erro ao abrir');console.error(err);}
-  });
   function orcColetaServicos(){
     const servs=[...document.querySelectorAll('#orc-servicos input:checked')].map(c=>c.value).filter(v=>v!=='OUTRO');
     const outro=document.getElementById('orc-outro-chk').checked?document.getElementById('orc-outro-txt').value.trim():'';
@@ -1669,6 +1725,119 @@
     inp.click();
   }
 
+  // ---------- DOCUMENTOS EMPRESARIAIS (empresa > pasta > PDFs) ----------
+  const DE_TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+  const DOCEMP_PASTAS=[['CONSTITUTIVOS','Documentos Constitutivos'],['CERTIDOES','Certidões / CND'],['OUTROS','Outros Documentos']];
+  let deState={empresa:'RB',pasta:null};
+  function loadDocEmp(){deState={empresa:'RB',pasta:null};renderDocEmp();}
+  async function renderDocEmp(){
+    const el=document.getElementById('docemp');if(!el)return;
+    const empBar=`<div class="seg" id="de-emp" style="margin-bottom:14px">${[['RB','R.B PISOS'],['ECO','ECO PISOS']].map(([k,l])=>`<button data-emp="${k}" class="${deState.empresa===k?'on':''}">${l}</button>`).join('')}</div>`;
+    const crumb=`<div class="nf-crumb"><span class="cr ${!deState.pasta?'atual':''}" data-de="root">${deState.empresa==='RB'?'R.B PISOS':'ECO PISOS'}</span>`+(deState.pasta?` <span class="sep">/</span> <span class="cr atual">${DOCEMP_PASTAS.find(p=>p[0]===deState.pasta)[1]}</span>`:'')+'</div>';
+    let body;
+    if(!deState.pasta){
+      body='<div class="nf-grid">'+DOCEMP_PASTAS.map(([k,l])=>`<div class="nf-folder" data-pasta="${k}">${folderSvg(true)}<div><h4>${l}</h4><div class="dv">PDFs da empresa</div></div></div>`).join('')+'</div>';
+    }else{
+      let lista=[];try{lista=await api(`/api/docs-empresa?empresa=${deState.empresa}&pasta=${deState.pasta}`);}catch(e){console.error(e);}
+      const rows=lista.length?('<div class="doc-list">'+lista.map(n=>`<div class="doc-row"><div class="pdf-ic">PDF</div>
+        <div class="di"><h4>${esc(n.nome)}</h4><div class="sub">enviado ${n.criado_em?dtBR(n.criado_em.slice(0,10)):''}</div></div>
+        ${n.arquivo_url?`<a class="doc-open" href="${n.arquivo_url}" target="_blank" rel="noopener">Abrir</a>`:''}
+        <button class="doc-cloud" data-del="${n.id}" title="Excluir documento">${DE_TRASH}</button></div>`).join('')+'</div>'):'<div class="orc-empty">Nenhum documento nesta pasta ainda.</div>';
+      body=`<div class="nf-bar"><button class="primary de-up" style="min-height:40px">+ Enviar documento (PDF)</button></div>${rows}`;
+    }
+    el.innerHTML=empBar+crumb+body;
+    el.querySelectorAll('#de-emp [data-emp]').forEach(b=>b.addEventListener('click',()=>{deState.empresa=b.dataset.emp;deState.pasta=null;renderDocEmp();}));
+    el.querySelector('[data-de="root"]')?.addEventListener('click',()=>{deState.pasta=null;renderDocEmp();});
+    el.querySelectorAll('[data-pasta]').forEach(f=>f.addEventListener('click',()=>{deState.pasta=f.dataset.pasta;renderDocEmp();}));
+    el.querySelector('.de-up')?.addEventListener('click',deUpload);
+    el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este documento?'))return;
+      try{await api('/api/docs-empresa/'+b.dataset.del,{method:'DELETE'});showToast('Documento excluído');renderDocEmp();}
+      catch(e){showToast('Erro ao excluir');console.error(e);}}));
+  }
+  function deUpload(){
+    const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';
+    inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+      const fd=new FormData();fd.append('arquivo',f);fd.append('empresa',deState.empresa);fd.append('pasta',deState.pasta);fd.append('nome',f.name);
+      try{showToast('Enviando…');await api('/api/docs-empresa',{method:'POST',body:fd});showToast('Documento enviado');renderDocEmp();}
+      catch(e){showToast('Erro ao enviar');console.error(e);}};
+    inp.click();
+  }
+
+  // ---------- LEADS (comercial) ----------
+  const LEAD_ORIG_LABEL={GOOGLE:'Google',INSTAGRAM:'Instagram',INDICACAO:'Indicação',PARCEIRO:'Parceiro'};
+  const LEAD_ST_LABEL={NOVO:['t-wait','Novo'],EM_CONTATO:['t-info','Em contato'],QUALIFICADO:['t-lar','Qualificado'],GANHO:['t-ok','Ganho'],PERDIDO:['t-danger','Perdido']};
+  let LEADS=[], leadOrigemFiltro='';
+  function renderLeads(){
+    const lista=leadOrigemFiltro?LEADS.filter(l=>l.origem===leadOrigemFiltro):LEADS;
+    const el=document.getElementById('leads-content');
+    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum lead aqui ainda. Clique em <b>Novo Lead</b> para registrar um contato.</div>';return;}
+    el.innerHTML='<div class="doc-list">'+lista.map(l=>{
+      const[stc,stl]=LEAD_ST_LABEL[l.status]||['t-wait',l.status];
+      const org=l.origem?`<span class="tag t-lar">${LEAD_ORIG_LABEL[l.origem]||l.origem}</span>`:'';
+      const fone=l.telefone?`<span class="tag">📞 ${esc(l.telefone)}</span>`:'';
+      return `<div class="doc-row" data-lead="${l.id}" style="cursor:pointer">
+        <div class="di"><h4>${esc(l.nome)}</h4><div class="sub">${esc(l.servico||'—')}${l.observacao?' · '+esc(l.observacao):''}</div></div>
+        <div class="tags">${org}${fone}<span class="tag ${stc}">${stl}</span></div>
+        <button class="doc-cloud" data-leaddel="${l.id}" title="Excluir lead">${DE_TRASH}</button></div>`;
+    }).join('')+'</div>';
+    el.querySelectorAll('[data-lead]').forEach(r=>r.addEventListener('click',e=>{if(e.target.closest('[data-leaddel]'))return;abrirLead(LEADS.find(x=>x.id===r.dataset.lead));}));
+    el.querySelectorAll('[data-leaddel]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este lead?'))return;
+      try{await api('/api/leads/'+b.dataset.leaddel,{method:'DELETE'});showToast('Lead excluído');loadLeads();}
+      catch(e){showToast('Erro ao excluir');console.error(e);}}));
+  }
+  async function loadLeads(){try{LEADS=await api('/api/leads');}catch(e){LEADS=[];console.error(e);}renderLeads();}
+  function abrirLead(l){
+    const f=document.getElementById('form-lead');f.reset();
+    document.getElementById('lead-titulo').textContent=l?'Editar Lead':'Novo Lead';
+    document.getElementById('lead-id').value=l?l.id:'';
+    if(l){f.nome.value=l.nome||'';f.telefone.value=l.telefone||'';f.origem.value=l.origem||'';f.servico.value=l.servico||'';f.status.value=l.status||'NOVO';f.observacao.value=l.observacao||'';}
+    openModal('ov-lead');
+  }
+  document.getElementById('btn-lead-novo').addEventListener('click',()=>abrirLead(null));
+  document.getElementById('leads-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    document.getElementById('leads-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');leadOrigemFiltro=b.dataset.origem;renderLeads();}));
+  document.getElementById('form-lead').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;const id=document.getElementById('lead-id').value;
+    const payload={nome:f.nome.value,telefone:f.telefone.value||null,origem:f.origem.value||null,servico:f.servico.value||null,status:f.status.value,observacao:f.observacao.value||null};
+    try{
+      if(id)await api('/api/leads/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      else await api('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-lead').classList.remove('open');await loadLeads();showToast('Lead salvo');
+    }catch(err){showToast('Erro ao salvar lead');console.error(err);}});
+
+  // ---------- AGENDA (Google Calendar embed) ----------
+  function agendaUrl(){return localStorage.getItem('rb_agenda_url')||'';}
+  function loadAgenda(){
+    const el=document.getElementById('agenda-content');if(!el)return;
+    const url=agendaUrl();
+    if(url){
+      el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn-ghost" id="agenda-config" style="min-height:36px">⚙️ Trocar agenda</button></div>
+        <div style="border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
+        <iframe src="${esc(url)}" style="border:0;width:100%;height:70vh;min-height:520px" loading="lazy"></iframe></div>`;
+      el.querySelector('#agenda-config').addEventListener('click',agendaConfig);
+    }else{agendaConfig();}
+  }
+  function agendaConfig(){
+    const el=document.getElementById('agenda-content');
+    el.innerHTML=`<div class="orc-empty" style="text-align:left;max-width:680px">
+      <h3 style="margin:0 0 8px">Conectar o Google Calendar</h3>
+      <p style="margin:0 0 10px">No Google Calendar (computador): <b>Configurações → sua agenda → Integrar agenda → Incorporar código</b>. Copie o link que aparece dentro de <code>src="..."</code> (começa com <code>https://calendar.google.com/calendar/embed?...</code>) e cole abaixo.</p>
+      <p style="margin:0 0 12px;font-size:12.5px;color:var(--ink-3)">Dica: para a equipe toda ver, deixe a agenda como <b>pública</b> ou compartilhada com os e-mails do time.</p>
+      <div class="field"><label>Link de incorporação (embed)</label><input id="agenda-url-inp" placeholder="https://calendar.google.com/calendar/embed?src=..." value="${esc(agendaUrl())}"></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="primary" id="agenda-salvar">Salvar agenda</button>${agendaUrl()?'<button class="btn-ghost" id="agenda-remover">Remover</button>':''}</div>
+    </div>`;
+    el.querySelector('#agenda-salvar').addEventListener('click',()=>{
+      let v=document.getElementById('agenda-url-inp').value.trim();
+      const m=v.match(/src=["']([^"']+)["']/);if(m)v=m[1];
+      if(!/^https:\/\/calendar\.google\.com\//.test(v)){showToast('Cole um link válido do Google Calendar');return;}
+      localStorage.setItem('rb_agenda_url',v);showToast('Agenda conectada');loadAgenda();
+    });
+    el.querySelector('#agenda-remover')?.addEventListener('click',()=>{localStorage.removeItem('rb_agenda_url');showToast('Agenda removida');loadAgenda();});
+  }
+
   // ---------- BOTTOM NAV (mobile) ----------
   document.getElementById('bottomnav').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     const t=b.dataset.bn;
@@ -1856,6 +2025,8 @@
       reload:loadDP, rotulos:{admissao:'Admissão',ativo:'Ativo / Alocado',ferias:'Férias / Licença',desligamento:'Desligamento'} },
     'board-fin':{ path:id=>'/api/financeiro/obra/'+id+'/mover', campo:'coluna_kanban',
       reload:loadFin, rotulos:{aprovado:'Aguardando Sinal',execucao:'Em Execução',afericao:'Aferição de Margem',liquidado:'Concluído / Liquidado'} },
+    'board-orc':{ path:id=>'/api/orcamentos/'+id, campo:'status',
+      reload:loadOrc, rotulos:{PENDENTE_MEDICAO:'1º Visita Técnica',AGUARDANDO_PROPOSTA:'2º Aguardando Proposta',PROPOSTA_ENVIADA:'3º Proposta Enviada',APROVADO:'4º Proposta Aprovada'} },
   };
   let dragCardId=null, dragBoard=null;
   function setupDnD(boardId){
@@ -1875,7 +2046,7 @@
       }catch(err){showToast('Erro ao mover');console.error(err);}
     });
   }
-  setupDnD('board-dp');setupDnD('board-fin');
+  setupDnD('board-dp');setupDnD('board-fin');setupDnD('board-orc');
 
   // Submit: Novo Colaborador
   document.getElementById('form-colab').addEventListener('submit',async e=>{
@@ -2358,7 +2529,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['docs','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
+    const permitido=admin?['docs','docemp','agenda','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     // esconde cabeçalhos de grupo sem itens visíveis
     document.querySelectorAll('.nav-group').forEach(h=>{

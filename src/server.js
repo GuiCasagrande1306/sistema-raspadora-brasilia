@@ -183,7 +183,7 @@ app.get('/api/dp/documento/:id/url', async (req, res, next) => {
 });
 
 // ---------- ORÇAMENTOS & MEDIÇÕES ----------
-const STATUS_ORC = ['PENDENTE_MEDICAO', 'MEDIDO', 'AGUARDANDO_PROPOSTA', 'APROVADO', 'CANCELADO'];
+const STATUS_ORC = ['PENDENTE_MEDICAO', 'MEDIDO', 'AGUARDANDO_PROPOSTA', 'PROPOSTA_ENVIADA', 'APROVADO', 'CANCELADO'];
 // normaliza itens de medição e calcula totais (área × valor unitário)
 const prepararItens = (itens) => {
   const lista = Array.isArray(itens) ? itens : [];
@@ -302,6 +302,80 @@ app.post('/api/notas', requireAdmin, upload.single('arquivo'), async (req, res, 
 });
 app.delete('/api/notas/:id', requireAdmin, async (req, res, next) => {
   try { res.json(await db.deleteNota(req.params.id)); }
+  catch (e) { next(e); }
+});
+
+// ---------- DOCUMENTOS EMPRESARIAIS (empresa RB/ECO > pasta > PDFs) ----------
+const DOC_EMP_PASTAS = ['CONSTITUTIVOS', 'CERTIDOES', 'OUTROS'];
+app.get('/api/docs-empresa', requireAdmin, async (req, res, next) => {
+  try { res.json(await db.listDocsEmpresa({ empresa: req.query.empresa, pasta: req.query.pasta })); }
+  catch (e) { next(e); }
+});
+app.post('/api/docs-empresa', requireAdmin, upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const { empresa, pasta } = req.body;
+    if (!NF_EMPRESAS.includes(empresa)) return res.status(400).json({ erro: 'empresa inválida' });
+    if (!DOC_EMP_PASTAS.includes(pasta)) return res.status(400).json({ erro: 'pasta inválida' });
+    if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
+    let arquivo_url = null;
+    if (USING_SUPABASE) {
+      const safe = (req.file.originalname || 'doc.pdf').replace(/[^\w.\-]+/g, '_');
+      const path = `docs-empresa/${empresa}/${pasta}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, req.file.buffer, { contentType: req.file.mimetype });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+      arquivo_url = signed?.signedUrl || path;
+    }
+    res.status(201).json(await db.createDocEmpresa({
+      empresa, pasta, nome: req.body.nome || req.file.originalname || 'Documento',
+      arquivo_url, criado_por: req.user?.email || null,
+    }));
+  } catch (e) { next(e); }
+});
+app.delete('/api/docs-empresa/:id', requireAdmin, async (req, res, next) => {
+  try { res.json(await db.deleteDocEmpresa(req.params.id)); }
+  catch (e) { next(e); }
+});
+
+// ---------- LEADS (comercial) ----------
+const LEAD_ORIGENS = ['GOOGLE', 'INSTAGRAM', 'INDICACAO', 'PARCEIRO'];
+const LEAD_STATUS = ['NOVO', 'EM_CONTATO', 'QUALIFICADO', 'GANHO', 'PERDIDO'];
+app.use('/api/leads', requireAdmin);
+app.get('/api/leads', async (req, res, next) => {
+  try { res.json(await db.listLeads({ origem: req.query.origem, status: req.query.status })); }
+  catch (e) { next(e); }
+});
+app.post('/api/leads', async (req, res, next) => {
+  try {
+    const { nome, origem } = req.body;
+    if (!nome) return res.status(400).json({ erro: 'nome é obrigatório' });
+    if (origem && !LEAD_ORIGENS.includes(origem)) return res.status(400).json({ erro: 'origem inválida' });
+    res.status(201).json(await db.createLead({
+      nome, telefone: req.body.telefone || null, origem: origem || null,
+      servico: req.body.servico || null, observacao: req.body.observacao || null,
+      status: LEAD_STATUS.includes(req.body.status) ? req.body.status : 'NOVO',
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/leads/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['nome', 'telefone', 'servico', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.origem !== undefined) {
+      if (req.body.origem && !LEAD_ORIGENS.includes(req.body.origem)) return res.status(400).json({ erro: 'origem inválida' });
+      patch.origem = req.body.origem;
+    }
+    if (req.body.status !== undefined) {
+      if (!LEAD_STATUS.includes(req.body.status)) return res.status(400).json({ erro: 'status inválido' });
+      patch.status = req.body.status;
+    }
+    const l = await db.updateLead(req.params.id, patch);
+    if (!l) return res.status(404).json({ erro: 'lead não encontrado' });
+    res.json(l);
+  } catch (e) { next(e); }
+});
+app.delete('/api/leads/:id', async (req, res, next) => {
+  try { res.json(await db.deleteLead(req.params.id)); }
   catch (e) { next(e); }
 });
 

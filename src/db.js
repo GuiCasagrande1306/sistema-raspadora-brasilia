@@ -82,6 +82,8 @@ const mock = {
   registroVT: [],
   orcamentos: [],
   notasFiscais: [],
+  docsEmpresa: [],
+  leads: [],
   _orcSeq: 193,
 };
 
@@ -563,6 +565,85 @@ export const db = {
       return { ok: true };
     }
     mock.notasFiscais = mock.notasFiscais.filter(n => n.id !== id);
+    return { ok: true };
+  },
+
+  // ---- DOCUMENTOS EMPRESARIAIS (empresa RB/ECO > pasta > PDFs) ----
+  async listDocsEmpresa({ empresa, pasta } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('documentos_empresa').select('*').order('criado_em', { ascending: false });
+      if (empresa) q = q.eq('empresa', empresa);
+      if (pasta) q = q.eq('pasta', pasta);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    }
+    return mock.docsEmpresa
+      .filter(d => (!empresa || d.empresa === empresa) && (!pasta || d.pasta === pasta))
+      .sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
+  },
+  async createDocEmpresa(d) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('documentos_empresa').insert(d).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...d };
+    mock.docsEmpresa.push(novo);
+    return novo;
+  },
+  async deleteDocEmpresa(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('documentos_empresa').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.docsEmpresa = mock.docsEmpresa.filter(d => d.id !== id);
+    return { ok: true };
+  },
+
+  // ---- LEADS (comercial) ----
+  async listLeads({ origem, status } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('leads').select('*').order('criado_em', { ascending: false });
+      if (origem) q = q.eq('origem', origem);
+      if (status) q = q.eq('status', status);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    }
+    return mock.leads
+      .filter(l => (!origem || l.origem === origem) && (!status || l.status === status))
+      .sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
+  },
+  async createLead(l) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('leads').insert(l).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), status: 'NOVO', criado_em: new Date().toISOString(), ...l };
+    mock.leads.push(novo);
+    return novo;
+  },
+  async updateLead(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('leads').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const l = mock.leads.find(x => x.id === id);
+    if (!l) return null;
+    Object.assign(l, patch);
+    return l;
+  },
+  async deleteLead(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('leads').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.leads = mock.leads.filter(l => l.id !== id);
     return { ok: true };
   },
 
