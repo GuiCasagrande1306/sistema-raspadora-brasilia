@@ -81,6 +81,7 @@ const mock = {
   lancamentos: [],
   registroVT: [],
   orcamentos: [],
+  notasFiscais: [],
   _orcSeq: 193,
 };
 
@@ -528,6 +529,41 @@ export const db = {
     if (!o) return null;
     Object.assign(o, patch);
     return o;
+  },
+
+  // ---- NOTAS FISCAIS (arquivo PDF: empresa > tipo > ano) ----
+  async listNotas({ empresa, tipo, ano } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('notas_fiscais').select('*').order('criado_em', { ascending: false });
+      if (empresa) q = q.eq('empresa', empresa);
+      if (tipo) q = q.eq('tipo', tipo);
+      if (ano) q = q.eq('ano', Number(ano));
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    }
+    return mock.notasFiscais
+      .filter(n => (!empresa || n.empresa === empresa) && (!tipo || n.tipo === tipo) && (!ano || n.ano === Number(ano)))
+      .sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
+  },
+  async createNota(n) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('notas_fiscais').insert(n).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...n };
+    mock.notasFiscais.push(novo);
+    return novo;
+  },
+  async deleteNota(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('notas_fiscais').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.notasFiscais = mock.notasFiscais.filter(n => n.id !== id);
+    return { ok: true };
   },
 
   // ---- VALE-TRANSPORTE ----

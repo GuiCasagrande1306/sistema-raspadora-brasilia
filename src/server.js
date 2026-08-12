@@ -268,6 +268,43 @@ app.patch('/api/orcamentos/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---------- NOTAS FISCAIS (arquivo PDF: empresa > tipo > ano) ----------
+const NF_EMPRESAS = ['RB', 'ECO'];
+const NF_TIPOS = ['MO', 'MAT']; // Mão de Obra / Materiais
+app.get('/api/notas', requireAdmin, async (req, res, next) => {
+  try {
+    res.json(await db.listNotas({ empresa: req.query.empresa, tipo: req.query.tipo, ano: req.query.ano }));
+  } catch (e) { next(e); }
+});
+app.post('/api/notas', requireAdmin, upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const { empresa, tipo, ano } = req.body;
+    if (!NF_EMPRESAS.includes(empresa)) return res.status(400).json({ erro: 'empresa inválida' });
+    if (!NF_TIPOS.includes(tipo)) return res.status(400).json({ erro: 'tipo inválido' });
+    const anoN = Number(ano);
+    if (!anoN || anoN < 2000 || anoN > 2100) return res.status(400).json({ erro: 'ano inválido' });
+    if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
+    let arquivo_url = null;
+    if (USING_SUPABASE) {
+      const safe = (req.file.originalname || 'nota.pdf').replace(/[^\w.\-]+/g, '_');
+      const path = `notas/${empresa}/${tipo}/${anoN}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, req.file.buffer, { contentType: req.file.mimetype });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+      arquivo_url = signed?.signedUrl || path;
+    }
+    const nota = await db.createNota({
+      empresa, tipo, ano: anoN, nome: req.body.nome || req.file.originalname || 'Nota fiscal',
+      arquivo_url, criado_por: req.user?.email || null,
+    });
+    res.status(201).json(nota);
+  } catch (e) { next(e); }
+});
+app.delete('/api/notas/:id', requireAdmin, async (req, res, next) => {
+  try { res.json(await db.deleteNota(req.params.id)); }
+  catch (e) { next(e); }
+});
+
 // ---------- VALE-TRANSPORTE ----------
 app.get('/api/dp/vt/balanco', async (_req, res, next) => {
   try {

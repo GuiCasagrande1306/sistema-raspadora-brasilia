@@ -332,6 +332,18 @@
   .empresa-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
   .empresa-card .ec-ic{width:46px;height:46px;border-radius:12px;background:var(--laranja-100);color:var(--laranja-esc);display:grid;place-items:center;}
   .empresa-card h4{margin:0;font-size:15px;} .empresa-card .dv{font-size:12px;}
+  .emp-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.02em;}
+  .emp-tag.emp-rb{background:var(--laranja-50);color:var(--laranja-esc);border:1px solid var(--laranja-100);}
+  .emp-tag.emp-eco{background:#E7F6EC;color:#137a3e;border:1px solid #BEE7CD;}
+  .emp-tag.emp-nd{background:var(--line);color:var(--ink-3);}
+  .nf-wrap{padding:18px 26px 96px;}
+  .nf-crumb{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;margin-bottom:16px;}
+  .nf-crumb .cr{cursor:pointer;color:var(--ink-3);font-weight:600;} .nf-crumb .cr.atual{color:var(--laranja-2);cursor:default;} .nf-crumb .sep{color:var(--ink-3);}
+  .nf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+  .nf-folder{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--r);padding:18px;cursor:pointer;display:flex;align-items:center;gap:14px;border-left:4px solid var(--laranja);transition:.15s;}
+  .nf-folder:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
+  .nf-folder svg{width:38px;height:38px;color:var(--laranja);} .nf-folder h4{margin:0;font-size:15px;} .nf-folder .dv{font-size:12px;color:var(--ink-3);}
+  .nf-bar{display:flex;justify-content:flex-end;margin-bottom:12px;}
   .colab-list,.doc-list{display:flex;flex-direction:column;gap:8px;}
   .colab-row{border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.12s;}
   .colab-row:hover{border-color:var(--laranja-100);background:var(--laranja-50);}
@@ -348,6 +360,8 @@
   .doc-cloud{border:0;background:none;cursor:pointer;color:var(--ink-3);padding:6px;border-radius:8px;}
   .doc-cloud:hover{color:var(--laranja-2);background:var(--laranja-50);}
   .doc-cloud svg{width:20px;height:20px;}
+  .doc-open{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--laranja-2);border:1px solid var(--laranja-2);background:var(--laranja-50);padding:5px 10px;border-radius:8px;text-decoration:none;white-space:nowrap;}
+  .doc-open:hover{background:var(--laranja);color:#fff;}
   .an{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
   .an-val{background:var(--ok-bg);color:var(--ok-ink);} .an-nao{background:var(--wait-bg);color:var(--wait-ink);} .an-rep{background:var(--danger-bg);color:var(--danger);}
   .an-aten{background:var(--laranja-100);color:var(--laranja-esc);}
@@ -714,10 +728,8 @@
       <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
       <button data-view="recibos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 8h8M8 12h6"/></svg><span class="lbl">Recibos</span></button>
       <button data-view="prestacao" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="lbl">Prestação de Contas</span></button>
-      <button data-view="nfrbmo" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB — Mão de Obra</span></button>
-      <button data-view="nfrbmat" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB — Materiais</span></button>
-      <button data-view="nfecomo" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF Eco Pisos — Mão de Obra</span></button>
-      <button data-view="nfecomat" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF Eco Pisos — Materiais</span></button>
+      <button data-view="nfrb" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB</span></button>
+      <button data-view="nfeco" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF Eco Pisos</span></button>
     </nav>
     <div class="foot">
       <button id="theme" title="Alternar tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
@@ -793,6 +805,7 @@
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Mês<input type="month" id="vt-mes" class="dash-sel"></label>
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Semana<select id="vt-semana" class="dash-sel"></select></label>
+          <button class="primary" id="vt-export" style="min-height:40px">Exportar PDF</button>
         </div>
       </div>
       <div class="metrics" id="vt-metrics">
@@ -961,10 +974,8 @@
     <section id="view-contratos" class="hidden"><div class="modhead"><h1>Contratos</h1><p>Gestão de contratos fechados e assinaturas. (Módulo em construção.)</p></div></section>
     <section id="view-recibos" class="hidden"><div class="modhead"><h1>Recibos</h1><p>Emissão e gestão de recibos de pagamento/recebimento. (Módulo em construção.)</p></div></section>
     <section id="view-prestacao" class="hidden"><div class="modhead"><h1>Prestação de Contas</h1><p>Lançamento de despesas operacionais e reembolsos de equipe. (Módulo em construção.)</p></div></section>
-    <section id="view-nfrbmo" class="hidden"><div class="modhead"><h1>NF RB — Mão de Obra</h1><p>Notas Fiscais de serviço prestado pela Raspadora Brasília. (Módulo em construção.)</p></div></section>
-    <section id="view-nfrbmat" class="hidden"><div class="modhead"><h1>NF RB — Materiais</h1><p>Notas Fiscais de venda/compra de materiais da Raspadora Brasília. (Módulo em construção.)</p></div></section>
-    <section id="view-nfecomo" class="hidden"><div class="modhead"><h1>NF Eco Pisos — Mão de Obra</h1><p>Notas Fiscais de serviço da Eco Pisos. (Módulo em construção.)</p></div></section>
-    <section id="view-nfecomat" class="hidden"><div class="modhead"><h1>NF Eco Pisos — Materiais</h1><p>Notas Fiscais de materiais da Eco Pisos. (Módulo em construção.)</p></div></section>
+    <section id="view-nfrb" class="hidden"><div class="modhead"><h1>NF RB — Raspadora Brasília</h1><p>Notas fiscais em PDF, organizadas por tipo (Mão de Obra / Materiais) e por ano.</p></div><div id="nf-rb" class="nf-wrap"></div></section>
+    <section id="view-nfeco" class="hidden"><div class="modhead"><h1>NF Eco Pisos</h1><p>Notas fiscais em PDF, organizadas por tipo (Mão de Obra / Materiais) e por ano.</p></div><div id="nf-eco" class="nf-wrap"></div></section>
     <section id="view-hist" class="hidden"><div class="modhead"><h1>Histórico &amp; Registros</h1><p>Histórico individual de ocorrências, alterações de status e movimentações — abra a ficha de um colaborador em <b>Gestão de Colaboradores</b> para ver o histórico funcional.</p></div></section>
     <section id="view-cfg" class="hidden"><div class="modhead"><h1>Configurações</h1><p>Parâmetros do sistema, cadastro de usuários e regras de validação.</p></div></section>
   </div>
@@ -1243,6 +1254,8 @@
     if(view==='docs')loadDocs().catch(e=>console.error(e));
     if(view==='bancos')loadBancos().catch(e=>console.error(e));
     if(view==='folha')loadFolha().catch(e=>console.error(e));
+    if(view==='nfrb')loadNF('RB');
+    if(view==='nfeco')loadNF('ECO');
     if(view==='perfil')loadPerfil();
     const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
@@ -1485,9 +1498,17 @@
   let VT_STATE={ano_mes:null,semana:1,linhas:[],resumo:{}};
   const vtDebounce={};
   function vtSemanasDoMes(ano_mes){
+    // Semanas úteis: considera SOMENTE segunda a sexta. Fim de semana não entra.
     const [y,m]=ano_mes.split('-').map(Number),ult=new Date(y,m,0).getDate();
-    const out=[];let ini=1,n=1;
-    while(ini<=ult){const fim=Math.min(ini+6,ult);out.push({n,label:`Semana ${n} (${String(ini).padStart(2,'0')} a ${String(fim).padStart(2,'0')})`});ini=fim+1;n++;}
+    const p=x=>String(x).padStart(2,'0');
+    const out=[];let n=1,ini=null;
+    for(let d=1;d<=ult;d++){
+      const dow=new Date(y,m-1,d).getDay(); // 0=dom .. 6=sáb
+      if(dow===0||dow===6){ if(ini!==null){out.push({n,label:`Semana ${n} (${p(ini)} a ${p(d-1)})`});n++;ini=null;} continue; }
+      if(ini===null)ini=d;
+      if(dow===5){out.push({n,label:`Semana ${n} (${p(ini)} a ${p(d)})`});n++;ini=null;} // sexta fecha a semana
+    }
+    if(ini!==null)out.push({n,label:`Semana ${n} (${p(ini)} a ${p(ult)})`});
     return out;
   }
   function vtInitFiltros(){
@@ -1550,6 +1571,103 @@
   });
   document.getElementById('vt-mes').addEventListener('change',()=>{vtInitFiltros();vtFetch().catch(e=>console.error(e));});
   document.getElementById('vt-semana').addEventListener('change',()=>vtFetch().catch(e=>console.error(e)));
+  function vtExportPDF(){
+    const semEl=document.getElementById('vt-semana');
+    const semLabel=semEl.options[semEl.selectedIndex]?semEl.options[semEl.selectedIndex].text:('Semana '+VT_STATE.semana);
+    const mesEl=document.getElementById('vt-mes');
+    const [y,m]=(mesEl.value||'').split('-');
+    const mesNome=y?new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'';
+    const R=VT_STATE.resumo||{};
+    const rows=VT_STATE.linhas.map(l=>`<tr>
+      <td>${esc(l.nome)}</td>
+      <td class="c">${l.qtd_viagens}</td>
+      <td class="r">${brlN(l.valor_passagem)}</td>
+      <td class="r">${brlN(l.total)}</td>
+      <td class="c">${l.forma_pagamento==='CARTEIRINHA'?'Carteirinha':'Conta'}</td>
+      <td>${esc(l.observacao||'')}</td></tr>`).join('');
+    const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Vale-Transporte — ${esc(semLabel)}</title>
+    <style>
+      *{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}
+      body{margin:28px;color:#1E1E1E}
+      h1{font-size:18px;margin:0 0 2px}
+      .sub{color:#666;font-size:12px;margin:0 0 16px}
+      .cards{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+      .card{border:1px solid #ddd;border-radius:8px;padding:8px 12px;min-width:130px}
+      .card .k{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.03em}
+      .card .v{font-size:15px;font-weight:700;color:#ED7118}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+      th{background:#1E1E1E;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.02em}
+      td.c{text-align:center}td.r{text-align:right}
+      tfoot td{font-weight:700}
+      .foot{margin-top:18px;font-size:10px;color:#999}
+      @media print{@page{margin:14mm}}
+    </style></head><body>
+      <h1>Vale-Transporte (VT)</h1>
+      <p class="sub">${esc(mesNome)} — ${esc(semLabel)} · considera apenas dias úteis (seg a sex)</p>
+      <div class="cards">
+        <div class="card"><div class="k">Total Semanal</div><div class="v">${brlN(R.total_semanal||0)}</div></div>
+        <div class="card"><div class="k">Carteirinha</div><div class="v">${brlN(R.total_carteirinha||0)}</div></div>
+        <div class="card"><div class="k">Em Conta</div><div class="v">${brlN(R.total_conta||0)}</div></div>
+        <div class="card"><div class="k">Colaboradores</div><div class="v">${R.total_colaboradores||VT_STATE.linhas.length}</div></div>
+        <div class="card"><div class="k">Balanço Mensal</div><div class="v">${brlN(R.balanco_mensal||0)}</div></div>
+      </div>
+      <table><thead><tr><th>Funcionário</th><th>Qtd. Viagens</th><th>Passagem</th><th>Total</th><th>Pagamento</th><th>Observações</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>Total</td><td class="c"></td><td></td><td class="r">${brlN(R.total_semanal||0)}</td><td colspan="2"></td></tr></tfoot></table>
+      <p class="foot">Raspadora Brasília — gerado em ${new Date().toLocaleString('pt-BR')}</p>
+      <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`;
+    const w=window.open('','_blank');
+    if(!w){showToast('Permita pop-ups para exportar o PDF');return;}
+    w.document.write(html);w.document.close();
+  }
+  document.getElementById('vt-export').addEventListener('click',vtExportPDF);
+
+  // ---------- NOTAS FISCAIS (pastas: empresa > tipo > ano > PDFs) ----------
+  const NF_EMP_LABEL={RB:'NF RB',ECO:'NF Eco Pisos'};
+  const NF_TIPOS=[['MO','Mão de Obra'],['MAT','Materiais']];
+  const NF_ANOS=[2026,2027,2028];
+  let nfState={empresa:'RB',tipo:null,ano:null};
+  function loadNF(empresa){nfState={empresa,tipo:null,ano:null};renderNF();}
+  function nfEl(){return document.getElementById(nfState.empresa==='RB'?'nf-rb':'nf-eco');}
+  async function renderNF(){
+    const el=nfEl();if(!el)return;
+    const crumb=`<div class="nf-crumb"><span class="cr ${!nfState.tipo?'atual':''}" data-nf="root">${NF_EMP_LABEL[nfState.empresa]}</span>`
+      +(nfState.tipo?` <span class="sep">/</span> <span class="cr ${!nfState.ano?'atual':''}" data-nf="tipo">${NF_TIPOS.find(t=>t[0]===nfState.tipo)[1]}</span>`:'')
+      +(nfState.ano?` <span class="sep">/</span> <span class="cr atual">${nfState.ano}</span>`:'')+'</div>';
+    let body;
+    if(!nfState.tipo){
+      body='<div class="nf-grid">'+NF_TIPOS.map(([k,l])=>`<div class="nf-folder" data-tipo="${k}">${folderSvg(true)}<div><h4>${l}</h4><div class="dv">2026 · 2027 · 2028</div></div></div>`).join('')+'</div>';
+    }else if(!nfState.ano){
+      body='<div class="nf-grid">'+NF_ANOS.map(a=>`<div class="nf-folder" data-ano="${a}">${folderSvg(true)}<div><h4>${a}</h4><div class="dv">Notas do ano</div></div></div>`).join('')+'</div>';
+    }else{
+      let lista=[];try{lista=await api(`/api/notas?empresa=${nfState.empresa}&tipo=${nfState.tipo}&ano=${nfState.ano}`);}catch(e){console.error(e);}
+      const rows=lista.length?('<div class="doc-list">'+lista.map(n=>`<div class="doc-row"><div class="pdf-ic">PDF</div>
+        <div class="di"><h4>${esc(n.nome)}</h4><div class="sub">enviado ${n.criado_em?dtBR(n.criado_em.slice(0,10)):''}</div></div>
+        ${n.arquivo_url?`<a class="doc-open" href="${n.arquivo_url}" target="_blank" rel="noopener">Abrir</a>`:''}
+        <button class="doc-cloud nf-del" data-del="${n.id}" title="Excluir nota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>`).join('')+'</div>'):'<div class="orc-empty">Nenhuma nota neste ano ainda.</div>';
+      body=`<div class="nf-bar"><button class="primary nf-up" style="min-height:40px">+ Enviar nota (PDF)</button></div>${rows}`;
+    }
+    el.innerHTML=crumb+body;
+    el.querySelectorAll('[data-nf]').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.nf==='root'){nfState.tipo=null;nfState.ano=null;}else if(b.dataset.nf==='tipo'){nfState.ano=null;}renderNF();}));
+    el.querySelectorAll('[data-tipo]').forEach(f=>f.addEventListener('click',()=>{nfState.tipo=f.dataset.tipo;renderNF();}));
+    el.querySelectorAll('[data-ano]').forEach(f=>f.addEventListener('click',()=>{nfState.ano=+f.dataset.ano;renderNF();}));
+    el.querySelector('.nf-up')?.addEventListener('click',nfUpload);
+    el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir esta nota fiscal?'))return;
+      try{await api('/api/notas/'+b.dataset.del,{method:'DELETE'});showToast('Nota excluída');renderNF();}
+      catch(e){showToast('Erro ao excluir');console.error(e);}}));
+  }
+  function nfUpload(){
+    const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';
+    inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+      const fd=new FormData();fd.append('arquivo',f);fd.append('empresa',nfState.empresa);fd.append('tipo',nfState.tipo);fd.append('ano',nfState.ano);fd.append('nome',f.name);
+      try{showToast('Enviando…');await api('/api/notas',{method:'POST',body:fd});showToast('Nota enviada');renderNF();}
+      catch(e){showToast('Erro ao enviar a nota');console.error(e);}};
+    inp.click();
+  }
 
   // ---------- BOTTOM NAV (mobile) ----------
   document.getElementById('bottomnav').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
@@ -1799,24 +1917,25 @@
   let docsViewMode='lista', docsGroupBy='status_colaborador';
   const stTag=c=>{const[s,l]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;return `<span class="an ${s}">${l}</span>`;};
   const farolTag=c=>{const[,l,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;return `<span class="an ${fan}">${l}</span>`;};
+  const empresaTag=emp=>{const map={RB_PISOS:['R.B PISOS','emp-rb'],ECO_PISOS:['ECO PISOS','emp-eco']};const[l,cls]=map[emp]||[emp||'—','emp-nd'];return `<span class="emp-tag ${cls}">${esc(l)}</span>`;};
   const COLS_DEF=[
     {k:'nome',label:'Nome',get:c=>`<b>${esc(c.nome)}</b>`},
     {k:'cpf',label:'CPF',get:c=>esc(c.cpf||'—')},
     {k:'cargo',label:'Cargo',get:c=>esc(c.cargo||'—')},
     {k:'status',label:'Status',get:stTag},
+    {k:'empresa',label:'Empresa',get:c=>empresaTag(c.empresa)},
     {k:'farol',label:'Farol',get:farolTag},
     {k:'versao',label:'Versão',get:c=>'v'+(c.versao_atual||'-')},
     {k:'vencimento',label:'Vencimento',get:c=>c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—'},
-    {k:'empresa',label:'Empresa',get:c=>esc(c.empresa||'—')},
   ];
   function colsState(){
-    let s;try{s=JSON.parse(localStorage.getItem('rb_docs_cols'));}catch{}
-    if(!s||!Array.isArray(s.order))s={order:COLS_DEF.map(c=>c.k),hidden:['empresa']};
+    let s;try{s=JSON.parse(localStorage.getItem('rb_docs_cols_v2'));}catch{}
+    if(!s||!Array.isArray(s.order))s={order:COLS_DEF.map(c=>c.k),hidden:['farol','versao']};
     // garante que colunas novas apareçam
     COLS_DEF.forEach(c=>{if(!s.order.includes(c.k))s.order.push(c.k);});
     return s;
   }
-  function saveCols(s){localStorage.setItem('rb_docs_cols',JSON.stringify(s));}
+  function saveCols(s){localStorage.setItem('rb_docs_cols_v2',JSON.stringify(s));}
   function abrirColab(id,nome){docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=id;docsState.colabNome=nome;renderDocs();}
   let docsListaCache=[];
   function renderColabView(lista){
@@ -1882,8 +2001,24 @@
   async function renderDocs(){
     renderCrumb();const el=document.getElementById('docs-content');
     if(docsState.nivel==='empresas'){
-      el.innerHTML='<div class="empresa-grid">'+EMPRESAS.map(e=>`<div class="empresa-card" data-emp="${e.id}"><div class="ec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg></div><div><h4>${e.label}</h4><div class="dv">Colaboradores &amp; documentos</div></div></div>`).join('')+'</div>';
+      // Visão geral: TODOS os colaboradores das duas empresas + quadros por empresa abaixo
+      const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
+      const lista=await api('/api/documentos/colaboradores?empresa=TODAS&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
+      const groupSel=docsViewMode==='quadro'?`<select id="docs-groupby" class="dash-sel"><option value="status_colaborador" ${docsGroupBy==='status_colaborador'?'selected':''}>Agrupar: Status</option><option value="farol" ${docsGroupBy==='farol'?'selected':''}>Agrupar: Farol</option></select>`:'';
+      const colsBtn=docsViewMode==='lista'?`<button class="btn-ghost" id="docs-cols-btn" style="min-height:38px">⚙️ Colunas</button><div class="cols-menu hidden" id="docs-cols-menu"></div>`:'';
+      const cards='<div class="empresa-grid">'+EMPRESAS.map(e=>{const n=lista.filter(c=>c.empresa===e.id).length;return `<div class="empresa-card" data-emp="${e.id}"><div class="ec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg></div><div><h4>${e.label}</h4><div class="dv">${n} colaborador${n===1?'':'es'} · documentos</div></div></div>`;}).join('')+'</div>';
+      el.innerHTML=`<div class="colab-toolbar">
+        <div class="seg" id="docs-viewmode"><button data-vm="lista" class="${docsViewMode==='lista'?'on':''}">☰ Lista</button><button data-vm="quadro" class="${docsViewMode==='quadro'?'on':''}">▦ Quadro</button></div>
+        <div class="colab-tr">${groupSel}${colsBtn}</div></div>
+        <div id="colab-view"></div>
+        <h3 class="doc-sub" style="margin:22px 0 10px;font-size:14px;color:var(--ink-2)">Empresas / Construtoras</h3>
+        ${cards}`;
+      el.querySelectorAll('#docs-viewmode button').forEach(b=>b.addEventListener('click',()=>{docsViewMode=b.dataset.vm;renderDocs();}));
+      const gb=document.getElementById('docs-groupby');if(gb)gb.addEventListener('change',()=>{docsGroupBy=gb.value;renderColabView(lista);});
+      const cb=document.getElementById('docs-cols-btn');
+      if(cb)cb.addEventListener('click',()=>{const m=document.getElementById('docs-cols-menu');m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderColsMenu();});
       el.querySelectorAll('[data-emp]').forEach(c=>c.addEventListener('click',()=>{docsState={nivel:'colaboradores',empresa:c.dataset.emp,empresaLabel:EMPRESAS.find(e=>e.id===c.dataset.emp).label};renderDocs();}));
+      renderColabView(lista);
     }else if(docsState.nivel==='colaboradores'){
       const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
       const lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
@@ -1928,8 +2063,9 @@
               <option value="VALIDADO" ${d.status_analise==='VALIDADO'?'selected':''}>Aprovado</option>
               <option value="REPROVADO" ${d.status_analise==='REPROVADO'?'selected':''}>Reprovado</option></select>`
             :'<span class="an an-nao">Pendente</span>';
+          const abrir=d.presente&&d.arquivo_url?`<a class="doc-open" href="${d.arquivo_url}" target="_blank" rel="noopener" title="Abrir / acessar o documento">Abrir</a>`:'';
           return `<div class="doc-row"><div class="pdf-ic">PDF</div>
-            <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}</div></div>${ctl}
+            <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}</div></div>${ctl}${abrir}
             <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
       }else tabela='<div class="orc-empty">Nenhum documento nesta aba.</div>';
       el.innerHTML=banner+counts+tabs+tabela;
@@ -1961,8 +2097,9 @@
       document.getElementById('ov-docup').classList.remove('open');renderDocs();showToast('Documento salvo');
     }catch(err){showToast('Erro ao salvar documento');console.error(err);}
   });
-  ['docs-q','docs-status'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(docsState.nivel==='colaboradores')renderDocs();}));
-  document.getElementById('docs-pend').addEventListener('change',()=>{if(docsState.nivel==='colaboradores')renderDocs();});
+  const filtroNivel=()=>docsState.nivel==='colaboradores'||docsState.nivel==='empresas';
+  ['docs-q','docs-status'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(filtroNivel())renderDocs();}));
+  document.getElementById('docs-pend').addEventListener('change',()=>{if(filtroNivel())renderDocs();});
   document.getElementById('docs-relatorio').addEventListener('click',async()=>{
     try{const r=await api('/api/documentos/relatorio-pendencias'+(docsState.empresa?'?empresa='+docsState.empresa:''));
       showToast(r.total_pendentes+' colaborador(es) com pendências');}catch(err){showToast('Erro no relatório');}});
@@ -2221,7 +2358,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['docs','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','folha','recibos','prestacao','nfrbmo','nfrbmat','nfecomo','nfecomat']:['orc','vt'];
+    const permitido=admin?['docs','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     // esconde cabeçalhos de grupo sem itens visíveis
     document.querySelectorAll('.nav-group').forEach(h=>{
