@@ -725,7 +725,7 @@
       <button data-view="orc" data-g="os"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Medição de Campo &amp; Orçamento</span></button>
 
       <div class="nav-group" data-group="fin">Financeiro</div>
-      <button data-view="fin" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras e DRE</span></button>
+      <button data-view="fin" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras &amp; Resultado</span></button>
       <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="lbl">Bancos &amp; Fluxo de Caixa</span></button>
       <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Folha de Ponto</span></button>
       <button data-view="cofre" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
@@ -786,7 +786,7 @@
 
     <!-- ===== FINANCEIRO ===== -->
     <section id="view-fin" class="hidden">
-      <div class="modhead"><h1>Financeiro &amp; Obras (DRE)</h1><p>Fluxo de caixa por obra e lucratividade real por m² — diárias, insumos e margem líquida.</p></div>
+      <div class="modhead"><h1>Obras &amp; Resultado</h1><p>Resultado por obra: contrato, custos (diárias + insumos) e margem líquida real por m².</p></div>
       <div class="tabsrow">
         <div class="seg" id="fin-viewmode"><button data-vm="quadro" class="on">▦ Quadro</button><button data-vm="lista">☰ Lista</button></div>
         <div style="display:flex;gap:8px">
@@ -1450,7 +1450,7 @@
         <div class="mline"><span>Lucro líquido</span><b class="money" style="color:${margemCor}">${brl(o.lucro)}</b></div>
         <div class="mline"><span>Margem</span><b style="color:${margemCor}">${o.margem_pct}%</b></div>
       </div>
-      <div class="cardfoot"><button class="miniact" data-lancar="${o.id}">Lançar custo</button><button class="miniact" data-dre="${o.id}">Ver DRE</button></div></div>`;
+      <div class="cardfoot"><button class="miniact" data-lancar="${o.id}">Lançar custo</button><button class="miniact" data-dre="${o.id}">Ver resultado</button></div></div>`;
   }
   let OBRAS=[], FIN_COLUNAS=null, finViewMode='quadro';
   async function loadFin(){
