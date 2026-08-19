@@ -1,9 +1,7 @@
 // Service Worker — Raspadora Brasília PWA
-// Cache de assets estáticos (app shell). Dados da API NUNCA são cacheados.
-const CACHE = 'raspadora-v21';
+// HTML/navegação: network-first (deploy aparece na hora). Dados da API NUNCA são cacheados.
+const CACHE = 'raspadora-v22';
 const ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -20,13 +18,36 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Detecta se a requisição é do documento HTML (app shell) — precisa ser sempre fresca.
+function isHTML(req, url) {
+  return req.mode === 'navigate'
+    || url.pathname === '/'
+    || url.pathname === '/index.html'
+    || (req.headers.get('accept') || '').includes('text/html');
+}
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   // Nunca cacheia chamadas de API nem outros hosts (Supabase) — sempre rede.
   if (e.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.origin !== self.location.origin) {
     return; // deixa o browser lidar (rede)
   }
-  // Assets estáticos: cache-first, com atualização em segundo plano.
+
+  // HTML / navegação → NETWORK-FIRST: sempre tenta a versão nova; cai no cache só se estiver offline.
+  if (isHTML(e.request, url)) {
+    e.respondWith(
+      fetch(e.request).then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put('/index.html', copy));
+        }
+        return res;
+      }).catch(() => caches.match('/index.html').then((c) => c || caches.match(e.request)))
+    );
+    return;
+  }
+
+  // Demais assets estáticos (ícones, manifest, etc.) → cache-first com atualização em segundo plano.
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const fetched = fetch(e.request).then((res) => {
