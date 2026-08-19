@@ -538,6 +538,19 @@ app.post('/api/financeiro/lancamento', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Cadastro de obra (valor em REAIS no corpo → centavos)
+app.post('/api/financeiro/obra', async (req, res, next) => {
+  try {
+    const { cliente, endereco, metragem_m2, tipo_piso, valor_contrato } = req.body;
+    if (!cliente) return res.status(400).json({ erro: 'cliente é obrigatório' });
+    res.status(201).json(await db.createObra({
+      cliente, endereco: endereco || null, tipo_piso: tipo_piso || null,
+      metragem_m2: Number(metragem_m2) || 0,
+      valor_contrato: Math.round((Number(valor_contrato) || 0) * 100),
+    }));
+  } catch (e) { next(e); }
+});
+
 // ================= GESTÃO v2: DP produção · DRE · Bancos =================
 // entrada dos endpoints de gestão é em REAIS → converte para centavos
 const emCentavos = (v) => Math.round((Number(v) || 0) * 100);
@@ -626,6 +639,20 @@ app.get('/api/bancos/saldos', async (_req, res, next) => {
     const contas = await db.listContas();
     const total = contas.reduce((s, c) => s + c.saldo_atual, 0);
     res.json({ contas, total_consolidado: total });
+  } catch (e) { next(e); }
+});
+
+// Bancos — cadastro de conta bancária (saldo inicial em REAIS → centavos)
+app.post('/api/bancos/conta', async (req, res, next) => {
+  try {
+    const { nome_instituicao, tipo_conta } = req.body;
+    if (!nome_instituicao) return res.status(400).json({ erro: 'nome_instituicao é obrigatório' });
+    res.status(201).json(await db.createConta({
+      nome_instituicao, tipo_conta: tipo_conta || 'Conta Corrente',
+      agencia: req.body.agencia || null, conta: req.body.conta || null,
+      saldo_atual: Math.round((Number(req.body.saldo_inicial) || 0) * 100),
+      is_caixinha: req.body.is_caixinha === true || req.body.is_caixinha === 'true',
+    }));
   } catch (e) { next(e); }
 });
 

@@ -136,6 +136,7 @@
 
   .board{display:grid;grid-auto-flow:column;grid-auto-columns:300px;gap:16px;
     padding:18px 26px 40px;overflow-x:auto;align-items:start;}
+  .board.as-list{display:block;}
   .colhead{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;
     background:var(--concreto);border-radius:10px;}
   .colhead .swatch{width:9px;height:9px;border-radius:3px;}
@@ -787,8 +788,11 @@
     <section id="view-fin" class="hidden">
       <div class="modhead"><h1>Financeiro &amp; Obras (DRE)</h1><p>Fluxo de caixa por obra e lucratividade real por m² — diárias, insumos e margem líquida.</p></div>
       <div class="tabsrow">
-        <div class="tabs"><button class="on">Fluxo de Caixa</button><button>Margem por m²</button><button>Insumos</button><button>Vales &amp; Adiantamentos</button></div>
-        <button class="primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lançamento</button>
+        <div class="seg" id="fin-viewmode"><button data-vm="quadro" class="on">▦ Quadro</button><button data-vm="lista">☰ Lista</button></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" id="btn-nova-obra" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Nova Obra</button>
+          <button class="primary" id="btn-novo-lanc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lançamento</button>
+        </div>
       </div>
       <div class="metrics">
         <div class="metric"><div class="lbl">Contratos Ativos</div><div class="val money" id="fin-contratos">—</div><div class="sub">obras em andamento</div></div>
@@ -840,12 +844,13 @@
       </div>
       <!-- CONTEÚDO PROTEGIDO -->
       <div id="bancos-protegido" class="hidden">
-        <div class="modhead"><h1>Conta Bancária</h1><p>Saldos, chaves PIX, dados das contas, projeção 30 dias e transferências.</p></div>
+        <div class="modhead"><h1 id="bancos-titulo">Bancos &amp; Fluxo de Caixa</h1><p id="bancos-sub">Saldos, projeção de 30 dias e fluxo de caixa das contas.</p></div>
         <div class="tabsrow">
           <div class="tabs"><button class="on">Contas &amp; Fluxo</button><button>Movimentações</button></div>
           <div style="display:flex;gap:8px">
-            <button class="btn-ghost" id="btn-bloquear" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Bloquear agora</button>
-            <button class="primary" id="btn-transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/></svg> Transferência</button>
+            <button class="btn-ghost cofre-only" id="btn-bloquear" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Bloquear agora</button>
+            <button class="btn-ghost cofre-only" id="btn-nova-conta" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Nova Conta</button>
+            <button class="primary cofre-only" id="btn-transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/></svg> Transferência</button>
           </div>
         </div>
         <div class="metrics">
@@ -1277,6 +1282,48 @@
   </div>
 </div>
 
+<!-- MODAL: Nova Obra -->
+<div class="overlay" id="ov-obra">
+  <div class="modal">
+    <header><h3>Nova Obra</h3><button class="x" data-close>×</button></header>
+    <form id="form-obra">
+      <div class="body">
+        <div class="field"><label>Cliente *</label><input name="cliente" required placeholder="Nome do cliente / construtora"></div>
+        <div class="field"><label>Endereço / local</label><input name="endereco" placeholder="Endereço, quadra, cidade"></div>
+        <div class="grid2">
+          <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" type="number" step="0.01" min="0" placeholder="0"></div>
+          <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" type="number" step="0.01" min="0" placeholder="0,00"></div>
+        </div>
+        <div class="field"><label>Tipo de piso / serviço</label><input name="tipo_piso" placeholder="Ex.: Fulget, Concreto Polido, Epóxi…"></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar obra</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Nova Conta Bancária (Cofre) -->
+<div class="overlay" id="ov-conta">
+  <div class="modal">
+    <header><h3>Nova Conta Bancária</h3><button class="x" data-close>×</button></header>
+    <form id="form-conta">
+      <div class="body">
+        <div class="field"><label>Instituição / Banco *</label><input name="nome_instituicao" required placeholder="Ex.: Itaú, Nubank, Caixinha PIX"></div>
+        <div class="grid2">
+          <div class="field"><label>Tipo de conta</label>
+            <select name="tipo_conta"><option>Conta Corrente</option><option>Conta PJ</option><option>Poupança</option><option>Caixinha / PIX</option></select></div>
+          <div class="field"><label>Saldo inicial (R$)</label><input name="saldo_inicial" type="number" step="0.01" min="0" placeholder="0,00"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Agência</label><input name="agencia" placeholder="0000"></div>
+          <div class="field"><label>Conta</label><input name="conta" placeholder="00000-0"></div>
+        </div>
+        <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" name="is_caixinha"> É a Caixinha PIX de campo</label>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar conta</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Ficha do Colaborador -->
 <div class="overlay" id="ov-ficha">
   <div class="modal wide">
@@ -1302,8 +1349,8 @@
     if(view==='orc')loadOrc().catch(e=>console.error(e));
     if(view==='dash')loadDashboard().catch(e=>console.error(e));
     if(view==='docs')loadDocs().catch(e=>console.error(e));
-    if(view==='bancos'){bancosUnlocked=true;loadBancos().catch(e=>console.error(e));} // Bancos & Fluxo: acesso livre
-    if(view==='cofre')loadBancos().catch(e=>console.error(e)); // Cofre: exige senha (usa bancosUnlocked atual)
+    if(view==='bancos'){cofreMode=false;bancosUnlocked=true;loadBancos().catch(e=>console.error(e));} // Bancos & Fluxo: acesso livre, só leitura
+    if(view==='cofre'){cofreMode=true;loadBancos().catch(e=>console.error(e));} // Cofre: exige senha + ações sensíveis
     if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='nfrb')loadNF('RB');
     if(view==='nfeco')loadNF('ECO');
@@ -1405,18 +1452,46 @@
       </div>
       <div class="cardfoot"><button class="miniact" data-lancar="${o.id}">Lançar custo</button><button class="miniact" data-dre="${o.id}">Ver DRE</button></div></div>`;
   }
-  let OBRAS=[];
+  let OBRAS=[], FIN_COLUNAS=null, finViewMode='quadro';
   async function loadFin(){
     const {colunas,resumo}=await api('/api/financeiro/obras');
-    OBRAS=Object.values(colunas).flat();
-    document.getElementById('board-fin').innerHTML=FIN_COLS.map(c=>renderCol(c,colunas[c.k]||[],obraCard,'Nova obra')).join('');
+    FIN_COLUNAS=colunas;OBRAS=Object.values(colunas).flat();
     document.getElementById('fin-contratos').textContent=brl(resumo.contratos_ativos);
     document.getElementById('fin-custo').textContent=brl(resumo.custo_operacional);
     document.getElementById('fin-margem').textContent=resumo.margem_media_pct+'%';
     const sel=document.getElementById('lanc-obra');
     sel.innerHTML='<option value="">Selecione a obra…</option>'+OBRAS.map(o=>`<option value="${o.id}">${esc(o.cliente)} — ${o.metragem_m2}m²</option>`).join('');
-    buildColTabs('tabs-fin','board-fin',FIN_COLS);
+    renderFin();
   }
+  function renderFin(){
+    const board=document.getElementById('board-fin'),tabs=document.getElementById('tabs-fin');
+    if(finViewMode==='lista'){
+      if(tabs)tabs.innerHTML='';
+      board.classList.add('as-list');
+      if(!OBRAS.length){board.innerHTML='<div class="orc-empty">Nenhuma obra cadastrada. Clique em <b>Nova Obra</b>.</div>';return;}
+      const rows=OBRAS.map(o=>{const mc=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
+        return `<tr data-obra="${o.id}"><td><b>${esc(o.cliente)}</b></td><td>${esc(o.endereco||'—')}</td><td>${o.metragem_m2||0} m²</td><td class="num">${brl(o.valor_contrato)}</td><td class="num">${brl(o.custo_operacional)}</td><td class="num" style="color:${mc}">${o.margem_pct}%</td><td>${(FIN_COLS.find(c=>c.k===o.coluna_kanban)||{}).t||o.coluna_kanban}</td></tr>`;}).join('');
+      board.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Cliente</th><th>Local</th><th>Metragem</th><th class="num">Contrato</th><th class="num">Custo</th><th class="num">Margem</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }else{
+      board.classList.remove('as-list');
+      board.innerHTML=FIN_COLS.map(c=>renderCol(c,(FIN_COLUNAS&&FIN_COLUNAS[c.k])||[],obraCard,'Nova obra')).join('');
+      buildColTabs('tabs-fin','board-fin',FIN_COLS);
+    }
+  }
+  document.getElementById('fin-viewmode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    finViewMode=b.dataset.vm;document.getElementById('fin-viewmode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderFin();}));
+  function abrirNovaObra(){document.getElementById('form-obra').reset();openModal('ov-obra');}
+  document.getElementById('btn-nova-obra').addEventListener('click',abrirNovaObra);
+  document.getElementById('board-fin').addEventListener('click',e=>{if(e.target.closest('.addcard'))abrirNovaObra();});
+  document.getElementById('form-obra').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;
+    if(!f.cliente.value.trim()){showToast('Informe o cliente');return;}
+    try{
+      await api('/api/financeiro/obra',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({cliente:f.cliente.value,endereco:f.endereco.value||null,metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,tipo_piso:f.tipo_piso.value||null})});
+      document.getElementById('ov-obra').classList.remove('open');await loadFin();showToast('Obra cadastrada');
+    }catch(err){showToast('Erro ao cadastrar obra');console.error(err);}
+  });
   // ---------- ABAS DE COLUNA (mobile) ----------
   const activeCol={};
   function buildColTabs(tabsId,boardId,cols){
@@ -1913,7 +1988,7 @@
 
   // Botões primários de topo (Novo Colaborador / Novo Lançamento)
   document.querySelectorAll('#view-dp .primary').forEach(b=>b.addEventListener('click',()=>openModal('ov-colab')));
-  document.querySelectorAll('#view-fin .primary').forEach(b=>b.addEventListener('click',()=>openModal('ov-lanc')));
+  document.getElementById('btn-novo-lanc').addEventListener('click',()=>openModal('ov-lanc'));
 
   // Categorias do lançamento dependem do tipo
   const CATS={entrada:[['sinal','Sinal / Entrada'],['saldo','Saldo final']],
@@ -2116,21 +2191,20 @@
   const COLS_DEF=[
     {k:'nome',label:'Nome',get:c=>`<b>${esc(c.nome)}</b>`},
     {k:'cpf',label:'CPF',get:c=>esc(c.cpf||'—')},
-    {k:'cargo',label:'Cargo',get:c=>esc(c.cargo||'—')},
-    {k:'status',label:'Status',get:stTag},
+    {k:'cargo',label:'Função',get:c=>esc(c.cargo||'—')},
+    {k:'data_admissao',label:'Data Admissional',get:c=>c.data_admissao?dtBR(c.data_admissao):'—'},
     {k:'empresa',label:'Empresa',get:c=>empresaTag(c.empresa)},
-    {k:'farol',label:'Farol',get:farolTag},
-    {k:'versao',label:'Versão',get:c=>'v'+(c.versao_atual||'-')},
-    {k:'vencimento',label:'Vencimento',get:c=>c.pasta.vencimento_geral?dtBR(c.pasta.vencimento_geral):'—'},
+    {k:'status',label:'Status',get:stTag},
+    {k:'data_nascimento',label:'Data de Nascimento',get:c=>c.data_nascimento?dtBR(c.data_nascimento):'—'},
   ];
   function colsState(){
-    let s;try{s=JSON.parse(localStorage.getItem('rb_docs_cols_v2'));}catch{}
-    if(!s||!Array.isArray(s.order))s={order:COLS_DEF.map(c=>c.k),hidden:['farol','versao']};
+    let s;try{s=JSON.parse(localStorage.getItem('rb_docs_cols_v3'));}catch{}
+    if(!s||!Array.isArray(s.order))s={order:COLS_DEF.map(c=>c.k),hidden:['data_nascimento']};
     // garante que colunas novas apareçam
     COLS_DEF.forEach(c=>{if(!s.order.includes(c.k))s.order.push(c.k);});
     return s;
   }
-  function saveCols(s){localStorage.setItem('rb_docs_cols_v2',JSON.stringify(s));}
+  function saveCols(s){localStorage.setItem('rb_docs_cols_v3',JSON.stringify(s));}
   function abrirColab(id,nome){docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=id;docsState.colabNome=nome;renderDocs();}
   let docsListaCache=[];
   function renderColabView(lista){
@@ -2181,7 +2255,7 @@
   }
   let docsState={nivel:'empresas'};
   function renderCrumb(){
-    const c=document.getElementById('docs-crumb');const p=[`<span class="cr ${docsState.nivel==='empresas'?'atual':''}" data-crumb="empresas">Empresas / Construtoras</span>`];
+    const c=document.getElementById('docs-crumb');const p=[`<span class="cr ${docsState.nivel==='empresas'?'atual':''}" data-crumb="empresas">Empresas</span>`];
     if(docsState.empresa){p.push('<span class="sep">/</span>',`<span class="cr ${docsState.nivel==='colaboradores'?'atual':''}" data-crumb="colaboradores">${esc(docsState.empresaLabel)}</span>`);}
     if(docsState.colabId){p.push('<span class="sep">/</span>',`<span class="cr atual">${esc(docsState.colabNome)}</span>`);}
     c.innerHTML=p.join(' ');
@@ -2206,7 +2280,7 @@
         <div class="seg" id="docs-viewmode"><button data-vm="lista" class="${docsViewMode==='lista'?'on':''}">☰ Lista</button><button data-vm="quadro" class="${docsViewMode==='quadro'?'on':''}">▦ Quadro</button></div>
         <div class="colab-tr">${groupSel}${colsBtn}</div></div>
         <div id="colab-view"></div>
-        <h3 class="doc-sub" style="margin:22px 0 10px;font-size:14px;color:var(--ink-2)">Empresas / Construtoras</h3>
+        <h3 class="doc-sub" style="margin:22px 0 10px;font-size:14px;color:var(--ink-2)">Empresas</h3>
         ${cards}`;
       el.querySelectorAll('#docs-viewmode button').forEach(b=>b.addEventListener('click',()=>{docsViewMode=b.dataset.vm;renderDocs();}));
       const gb=document.getElementById('docs-groupby');if(gb)gb.addEventListener('change',()=>{docsGroupBy=gb.value;renderColabView(lista);});
@@ -2339,11 +2413,17 @@
     document.getElementById(id).innerHTML='<option value="">Selecione…</option>'+COLABS_NOMES.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   }
 
-  // ---- Bancos & Fluxo de Caixa (área protegida / cofre) ----
-  let bancosUnlocked=false;
+  // ---- Bancos & Fluxo de Caixa (livre) · Cofre (protegido) ----
+  let bancosUnlocked=false, cofreMode=false;
   function bancosGate(){
     const lock=document.getElementById('bancos-lock'),prot=document.getElementById('bancos-protegido');
-    if(bancosUnlocked){lock.classList.add('hidden');prot.classList.remove('hidden');loadBancosData().catch(e=>console.error(e));}
+    // Bancos (cofreMode=false) é acesso livre; Cofre (cofreMode=true) exige senha.
+    const liberado=!cofreMode||bancosUnlocked;
+    // Ações sensíveis (nova conta, transferência, bloquear) só no Cofre desbloqueado
+    document.querySelectorAll('#bancos-protegido .cofre-only').forEach(b=>b.style.display=(cofreMode&&bancosUnlocked)?'':'none');
+    document.getElementById('bancos-titulo').textContent=cofreMode?'Cofre Bancário':'Bancos & Fluxo de Caixa';
+    document.getElementById('bancos-sub').textContent=cofreMode?'Área restrita — cadastro de contas, transferências e dados sensíveis.':'Saldos, projeção de 30 dias e fluxo de caixa das contas.';
+    if(liberado){lock.classList.add('hidden');prot.classList.remove('hidden');loadBancosData().catch(e=>console.error(e));}
     else{prot.classList.add('hidden');lock.classList.remove('hidden');document.getElementById('cofre-err').textContent='';
       setTimeout(()=>{try{document.getElementById('cofre-senha').focus();}catch{}},100);}
   }
@@ -2387,6 +2467,16 @@
     document.getElementById('transfer-destino').innerHTML=opt;
   }
   document.getElementById('btn-transfer').addEventListener('click',()=>openModal('ov-transfer'));
+  document.getElementById('btn-nova-conta').addEventListener('click',()=>{document.getElementById('form-conta').reset();openModal('ov-conta');});
+  document.getElementById('form-conta').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;
+    if(!f.nome_instituicao.value.trim()){showToast('Informe a instituição');return;}
+    try{
+      await api('/api/bancos/conta',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({nome_instituicao:f.nome_instituicao.value,tipo_conta:f.tipo_conta.value,agencia:f.agencia.value||null,conta:f.conta.value||null,saldo_inicial:parseFloat(f.saldo_inicial.value)||0,is_caixinha:f.is_caixinha.checked})});
+      document.getElementById('ov-conta').classList.remove('open');await loadBancos();showToast('Conta cadastrada');
+    }catch(err){showToast('Erro ao cadastrar conta');console.error(err);}
+  });
   document.getElementById('form-transfer').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     try{await api('/api/bancos/transferencia-interna',{method:'POST',headers:{'Content-Type':'application/json'},

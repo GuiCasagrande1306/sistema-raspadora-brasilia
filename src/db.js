@@ -157,6 +157,11 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').update({ coluna_kanban }).eq('id', id).select().single(); if (error) throw error; return data; }
     const o = mock.obras.find(x => x.id === id); if (!o) return null; o.coluna_kanban = coluna_kanban; return o;
   },
+  async createObra(o) {
+    const base = { custo_insumos: 0, custo_mao_obra: 0, progresso: 0, coluna_kanban: 'aprovado', ...o };
+    if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').insert(base).select().single(); if (error) throw error; return data; }
+    const novo = { id: uid(), ...base }; mock.obras.push(novo); return novo;
+  },
   async createLancamento(l) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos').insert(l).select().single(); if (error) throw error;
@@ -286,7 +291,7 @@ export const db = {
   },
   async listColaboradoresDocs(filtros = {}) {
     if (!USING_SUPABASE) return [];
-    let q = sb('colaboradores').select('id,nome,cpf,cargo,empresa,status,status_colaborador,obras_vinculadas');
+    let q = sb('colaboradores').select('id,nome,cpf,cargo,empresa,status,status_colaborador,obras_vinculadas,data_admissao,data_nascimento');
     if (filtros.empresa && filtros.empresa !== 'TODAS') q = q.eq('empresa', filtros.empresa);
     if (filtros.status_colaborador) q = q.eq('status_colaborador', filtros.status_colaborador);
     const { data: colabs } = await q;
@@ -300,7 +305,7 @@ export const db = {
       });
       const pasta = this._pastaStatus(catMerged);
       const versaoMax = Math.max(0, ...catMerged.filter(x => x.versao).map(x => x.versao));
-      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', obras_vinculadas: c.obras_vinculadas || [], pasta, versao_atual: versaoMax || null };
+      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', obras_vinculadas: c.obras_vinculadas || [], data_admissao: c.data_admissao || null, data_nascimento: c.data_nascimento || null, pasta, versao_atual: versaoMax || null };
     });
     let filtered = out;
     if (filtros.pendencias) filtered = filtered.filter(c => c.pasta.status === 'PENDENTE');
@@ -760,6 +765,10 @@ export const db = {
     if (!USING_SUPABASE) return [];
     const { data, error } = await sb('contas_bancarias').select('*').order('nome_instituicao');
     if (error) throw error; return data;
+  },
+  async createConta(c) {
+    if (USING_SUPABASE) { const { data, error } = await sb('contas_bancarias').insert(c).select().single(); if (error) throw error; return data; }
+    return { id: uid(), ...c };
   },
   async getCaixinha() {
     const { data } = await sb('contas_bancarias').select('*').eq('is_caixinha', true).limit(1).single();
