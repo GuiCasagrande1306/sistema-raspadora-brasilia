@@ -113,8 +113,9 @@ export const CATALOGO_DOCS = [
   { codigo: '14', nome: 'NR 18', vencivel: true, tab: 'unico' },
   { codigo: '15', nome: 'NR 23', vencivel: true, tab: 'unico' },
   { codigo: '19', nome: 'NR 35', vencivel: true, tab: 'unico' },
-  { codigo: '20', nome: 'Anuência da NR 35', vencivel: false, tab: 'unico' },
-  { codigo: '21', nome: 'Proficiência da NR 35', vencivel: true, tab: 'unico' },
+  { codigo: '20', nome: 'Anuência NR 35', vencivel: false, tab: 'unico' },
+  { codigo: '21', nome: 'Avaliação NR 35', vencivel: true, tab: 'unico' },
+  { codigo: '22', nome: 'Anuência NR 12', vencivel: false, tab: 'unico' },
   { codigo: 'CE', nome: 'Comprovante de Endereço', vencivel: false, tab: 'unico' },
   { codigo: 'F34', nome: 'Foto 3x4', vencivel: false, tab: 'unico' },
   // Docs. Mensais (vencimento mensal)
