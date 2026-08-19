@@ -727,7 +727,7 @@
       <button data-view="fin" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras e DRE</span></button>
       <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="lbl">Bancos &amp; Fluxo de Caixa</span></button>
       <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Folha de Ponto</span></button>
-      <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
+      <button data-view="cofre" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
       <button data-view="recibos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 8h8M8 12h6"/></svg><span class="lbl">Recibos</span></button>
       <button data-view="prestacao" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="lbl">Prestação de Contas</span></button>
       <button data-view="nfrb" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB</span></button>
@@ -961,7 +961,6 @@
         <div class="metric"><div class="lbl">Orçamentos</div><div class="val" id="orc-total">—</div><div class="sub">no total</div></div>
         <div class="metric"><div class="lbl">Aguardando Medição</div><div class="val" id="orc-pend">—</div><div class="sub">visita de campo pendente</div></div>
         <div class="metric"><div class="lbl">Aprovados</div><div class="val" id="orc-aprov">—</div><div class="sub">viram obra</div></div>
-        <div class="metric"><div class="lbl">Valor Aprovado</div><div class="val money" id="orc-valor">—</div><div class="sub">soma dos aprovados</div></div>
       </div>
       <div class="coltabs" id="tabs-orc"></div>
       <div class="board" id="board-orc" style="padding-bottom:96px;"></div>
@@ -1136,8 +1135,9 @@
           </div>
           <div class="grid2">
             <div class="field"><label>Responsável técnico</label><input name="responsavel_tecnico" placeholder="Quem fez a medição"></div>
-            <div class="field"><label>Link do Google Maps</label><input name="google_maps_link" type="url" placeholder="https://maps.google.com/…"></div>
+            <div class="field"><label>Link do Google Maps</label><input name="google_maps_link" id="orc-maps-inp" type="url" placeholder="https://maps.google.com/…"></div>
           </div>
+          <div id="orc-maps-preview" style="display:none;margin-top:2px"></div>
           <div class="field"><label>Tipo de serviço</label>
             <div class="serv-checks" id="orc-servicos">
               <label class="serv-chk"><input type="checkbox" value="FULGET"> Fulget</label>
@@ -1161,7 +1161,7 @@
           <div class="orc-midias-preview" id="orc-midias-preview"></div>
         </div>
       </div>
-      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar Orçamento</button></footer>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="btn-ghost" id="orc-concluir" style="display:none;border-color:var(--ok);color:var(--ok)">✓ Concluir medição</button><button type="submit" class="primary">Salvar Orçamento</button></footer>
     </form>
   </div>
 </div>
@@ -1293,7 +1293,8 @@
     nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
     const sb=nav.querySelector('button[data-view="'+view+'"]');if(sb)sb.classList.add('on');
     document.querySelectorAll('.main > section').forEach(s=>s.classList.add('hidden'));
-    const sec=document.getElementById('view-'+view);if(sec)sec.classList.remove('hidden');
+    const secId=view==='cofre'?'bancos':view; // Cofre reutiliza a seção de Bancos, mas com bloqueio
+    const sec=document.getElementById('view-'+secId);if(sec)sec.classList.remove('hidden');
     window.scrollTo(0,0);
     if(view==='dp')loadDP().catch(e=>console.error(e));
     if(view==='fin')loadFin().catch(e=>console.error(e));
@@ -1301,7 +1302,8 @@
     if(view==='orc')loadOrc().catch(e=>console.error(e));
     if(view==='dash')loadDashboard().catch(e=>console.error(e));
     if(view==='docs')loadDocs().catch(e=>console.error(e));
-    if(view==='bancos')loadBancos().catch(e=>console.error(e));
+    if(view==='bancos'){bancosUnlocked=true;loadBancos().catch(e=>console.error(e));} // Bancos & Fluxo: acesso livre
+    if(view==='cofre')loadBancos().catch(e=>console.error(e)); // Cofre: exige senha (usa bancosUnlocked atual)
     if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='nfrb')loadNF('RB');
     if(view==='nfeco')loadNF('ECO');
@@ -1437,10 +1439,10 @@
   const brlN=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2});
   const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],AGUARDANDO_PROPOSTA:['st-aguard','Aguardando proposta'],PROPOSTA_ENVIADA:['st-medi','Proposta enviada'],APROVADO:['st-aprov','Aprovado'],CANCELADO:['st-canc','Cancelado']};
   const ORC_COLS=[
-    {k:'PENDENTE_MEDICAO',t:'1º Visita Técnica',c:'var(--wait)'},
+    {k:'PENDENTE_MEDICAO',t:'1º A Medir',c:'var(--wait)'},
     {k:'AGUARDANDO_PROPOSTA',t:'2º Aguardando Proposta',c:'var(--laranja)'},
     {k:'PROPOSTA_ENVIADA',t:'3º Proposta Enviada',c:'var(--info)'},
-    {k:'APROVADO',t:'4º Proposta Aprovada',c:'var(--ok)'},
+    {k:'APROVADO',t:'4º Aprovado',c:'var(--ok)'},
   ];
   let ORC=[];
   function orcCard(o){
@@ -1466,7 +1468,6 @@
     document.getElementById('orc-total').textContent=resumo.total;
     document.getElementById('orc-pend').textContent=resumo.pendentes;
     document.getElementById('orc-aprov').textContent=resumo.aprovados;
-    document.getElementById('orc-valor').textContent=brlN(resumo.valor_aprovado);
     renderOrcBoard();
   }
   document.getElementById('board-orc').addEventListener('click',async e=>{
@@ -1505,6 +1506,8 @@
     itens.forEach(it=>body.appendChild(itemRow(it)));
     document.getElementById('orc-midias').value='';
     document.getElementById('orc-midias-preview').innerHTML=(orc?.midias||[]).map(m=>`<a href="${m.url}" target="_blank" rel="noopener" class="tag t-info">${/video/i.test(m.tipo||'')?'🎬':'🖼️'} ${esc(m.nome||'mídia')}</a>`).join('');
+    orcRenderMaps(orc?.google_maps_link||'');
+    document.getElementById('orc-concluir').style.display=(orc&&orc.status==='PENDENTE_MEDICAO')?'':'none';
     openModal('ov-orc');
   }
   document.getElementById('btn-orc-novo').addEventListener('click',()=>abrirOrc(null));
@@ -1546,6 +1549,27 @@
         showToast('🔔 '+(nv.notificacao||('Orçamento N° '+nv.numero_orcamento+' salvo')));
       }
     }catch(err){showToast('Erro ao salvar medição');console.error(err);}
+    return;
+  });
+  // Preview do mapa: mostra o Google Maps embutido + botão de rota/GPS
+  function orcRenderMaps(link){
+    const box=document.getElementById('orc-maps-preview');if(!box)return;
+    link=(link||'').trim();
+    if(!/^https?:\/\//.test(link)){box.style.display='none';box.innerHTML='';return;}
+    box.style.display='';
+    box.innerHTML=`<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+        <iframe src="https://maps.google.com/maps?q=${encodeURIComponent(link)}&z=15&output=embed" style="border:0;width:100%;height:220px" loading="lazy"></iframe>
+        <a href="${esc(link)}" target="_blank" rel="noopener" class="primary" style="display:flex;justify-content:center;gap:6px;border-radius:0;text-decoration:none">📍 Abrir rota no GPS</a>
+      </div>`;
+  }
+  document.getElementById('orc-maps-inp').addEventListener('input',e=>orcRenderMaps(e.target.value));
+  // Concluir medição: A Medir → Aguardando Proposta
+  document.getElementById('orc-concluir').addEventListener('click',async()=>{
+    if(!orcEditId)return;
+    try{
+      await api('/api/orcamentos/'+orcEditId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'AGUARDANDO_PROPOSTA'})});
+      document.getElementById('ov-orc').classList.remove('open');await loadOrc();showToast('Medição concluída → Aguardando Proposta');
+    }catch(err){showToast('Erro ao concluir');console.error(err);}
   });
 
   // ---------- VALE-TRANSPORTE (lista editável por semana, auto-save) ----------
@@ -2026,7 +2050,7 @@
     'board-fin':{ path:id=>'/api/financeiro/obra/'+id+'/mover', campo:'coluna_kanban',
       reload:loadFin, rotulos:{aprovado:'Aguardando Sinal',execucao:'Em Execução',afericao:'Aferição de Margem',liquidado:'Concluído / Liquidado'} },
     'board-orc':{ path:id=>'/api/orcamentos/'+id, campo:'status',
-      reload:loadOrc, rotulos:{PENDENTE_MEDICAO:'1º Visita Técnica',AGUARDANDO_PROPOSTA:'2º Aguardando Proposta',PROPOSTA_ENVIADA:'3º Proposta Enviada',APROVADO:'4º Proposta Aprovada'} },
+      reload:loadOrc, rotulos:{PENDENTE_MEDICAO:'1º A Medir',AGUARDANDO_PROPOSTA:'2º Aguardando Proposta',PROPOSTA_ENVIADA:'3º Proposta Enviada',APROVADO:'4º Aprovado'} },
   };
   let dragCardId=null, dragBoard=null;
   function setupDnD(boardId){

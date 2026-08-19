@@ -238,7 +238,9 @@ app.post('/api/orcamentos', upload.array('midias', 15), async (req, res, next) =
         }
       }
     }
-    const status = STATUS_ORC.includes(req.body.status) ? req.body.status : 'AGUARDANDO_PROPOSTA';
+    // Nasce em "A Medir" (PENDENTE_MEDICAO): o admin preenche a parte do cliente e a equipe
+    // completa medições/fotos em campo; ao concluir, passa para AGUARDANDO_PROPOSTA.
+    const status = STATUS_ORC.includes(req.body.status) ? req.body.status : 'PENDENTE_MEDICAO';
     const novo = await db.createOrcamento({
       cliente_nome, cliente_fone, endereco_obra, servico_tipo, data_orcamento, observacoes,
       responsavel_tecnico: req.body.responsavel_tecnico || null, google_maps_link: req.body.google_maps_link || null,
