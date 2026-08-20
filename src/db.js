@@ -475,8 +475,8 @@ export const db = {
   // valida se um colaborador pode ser alocado numa obra (mesma empresa)
   async validarAlocacao(colaboradorIds, obraId) {
     if (!USING_SUPABASE) return { ok: true };
-    const { data: obra } = await sb('obras_financeiro').select('empresa_responsavel,cliente').eq('id', obraId).single();
-    if (!obra) return { ok: false, erro: 'obra não encontrada' };
+    const { data: obra, error: oErr } = await sb('obras_financeiro').select('*').eq('id', obraId).single();
+    if (oErr || !obra) return { ok: false, erro: 'obra não encontrada' };
     const { data: cs } = await sb('colaboradores').select('id,nome,empresa').in('id', colaboradorIds);
     for (const c of (cs || [])) {
       if (c.empresa && obra.empresa_responsavel && c.empresa !== obra.empresa_responsavel) {

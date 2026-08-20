@@ -190,7 +190,8 @@ const prepararItens = (itens) => {
   const norm = lista.map(i => {
     const area = Number(i.area_m2) || 0;
     const unit = Number(i.valor_unit) || 0;
-    return { descricao: String(i.descricao || '').slice(0, 200), area_m2: area, valor_unit: unit, total: Math.round(area * unit * 100) / 100 };
+    const unidade = ['m2', 'ml', 'm3'].includes(i.unidade) ? i.unidade : 'm2';
+    return { descricao: String(i.descricao || '').slice(0, 200), area_m2: area, unidade, valor_unit: unit, total: Math.round(area * unit * 100) / 100 };
   });
   const valor_total = Math.round(norm.reduce((s, i) => s + i.total, 0) * 100) / 100;
   return { itens: norm, valor_total };

@@ -106,6 +106,13 @@
   .iconbtn:hover{background:var(--chumbo-700);color:#fff;}
   .iconbtn .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;
     background:var(--laranja);border:2px solid var(--chumbo-800);}
+  .navbadge{margin-left:auto;background:var(--laranja);color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;}
+  .notif-pop{position:absolute;top:56px;right:16px;z-index:60;width:300px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden;}
+  .notif-pop.hidden{display:none;}
+  .notif-pop h5{margin:0;padding:12px 14px;font-size:13px;border-bottom:1px solid var(--line);}
+  .notif-item{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;align-items:center;}
+  .notif-item:hover{background:var(--ground);} .notif-item:last-child{border-bottom:0;}
+  .notif-item b{color:var(--laranja-2);} .notif-empty{padding:18px 14px;color:var(--ink-3);font-size:12.5px;text-align:center;}
   .avatar{width:38px;height:38px;border-radius:50%;background:var(--laranja);color:#fff;
     display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer;}
 
@@ -717,7 +724,7 @@
 
       <div class="nav-group" data-group="com">Comercial</div>
       <button data-view="leads" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg><span class="lbl">Leads</span></button>
-      <button data-view="prop" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span class="lbl">Propostas</span></button>
+      <button data-view="prop" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span class="lbl">Propostas</span><span class="navbadge" id="badge-prop" style="display:none"></span></button>
       <button data-view="clientes" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="lbl">Clientes</span></button>
       <button data-view="contratos" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 17c1 1 2 1 3 0s2-1 3 0"/></svg><span class="lbl">Contratos</span></button>
 
@@ -747,7 +754,8 @@
         <input placeholder="Buscar colaborador, obra ou cliente...">
       </div>
       <div class="topact">
-        <button class="iconbtn" title="Notificações"><span class="dot"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="iconbtn" id="btn-sino" title="Notificações"><span class="dot" id="sino-dot" style="display:none"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <div class="notif-pop hidden" id="notif-pop"></div>
         <div class="avatar" title="Márcia — Administrativo">MA</div>
       </div>
     </header>
@@ -1470,8 +1478,12 @@
       board.classList.add('as-list');
       if(!OBRAS.length){board.innerHTML='<div class="orc-empty">Nenhuma obra cadastrada. Clique em <b>Nova Obra</b>.</div>';return;}
       const rows=OBRAS.map(o=>{const mc=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
-        return `<tr data-obra="${o.id}"><td><b>${esc(o.cliente)}</b></td><td>${esc(o.endereco||'—')}</td><td>${o.metragem_m2||0} m²</td><td class="num">${brl(o.valor_contrato)}</td><td class="num">${brl(o.custo_operacional)}</td><td class="num" style="color:${mc}">${o.margem_pct}%</td><td>${(FIN_COLS.find(c=>c.k===o.coluna_kanban)||{}).t||o.coluna_kanban}</td></tr>`;}).join('');
+        const sel=`<select class="fin-etapa" data-obra="${o.id}">${FIN_COLS.map(c=>`<option value="${c.k}"${c.k===o.coluna_kanban?' selected':''}>${c.t}</option>`).join('')}</select>`;
+        return `<tr><td><b>${esc(o.cliente)}</b></td><td>${esc(o.endereco||'—')}</td><td>${o.metragem_m2||0} m²</td><td class="num">${brl(o.valor_contrato)}</td><td class="num">${brl(o.custo_operacional)}</td><td class="num" style="color:${mc}">${o.margem_pct}%</td><td>${sel}</td></tr>`;}).join('');
       board.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Cliente</th><th>Local</th><th>Metragem</th><th class="num">Contrato</th><th class="num">Custo</th><th class="num">Margem</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      board.querySelectorAll('.fin-etapa').forEach(s=>s.addEventListener('change',async()=>{
+        try{await api('/api/financeiro/obra/'+s.dataset.obra+'/mover',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({coluna_kanban:s.value})});showToast('Etapa atualizada');await loadFin();}
+        catch(err){showToast('Erro ao mudar etapa');console.error(err);}}));
     }else{
       board.classList.remove('as-list');
       board.innerHTML=FIN_COLS.map(c=>renderCol(c,(FIN_COLUNAS&&FIN_COLUNAS[c.k])||[],obraCard,'Nova obra')).join('');
@@ -1543,20 +1555,49 @@
     document.getElementById('orc-total').textContent=resumo.total;
     document.getElementById('orc-pend').textContent=resumo.pendentes;
     document.getElementById('orc-aprov').textContent=resumo.aprovados;
-    renderOrcBoard();
+    renderOrcBoard();atualizarBadges();
   }
   document.getElementById('board-orc').addEventListener('click',async e=>{
     const b=e.target.closest('[data-orc]');if(!b)return;
     try{abrirOrc(await api('/api/orcamentos/'+b.dataset.orc));}catch(err){showToast('Erro ao abrir');console.error(err);}
   });
 
+  // ---------- BADGES / NOTIFICAÇÕES ----------
+  let NOTIFS=[];
+  function setBadge(id,n){const el=document.getElementById(id);if(!el)return;if(n>0){el.textContent=n;el.style.display='';}else el.style.display='none';}
+  async function atualizarBadges(){
+    try{
+      const {orcamentos}=await api('/api/orcamentos');
+      const ag=(orcamentos||[]).filter(o=>o.status==='AGUARDANDO_PROPOSTA');
+      setBadge('badge-prop',ag.length);
+      NOTIFS=ag.map(o=>({txt:`Orçamento Nº ${o.numero_orcamento} — ${esc(o.cliente_nome||'')}`,sub:'medição concluída · aguardando proposta',goto:'prop'}));
+      const dot=document.getElementById('sino-dot');if(dot)dot.style.display=NOTIFS.length?'':'none';
+    }catch(e){/* silencioso */}
+  }
+  function renderNotifPop(){
+    const pop=document.getElementById('notif-pop');
+    pop.innerHTML='<h5>Notificações</h5>'+(NOTIFS.length?NOTIFS.map((n,i)=>`<div class="notif-item" data-ni="${i}"><span>🔔</span><div><b>${n.txt}</b><div style="font-size:11px;color:var(--ink-3)">${n.sub}</div></div></div>`).join(''):'<div class="notif-empty">Sem novidades por aqui.</div>');
+    pop.querySelectorAll('[data-ni]').forEach(it=>it.addEventListener('click',()=>{const n=NOTIFS[+it.dataset.ni];pop.classList.add('hidden');if(n&&n.goto)irParaView(n.goto);}));
+  }
+  document.getElementById('btn-sino').addEventListener('click',e=>{e.stopPropagation();const pop=document.getElementById('notif-pop');
+    if(pop.classList.contains('hidden')){renderNotifPop();pop.classList.remove('hidden');}else pop.classList.add('hidden');});
+  document.addEventListener('click',e=>{const pop=document.getElementById('notif-pop');
+    if(pop&&!pop.classList.contains('hidden')&&!e.target.closest('#notif-pop')&&!e.target.closest('#btn-sino'))pop.classList.add('hidden');});
+
   // --- Modal de Medição de Orçamento (campo, sem preços) ---
   let orcEditId=null;
   const SERV_FIXOS=['FULGET','RASPAGEM','CONCRETO','LIMPEZA','OUTRO'];
-  function itemRow(it={descricao:'',area_m2:''}){
+  function itemRow(it={descricao:'',area_m2:'',unidade:'m2'}){
     const div=document.createElement('div');div.className='orc-item-med';
+    const u=it.unidade||'m2';
     div.innerHTML=`<textarea name="descricao" rows="3" placeholder="Descreva o espaço, medidas, detalhes técnicos e observações da medição…">${esc(it.descricao||'')}</textarea>
-      <div class="orc-area"><label>Área (m²)</label><input name="area_m2" type="number" step="0.01" min="0" placeholder="0"${it.area_m2?` value="${it.area_m2}"`:''}><button type="button" class="it-del" title="Remover">× remover</button></div>`;
+      <div class="orc-area"><label>Medida
+        <select name="unidade" style="margin-left:6px;font-size:11px;padding:2px 4px">
+          <option value="m2"${u==='m2'?' selected':''}>m²</option>
+          <option value="ml"${u==='ml'?' selected':''}>metro linear (ml)</option>
+          <option value="m3"${u==='m3'?' selected':''}>m³</option>
+        </select></label>
+        <input name="area_m2" type="number" step="0.01" min="0" placeholder="0"${it.area_m2?` value="${it.area_m2}"`:''}><button type="button" class="it-del" title="Remover">× remover</button></div>`;
     div.querySelector('.it-del').addEventListener('click',()=>div.remove());
     return div;
   }
@@ -1594,7 +1635,7 @@
   }
   function orcColetaItens(){
     return [...document.querySelectorAll('#orc-itens-body .orc-item-med')].map(r=>({
-      descricao:r.querySelector('[name=descricao]').value,area_m2:parseFloat(r.querySelector('[name=area_m2]').value)||0,
+      descricao:r.querySelector('[name=descricao]').value,area_m2:parseFloat(r.querySelector('[name=area_m2]').value)||0,unidade:r.querySelector('[name=unidade]').value,
     })).filter(i=>i.descricao||i.area_m2);
   }
   document.getElementById('form-orc').addEventListener('submit',async e=>{
@@ -1627,15 +1668,35 @@
     return;
   });
   // Preview do mapa: mostra o Google Maps embutido + botão de rota/GPS
+  function orcMapsCoords(link){
+    // tenta extrair coordenadas de vários formatos de link do Google Maps
+    const m=link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)            // .../@-15.79,-47.88,15z
+      ||link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)           // ...?q=-15.79,-47.88
+      ||link.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/)          // ...&ll=...
+      ||link.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)            // ...!3d-15.79!4d-47.88
+      ||link.match(/(-?\d{1,2}\.\d{4,}),(-?\d{1,3}\.\d{4,})/);  // par solto de coords
+    return m?`${m[1]},${m[2]}`:null;
+  }
   function orcRenderMaps(link){
     const box=document.getElementById('orc-maps-preview');if(!box)return;
     link=(link||'').trim();
     if(!/^https?:\/\//.test(link)){box.style.display='none';box.innerHTML='';return;}
     box.style.display='';
-    box.innerHTML=`<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
-        <iframe src="https://maps.google.com/maps?q=${encodeURIComponent(link)}&z=15&output=embed" style="border:0;width:100%;height:220px" loading="lazy"></iframe>
-        <a href="${esc(link)}" target="_blank" rel="noopener" class="primary" style="display:flex;justify-content:center;gap:6px;border-radius:0;text-decoration:none">📍 Abrir rota no GPS</a>
-      </div>`;
+    const coords=orcMapsCoords(link);
+    if(coords){
+      // temos coordenadas → mapa correto do local, com a área toda clicável abrindo o Maps
+      box.innerHTML=`<a href="${esc(link)}" target="_blank" rel="noopener" title="Abrir no Google Maps / GPS"
+          style="display:block;position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;text-decoration:none">
+          <iframe src="https://maps.google.com/maps?q=${encodeURIComponent(coords)}&z=16&output=embed" style="border:0;width:100%;height:220px;pointer-events:none" loading="lazy"></iframe>
+          <span style="position:absolute;inset:0;z-index:2"></span>
+          <span class="primary" style="display:flex;justify-content:center;gap:6px;border-radius:0">📍 Abrir rota no GPS</span></a>`;
+    }else{
+      // sem coordenadas (link encurtado) → cartão clicável, sem mapa-múndi
+      box.innerHTML=`<a href="${esc(link)}" target="_blank" rel="noopener"
+          class="primary" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px;border-radius:12px;text-decoration:none">
+          📍 Abrir localização no Google Maps / GPS</a>
+        <div class="hint" style="margin-top:6px">Dica: cole o link com coordenadas (ex.: <b>maps.google.com/?q=-15.79,-47.88</b>) para ver o mapa aqui.</div>`;
+    }
   }
   document.getElementById('orc-maps-inp').addEventListener('input',e=>orcRenderMaps(e.target.value));
   // Concluir medição: A Medir → Aguardando Proposta
@@ -1733,7 +1794,7 @@
     const [y,m]=(mesEl.value||'').split('-');
     const mesNome=y?new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'';
     const R=VT_STATE.resumo||{};
-    const rows=VT_STATE.linhas.map(l=>`<tr>
+    const rows=VT_STATE.linhas.map(l=>`<tr class="${l.forma_pagamento==='CARTEIRINHA'?'cart':''}">
       <td>${esc(l.nome)}</td>
       <td class="c">${l.qtd_viagens}</td>
       <td class="r">${brlN(l.valor_passagem)}</td>
@@ -1743,7 +1804,7 @@
     const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Vale-Transporte — ${esc(semLabel)}</title>
     <style>
       *{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}
-      body{margin:28px;color:#1E1E1E}
+      body{margin:28px;color:#1E1E1E;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       h1{font-size:18px;margin:0 0 2px}
       .sub{color:#666;font-size:12px;margin:0 0 16px}
       .cards{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
@@ -1754,6 +1815,7 @@
       th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
       th{background:#1E1E1E;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.02em}
       td.c{text-align:center}td.r{text-align:right}
+      tr.cart td{background:#FDE8D3 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;} /* Carteirinha grifada; Conta fica branco */
       tfoot td{font-weight:700}
       .foot{margin-top:18px;font-size:10px;color:#999}
       @media print{@page{margin:14mm}}
@@ -1992,7 +2054,7 @@
 
   // Categorias do lançamento dependem do tipo
   const CATS={entrada:[['sinal','Sinal / Entrada'],['saldo','Saldo final']],
-    saida:[['insumo','Insumo (resina/agregado/lixa)'],['diaria','Diária de equipe'],['combustivel','Combustível'],['vale','Vale / Adiantamento']]};
+    saida:[['insumo','Insumo (resina/agregado/lixa)'],['prestador','Prestador de serviço'],['insumo_prestador','Insumo + Prestador (valor total)'],['diaria','Diária de equipe'],['combustivel','Combustível'],['vale','Vale / Adiantamento']]};
   function fillCats(){const t=document.getElementById('lanc-tipo').value;
     document.getElementById('lanc-cat').innerHTML=CATS[t].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');}
   document.getElementById('lanc-tipo').addEventListener('change',fillCats);fillCats();
@@ -2547,7 +2609,7 @@
       document.getElementById('ov-apont').classList.remove('open');e.target.reset();
       showToast('Apontamento salvo — '+r.m2_por_colaborador+' m²/colaborador');
       if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
-    }catch(err){showToast('Erro no apontamento');console.error(err);}
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Apontamento: '+(m||'erro'));console.error(err);}
   });
 
   // ---- DRE (a partir do board Financeiro) ----
@@ -2644,8 +2706,9 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['docs','docemp','agenda','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
+    const permitido=admin?['docs','docemp','agenda','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
+    if(admin)atualizarBadges();
     // esconde cabeçalhos de grupo sem itens visíveis
     document.querySelectorAll('.nav-group').forEach(h=>{
       const algum=[...document.querySelectorAll('.nav button[data-g="'+h.dataset.group+'"]')].some(b=>b.style.display!=='none');
