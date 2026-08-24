@@ -84,6 +84,7 @@ const mock = {
   notasFiscais: [],
   docsEmpresa: [],
   leads: [],
+  clientes: [],
   _orcSeq: 193,
 };
 
@@ -651,6 +652,77 @@ export const db = {
     }
     mock.leads = mock.leads.filter(l => l.id !== id);
     return { ok: true };
+  },
+
+  // ---- CLIENTES ----
+  async listClientes({ q } = {}) {
+    let lista;
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('clientes').select('*').order('criado_em', { ascending: false });
+      if (error) throw error;
+      lista = data || [];
+    } else {
+      lista = [...mock.clientes].sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
+    }
+    if (q) { const s = q.toLowerCase(); lista = lista.filter(c => (c.nome || '').toLowerCase().includes(s) || (c.telefone || '').includes(s)); }
+    return lista;
+  },
+  async createCliente(c) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('clientes').insert(c).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...c };
+    mock.clientes.push(novo);
+    return novo;
+  },
+  async updateCliente(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('clientes').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const c = mock.clientes.find(x => x.id === id);
+    if (!c) return null;
+    Object.assign(c, patch);
+    return c;
+  },
+  async deleteCliente(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('clientes').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.clientes = mock.clientes.filter(c => c.id !== id);
+    return { ok: true };
+  },
+  // Acha um cliente pelo nome (case-insensitive) ou cria a partir dos dados do lead
+  async acharOuCriarCliente({ nome, telefone, endereco, origem, responsavel, observacao }) {
+    const nomeTrim = (nome || '').trim();
+    if (!nomeTrim) return null;
+    if (USING_SUPABASE) {
+      const { data } = await sb('clientes').select('*').ilike('nome', nomeTrim).limit(1);
+      if (data && data.length) return data[0];
+    } else {
+      const achado = mock.clientes.find(c => (c.nome || '').toLowerCase() === nomeTrim.toLowerCase());
+      if (achado) return achado;
+    }
+    return this.createCliente({ nome: nomeTrim, telefone: telefone || null, endereco: endereco || null, origem: origem || null, responsavel: responsavel || null, observacao: observacao || null });
+  },
+  // Converte um lead "fechado" em Cliente + Obra (uma vez). Retorna {cliente, obra}.
+  async converterLead(lead) {
+    const cliente = await this.acharOuCriarCliente({
+      nome: lead.nome, telefone: lead.telefone, endereco: lead.endereco,
+      origem: lead.origem, responsavel: lead.responsavel, observacao: lead.observacao,
+    });
+    const obra = await this.createObra({
+      cliente: lead.nome, cliente_id: cliente ? cliente.id : null,
+      endereco: lead.endereco || null, tipo_piso: lead.servico || null,
+      data_inicio: lead.data_inicio || null, responsavel: lead.responsavel || null,
+      origem_lead_id: lead.id || null, valor_contrato: 0, coluna_kanban: 'aprovado',
+    });
+    return { cliente, obra };
   },
 
   // ---- VALE-TRANSPORTE ----
