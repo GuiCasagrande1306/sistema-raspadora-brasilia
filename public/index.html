@@ -964,7 +964,23 @@
       <div class="coltabs" id="tabs-orc"></div>
       <div class="board" id="board-orc" style="padding-bottom:96px;"></div>
     </section>
-    <section id="view-prop" class="hidden"><div class="modhead"><h1>Propostas Comerciais</h1><p>Elaboração e precificação (R$/m² e totais) sobre a medição de campo. Orçamentos <b>Aguardando Proposta</b> entram aqui. (Precificação — em construção.)</p></div></section>
+    <section id="view-prop" class="hidden">
+      <div class="modhead"><h1>Propostas Comerciais</h1><p>Precificação das medições — defina o valor por m²/ml/m³, gere o total, envie e aprove.</p></div>
+      <div class="tabsrow">
+        <div class="tabs" id="prop-filtros">
+          <button class="on" data-pf="AGUARDANDO_PROPOSTA">Aguardando proposta</button>
+          <button data-pf="PROPOSTA_ENVIADA">Enviadas</button>
+          <button data-pf="APROVADO">Aprovadas</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="lbl">Aguardando proposta</div><div class="val" id="prop-aguard">—</div><div class="sub">para precificar</div></div>
+        <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="prop-enviadas">—</div><div class="sub">aguardando resposta</div></div>
+        <div class="metric"><div class="lbl">Aprovadas</div><div class="val" id="prop-aprovadas">—</div><div class="sub">viraram obra</div></div>
+        <div class="metric"><div class="lbl">Valor em propostas</div><div class="val money" id="prop-valor">—</div><div class="sub">aguardando + enviadas</div></div>
+      </div>
+      <div id="prop-content" style="padding:18px 26px 96px;"></div>
+    </section>
     <section id="view-agenda" class="hidden">
       <div class="modhead"><h1>Agenda</h1><p>Agenda da equipe integrada ao Google Calendar (visitas técnicas, reuniões e prazos).</p></div>
       <div id="agenda-content" style="padding:18px 26px 96px;"></div>
@@ -1327,6 +1343,30 @@
   </div>
 </div>
 
+<!-- MODAL: Proposta (precificação) -->
+<div class="overlay" id="ov-proposta">
+  <div class="modal wide">
+    <header><h3 id="prop-title">Proposta</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div class="orc-block">
+        <div class="orc-block-head"><span class="orc-marca" id="prop-cliente">Cliente</span><span class="orc-num">Nº <b id="prop-num">—</b></span></div>
+        <div class="dv" id="prop-info" style="font-size:12.5px"></div>
+      </div>
+      <div class="field"><label>Preço por m²/ml/m³ para todos os itens (opcional)</label>
+        <div style="display:flex;gap:8px"><input id="prop-global" type="number" step="0.01" min="0" placeholder="R$ por unidade" style="max-width:200px"><button type="button" class="btn-ghost" id="prop-aplicar" style="min-height:40px">Aplicar a todos</button></div></div>
+      <div id="prop-itens" style="margin-top:6px"></div>
+      <div class="folha-liq"><span>Valor total da proposta</span><b class="money" id="prop-total">R$ 0,00</b></div>
+      <div class="field"><label>Observações da proposta</label><textarea id="prop-obs" rows="2" placeholder="Condições de pagamento, prazo, garantia…"></textarea></div>
+    </div>
+    <footer>
+      <button type="button" class="btn-ghost" data-close>Fechar</button>
+      <button type="button" class="btn-ghost" id="prop-pdf">Exportar PDF</button>
+      <button type="button" class="btn-ghost" id="prop-salvar">Salvar preços</button>
+      <button type="button" class="primary" id="prop-enviar">Enviar proposta</button>
+    </footer>
+  </div>
+</div>
+
 <!-- MODAL: Nova Obra -->
 <div class="overlay" id="ov-obra">
   <div class="modal">
@@ -1403,6 +1443,7 @@
     if(view==='agenda')loadAgenda();
     if(view==='leads')loadLeads().catch(e=>console.error(e));
     if(view==='clientes')loadClientes().catch(e=>console.error(e));
+    if(view==='prop')loadPropostas().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
     const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
@@ -2079,6 +2120,119 @@
       else await api('/api/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-cliente').classList.remove('open');await loadClientes();showToast('Cliente salvo');
     }catch(err){showToast('Erro ao salvar cliente');console.error(err);}});
+
+  // ---------- PROPOSTAS (precificação das medições) ----------
+  const UNI_LABEL={m2:'m²',ml:'ml',m3:'m³'};
+  let PROP_ORC=[], propFiltro='AGUARDANDO_PROPOSTA', propAtual=null;
+  function propCard(o){
+    const[cls,lbl]=ST[o.status]||['st-pend',o.status];
+    const nitens=(o.itens||[]).length;
+    return `<div class="orc-card" data-prop="${o.id}" style="cursor:pointer">
+      <div class="oc-top"><span class="oc-num">Nº ${o.numero_orcamento}</span><span class="st ${cls}">${lbl}</span></div>
+      <h4>${esc(o.cliente_nome)}</h4>
+      <div class="oc-end">${esc(o.servico_tipo||'—')}${o.endereco_obra?' · '+esc(o.endereco_obra):''}</div>
+      <div class="oc-foot"><span style="font-size:12px;color:var(--ink-3)">${nitens} ${nitens===1?'item':'itens'}</span>
+        <span class="oc-val">${brlN(o.valor_total||0)}</span></div></div>`;
+  }
+  function renderPropostas(){
+    const el=document.getElementById('prop-content');
+    const lista=PROP_ORC.filter(o=>o.status===propFiltro);
+    document.getElementById('prop-aguard').textContent=PROP_ORC.filter(o=>o.status==='AGUARDANDO_PROPOSTA').length;
+    document.getElementById('prop-enviadas').textContent=PROP_ORC.filter(o=>o.status==='PROPOSTA_ENVIADA').length;
+    document.getElementById('prop-aprovadas').textContent=PROP_ORC.filter(o=>o.status==='APROVADO').length;
+    const valor=PROP_ORC.filter(o=>['AGUARDANDO_PROPOSTA','PROPOSTA_ENVIADA'].includes(o.status)).reduce((s,o)=>s+(o.valor_total||0),0);
+    document.getElementById('prop-valor').textContent=brlN(valor);
+    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhuma proposta nesta etapa. Medições concluídas em <b>Visita Técnica (O.S)</b> entram aqui como <b>Aguardando proposta</b>.</div>';return;}
+    el.innerHTML='<div class="orc-grid">'+lista.map(propCard).join('')+'</div>';
+    el.querySelectorAll('[data-prop]').forEach(c=>c.addEventListener('click',async()=>{
+      try{abrirProposta(await api('/api/orcamentos/'+c.dataset.prop));}catch(err){showToast('Erro ao abrir');console.error(err);}}));
+  }
+  async function loadPropostas(){
+    try{const {orcamentos}=await api('/api/orcamentos');PROP_ORC=orcamentos||[];}catch(e){PROP_ORC=[];console.error(e);}
+    renderPropostas();
+  }
+  document.getElementById('prop-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    document.getElementById('prop-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');propFiltro=b.dataset.pf;renderPropostas();}));
+  function propRenderItens(){
+    const box=document.getElementById('prop-itens');
+    const itens=propAtual.itens||[];
+    if(!itens.length){box.innerHTML='<div class="orc-empty">Esta medição não tem itens medidos.</div>';document.getElementById('prop-total').textContent=brlN(0);return;}
+    box.innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr><th>Item medido</th><th class="num">Medida</th><th>R$ / unid.</th><th class="num">Total</th></tr></thead>
+      <tbody>${itens.map((it,i)=>`<tr>
+        <td>${esc(it.descricao||'(sem descrição)')}</td>
+        <td class="num">${it.area_m2||0} ${UNI_LABEL[it.unidade]||'m²'}</td>
+        <td><input class="vte-inp" type="number" step="0.01" min="0" data-pi="${i}" value="${it.valor_unit||''}" placeholder="0,00"></td>
+        <td class="num" data-pt="${i}">${brlN((it.area_m2||0)*(it.valor_unit||0))}</td></tr>`).join('')}</tbody></table></div>`;
+    propRecalcTotal();
+    box.querySelectorAll('[data-pi]').forEach(inp=>inp.addEventListener('input',()=>{
+      const i=+inp.dataset.pi;propAtual.itens[i].valor_unit=parseFloat(inp.value)||0;
+      box.querySelector('[data-pt="'+i+'"]').textContent=brlN((propAtual.itens[i].area_m2||0)*(propAtual.itens[i].valor_unit||0));
+      propRecalcTotal();}));
+  }
+  function propRecalcTotal(){
+    const t=(propAtual.itens||[]).reduce((s,it)=>s+(it.area_m2||0)*(it.valor_unit||0),0);
+    document.getElementById('prop-total').textContent=brlN(t);
+    propAtual._total=t;
+  }
+  function abrirProposta(orc){
+    propAtual=JSON.parse(JSON.stringify(orc));propAtual.itens=propAtual.itens||[];
+    document.getElementById('prop-title').textContent='Proposta — Nº '+orc.numero_orcamento;
+    document.getElementById('prop-cliente').textContent=orc.cliente_nome||'Cliente';
+    document.getElementById('prop-num').textContent=orc.numero_orcamento;
+    document.getElementById('prop-info').innerHTML=[orc.servico_tipo,orc.endereco_obra,orc.responsavel_tecnico?('Resp.: '+esc(orc.responsavel_tecnico)):''].filter(Boolean).map(esc).join(' · ');
+    document.getElementById('prop-obs').value=orc.observacoes||'';
+    document.getElementById('prop-global').value='';
+    document.getElementById('prop-enviar').textContent=orc.status==='APROVADO'?'Reabrir p/ envio':(orc.status==='PROPOSTA_ENVIADA'?'Marcar como aprovada':'Enviar proposta');
+    propRenderItens();
+    openModal('ov-proposta');
+  }
+  document.getElementById('prop-aplicar').addEventListener('click',()=>{
+    const v=parseFloat(document.getElementById('prop-global').value)||0;if(!propAtual)return;
+    propAtual.itens.forEach(it=>it.valor_unit=v);propRenderItens();
+  });
+  async function propSalvar(novoStatus){
+    if(!propAtual)return;
+    const body={itens:propAtual.itens,observacoes:document.getElementById('prop-obs').value||null};
+    if(novoStatus)body.status=novoStatus;
+    try{
+      await api('/api/orcamentos/'+propAtual.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      document.getElementById('ov-proposta').classList.remove('open');
+      await loadPropostas();atualizarBadges();
+      showToast(novoStatus==='PROPOSTA_ENVIADA'?'Proposta enviada':(novoStatus==='APROVADO'?'Proposta aprovada — vira obra':'Preços salvos'));
+    }catch(err){showToast('Erro ao salvar proposta');console.error(err);}
+  }
+  document.getElementById('prop-salvar').addEventListener('click',()=>propSalvar(null));
+  document.getElementById('prop-enviar').addEventListener('click',()=>{
+    const st=propAtual.status==='AGUARDANDO_PROPOSTA'?'PROPOSTA_ENVIADA':(propAtual.status==='PROPOSTA_ENVIADA'?'APROVADO':'PROPOSTA_ENVIADA');
+    propSalvar(st);
+  });
+  document.getElementById('prop-pdf').addEventListener('click',propExportPDF);
+  function propExportPDF(){
+    if(!propAtual)return;const o=propAtual;
+    const rows=(o.itens||[]).map(it=>`<tr><td>${esc(it.descricao||'')}</td><td class="c">${it.area_m2||0} ${UNI_LABEL[it.unidade]||'m²'}</td><td class="r">${brlN(it.valor_unit||0)}</td><td class="r">${brlN((it.area_m2||0)*(it.valor_unit||0))}</td></tr>`).join('');
+    const total=(o.itens||[]).reduce((s,it)=>s+(it.area_m2||0)*(it.valor_unit||0),0);
+    const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Proposta Nº ${o.numero_orcamento}</title>
+    <style>*{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}body{margin:32px;color:#1E1E1E}
+      h1{font-size:20px;margin:0;color:#ED7118}.sub{color:#666;font-size:12px;margin:2px 0 18px}
+      .box{border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px}
+      table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ddd;padding:7px 9px;text-align:left}
+      th{background:#1E1E1E;color:#fff;font-size:11px;text-transform:uppercase}td.c{text-align:center}td.r{text-align:right}
+      tfoot td{font-weight:800;font-size:13px}.obs{margin-top:16px;font-size:12px;white-space:pre-wrap}
+      .foot{margin-top:26px;font-size:10px;color:#999}@media print{@page{margin:14mm}}</style></head><body>
+      <h1>Raspadora Brasília — Proposta Comercial</h1>
+      <p class="sub">Proposta Nº ${o.numero_orcamento} · ${new Date().toLocaleDateString('pt-BR')}</p>
+      <div class="box"><b>Cliente:</b> ${esc(o.cliente_nome||'')}${o.cliente_fone?' · '+esc(o.cliente_fone):''}<br>
+        <b>Local:</b> ${esc(o.endereco_obra||'—')}<br><b>Serviço:</b> ${esc(o.servico_tipo||'—')}</div>
+      <table><thead><tr><th>Item</th><th>Medida</th><th>R$/unid.</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="3">Valor total</td><td class="r">${brlN(total)}</td></tr></tfoot></table>
+      ${o.observacoes?`<div class="obs"><b>Observações:</b><br>${esc(o.observacoes)}</div>`:''}
+      <p class="foot">Documento gerado pelo sistema — Raspadora Brasília · ${new Date().toLocaleString('pt-BR')}</p>
+      <script>window.onload=function(){window.print();}<\/script></body></html>`;
+    const w=window.open('','_blank');if(!w){showToast('Permita pop-ups para exportar');return;}
+    w.document.write(html);w.document.close();
+  }
 
   // ---------- AGENDA (Google Calendar embed) ----------
   function agendaUrl(){return localStorage.getItem('rb_agenda_url')||'';}
