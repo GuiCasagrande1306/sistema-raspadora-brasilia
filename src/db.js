@@ -85,6 +85,8 @@ const mock = {
   docsEmpresa: [],
   leads: [],
   clientes: [],
+  gefipPastas: [],
+  gefipDocs: [],
   _orcSeq: 193,
 };
 
@@ -695,6 +697,75 @@ export const db = {
       return { ok: true };
     }
     mock.clientes = mock.clientes.filter(c => c.id !== id);
+    return { ok: true };
+  },
+
+  // ---- GEFIP (Ano > Mês > Obra > PDFs; pastas dinâmicas) ----
+  // Pasta: obra=null representa uma pasta de MÊS; obra preenchida = pasta de OBRA dentro do mês.
+  async listGefipPastas({ ano, mes } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('gefip_pastas').select('*').order('mes').order('obra');
+      if (ano) q = q.eq('ano', Number(ano));
+      if (mes === null) q = q.is('obra', null);
+      if (mes) q = q.eq('mes', mes);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    }
+    return mock.gefipPastas.filter(p =>
+      (!ano || p.ano === Number(ano)) &&
+      (mes === undefined ? true : (mes === null ? !p.obra : p.mes === mes)));
+  },
+  async createGefipPasta(p) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('gefip_pastas').insert(p).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), obra: null, ...p };
+    mock.gefipPastas.push(novo);
+    return novo;
+  },
+  async deleteGefipPasta(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('gefip_pastas').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.gefipPastas = mock.gefipPastas.filter(p => p.id !== id);
+    return { ok: true };
+  },
+  async listGefipDocs({ ano, mes, obra } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('gefip_docs').select('*').order('criado_em', { ascending: false });
+      if (ano) q = q.eq('ano', Number(ano));
+      if (mes) q = q.eq('mes', mes);
+      if (obra) q = q.eq('obra', obra);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    }
+    return mock.gefipDocs
+      .filter(d => (!ano || d.ano === Number(ano)) && (!mes || d.mes === mes) && (!obra || d.obra === obra))
+      .sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
+  },
+  async createGefipDoc(d) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('gefip_docs').insert(d).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...d };
+    mock.gefipDocs.push(novo);
+    return novo;
+  },
+  async deleteGefipDoc(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('gefip_docs').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.gefipDocs = mock.gefipDocs.filter(d => d.id !== id);
     return { ok: true };
   },
   // Acha um cliente pelo nome (case-insensitive) ou cria a partir dos dados do lead

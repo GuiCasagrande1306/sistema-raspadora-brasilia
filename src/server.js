@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db, USING_SUPABASE, docStatus, supabase, BUCKET } from './db.js';
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
+import { createZip } from './zip.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -428,6 +429,81 @@ app.patch('/api/clientes/:id', async (req, res, next) => {
 app.delete('/api/clientes/:id', async (req, res, next) => {
   try { res.json(await db.deleteCliente(req.params.id)); }
   catch (e) { next(e); }
+});
+
+// ---------- GEFIP (Ano > Mês > Obra > PDFs, com download .zip por obra) ----------
+app.use('/api/gefip', requireAdmin);
+// pastas: sem ?mes → pastas de mês (obra null); com ?mes → pastas de obra daquele mês
+app.get('/api/gefip/pastas', async (req, res, next) => {
+  try {
+    const { ano, mes } = req.query;
+    const pastas = await db.listGefipPastas({ ano, mes: mes || null });
+    res.json(mes ? pastas.filter(p => p.obra) : pastas.filter(p => !p.obra));
+  } catch (e) { next(e); }
+});
+app.post('/api/gefip/pasta', async (req, res, next) => {
+  try {
+    const { ano, mes } = req.body;
+    if (!Number(ano) || !mes) return res.status(400).json({ erro: 'ano e mes são obrigatórios' });
+    res.status(201).json(await db.createGefipPasta({ ano: Number(ano), mes: String(mes), obra: req.body.obra ? String(req.body.obra) : null }));
+  } catch (e) { next(e); }
+});
+app.delete('/api/gefip/pasta/:id', async (req, res, next) => {
+  try { res.json(await db.deleteGefipPasta(req.params.id)); }
+  catch (e) { next(e); }
+});
+app.get('/api/gefip/docs', async (req, res, next) => {
+  try { res.json(await db.listGefipDocs({ ano: req.query.ano, mes: req.query.mes, obra: req.query.obra })); }
+  catch (e) { next(e); }
+});
+app.post('/api/gefip/doc', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const { ano, mes, obra } = req.body;
+    if (!Number(ano) || !mes || !obra) return res.status(400).json({ erro: 'ano, mes e obra são obrigatórios' });
+    if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
+    let arquivo_url = null, arquivo_path = null;
+    if (USING_SUPABASE) {
+      const safe = (req.file.originalname || 'doc.pdf').replace(/[^\w.\-]+/g, '_');
+      arquivo_path = `gefip/${Number(ano)}/${mes}/${String(obra).replace(/[^\w.\-]+/g, '_')}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(arquivo_path, req.file.buffer, { contentType: req.file.mimetype });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(arquivo_path, 60 * 60 * 24 * 365);
+      arquivo_url = signed?.signedUrl || arquivo_path;
+    }
+    res.status(201).json(await db.createGefipDoc({
+      ano: Number(ano), mes: String(mes), obra: String(obra),
+      nome: req.body.nome || req.file.originalname || 'Documento', arquivo_path, arquivo_url,
+      criado_por: req.user?.email || null,
+    }));
+  } catch (e) { next(e); }
+});
+app.delete('/api/gefip/doc/:id', async (req, res, next) => {
+  try { res.json(await db.deleteGefipDoc(req.params.id)); }
+  catch (e) { next(e); }
+});
+// Baixa TODOS os PDFs de uma obra num único .zip
+app.get('/api/gefip/zip', async (req, res, next) => {
+  try {
+    const { ano, mes, obra } = req.query;
+    if (!ano || !mes || !obra) return res.status(400).json({ erro: 'ano, mes e obra são obrigatórios' });
+    const docs = await db.listGefipDocs({ ano, mes, obra });
+    if (!docs.length) return res.status(404).json({ erro: 'nenhum documento nesta obra' });
+    if (!USING_SUPABASE) return res.status(400).json({ erro: 'download .zip indisponível no modo local' });
+    const files = [];
+    for (const d of docs) {
+      if (!d.arquivo_path) continue;
+      const { data, error } = await supabase.storage.from(BUCKET).download(d.arquivo_path);
+      if (error || !data) continue;
+      const buf = Buffer.from(await data.arrayBuffer());
+      files.push({ name: d.nome || 'documento.pdf', data: buf });
+    }
+    if (!files.length) return res.status(404).json({ erro: 'não foi possível baixar os arquivos' });
+    const zip = createZip(files);
+    const nomeZip = `GEFIP_${ano}_${mes}_${String(obra).replace(/[^\w.\-]+/g, '_')}.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${nomeZip}"`);
+    res.send(zip);
+  } catch (e) { next(e); }
 });
 
 // ---------- VALE-TRANSPORTE ----------
