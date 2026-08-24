@@ -761,25 +761,11 @@
     </header>
 
     <!-- Banner de instalação PWA (aparece só quando o navegador oferece instalar) -->
-    <div id="pwa-install-banner" class="install-banner hidden">
-      <div class="ib-left">
-        <div class="ib-badge">RB</div>
-        <div>
-          <h4>Instalar App Raspadora Brasília</h4>
-          <p>Acesse o sistema direto da sua tela inicial sem gastar memória!</p>
-        </div>
-      </div>
-      <button id="btn-pwa-install" class="ib-btn">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-        Baixar App
-      </button>
-    </div>
-
     <!-- ===== DP ===== -->
     <section id="view-dp">
       <div class="modhead"><h1>Departamento Pessoal</h1><p>Equipes operacionais de campo e administrativas — admissão, EPIs e escala de obras por m².</p></div>
       <div class="tabsrow">
-        <div class="tabs"><button class="on">Colaboradores</button><button data-goto="docs">Documentos</button><button>Escala de Obras</button><button data-goto="orc">Visitas Técnicas</button><button data-goto="vt">🚌 Vale-Transporte</button></div>
+        <div class="tabs"><button class="on">Colaboradores</button><button data-goto="docs">Documentos</button><button data-goto="orc">Visitas Técnicas</button><button data-goto="vt">🚌 Vale-Transporte</button></div>
         <button class="primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Colaborador</button>
       </div>
       <div class="metrics">
@@ -985,18 +971,24 @@
     </section>
     <section id="view-docemp" class="hidden"><div class="modhead"><h1>Documentos Empresariais</h1><p>Documentos da empresa (CNPJ, contrato social, certidões/CND, etc.) em PDF — por empresa e pasta.</p></div><div id="docemp" class="nf-wrap"></div></section>
     <section id="view-leads" class="hidden">
-      <div class="modhead"><h1>Leads</h1><p>Novos contatos e prospecção comercial — registre a origem de cada lead.</p></div>
+      <div class="modhead"><h1>Leads</h1><p>Prospecção comercial — origem, responsável (comissão) e etapa de cada lead.</p></div>
       <div class="tabsrow">
-        <div class="tabs" id="leads-filtros">
-          <button class="on" data-origem="">Todos</button>
-          <button data-origem="GOOGLE">Google</button>
-          <button data-origem="INSTAGRAM">Instagram</button>
-          <button data-origem="INDICACAO">Indicações</button>
-          <button data-origem="PARCEIRO">Parceiros</button>
+        <div class="seg" id="leads-viewmode"><button data-vm="quadro" class="on">▦ Quadro</button><button data-vm="lista">☰ Lista</button></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="leads-origem-f" class="dash-sel">
+            <option value="">Todas as origens</option>
+            <option value="GOOGLE">Google</option>
+            <option value="META">Meta</option>
+            <option value="INSTAGRAM">Instagram</option>
+            <option value="INDICACAO">Indicação</option>
+            <option value="PARCEIRO">Parceiro</option>
+          </select>
+          <button class="primary" id="btn-lead-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lead</button>
         </div>
-        <button class="primary" id="btn-lead-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lead</button>
       </div>
-      <div id="leads-content" style="padding:18px 26px 96px;"></div>
+      <div class="coltabs" id="tabs-leads"></div>
+      <div class="board" id="board-leads" style="padding-bottom:96px;"></div>
+      <div id="leads-list" class="hidden" style="padding:18px 26px 96px;"></div>
     </section>
     <section id="view-clientes" class="hidden"><div class="modhead"><h1>Clientes</h1><p>Cadastro e histórico completo dos clientes. (Módulo em construção.)</p></div></section>
     <section id="view-contratos" class="hidden"><div class="modhead"><h1>Contratos</h1><p>Gestão de contratos fechados e assinaturas. (Módulo em construção.)</p></div></section>
@@ -1265,22 +1257,35 @@
       <input type="hidden" name="id" id="lead-id">
       <div class="body">
         <div class="field"><label>Nome / Contato *</label><input name="nome" required placeholder="Nome do cliente ou empresa"></div>
-        <div class="field"><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(61) 9____-____"></div>
-        <div class="field"><label>Origem do lead</label>
-          <select name="origem">
-            <option value="">— selecione —</option>
-            <option value="GOOGLE">Google</option>
-            <option value="INSTAGRAM">Instagram</option>
-            <option value="INDICACAO">Indicações</option>
-            <option value="PARCEIRO">Parceiros</option>
-          </select></div>
-        <div class="field"><label>Serviço de interesse</label><input name="servico" placeholder="Ex.: Fulget, raspagem, concreto polido…"></div>
-        <div class="field"><label>Situação</label>
+        <div class="grid2">
+          <div class="field"><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(61) 9____-____"></div>
+          <div class="field"><label>Origem do lead</label>
+            <select name="origem">
+              <option value="">— selecione —</option>
+              <option value="GOOGLE">Google</option>
+              <option value="META">Meta</option>
+              <option value="INSTAGRAM">Instagram</option>
+              <option value="INDICACAO">Indicação</option>
+              <option value="PARCEIRO">Parceiro</option>
+            </select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Serviço de interesse</label><input name="servico" placeholder="Ex.: Fulget, raspagem…"></div>
+          <div class="field"><label>Responsável (comissão)</label><input name="responsavel" placeholder="Quem trouxe o lead"></div>
+        </div>
+        <div class="field"><label>Endereço</label><input name="endereco" placeholder="Endereço da obra / cliente"></div>
+        <div class="grid2">
+          <div class="field"><label>Data de início</label><input name="data_inicio" type="date"></div>
+          <div class="field"><label>Situação de pagamento</label>
+            <select name="situacao_pagamento"><option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option></select></div>
+        </div>
+        <div class="field"><label>Etapa</label>
           <select name="status">
-            <option value="NOVO">Novo</option>
-            <option value="EM_CONTATO">Em contato</option>
-            <option value="QUALIFICADO">Qualificado</option>
-            <option value="GANHO">Ganho</option>
+            <option value="MARCAR_VISITA">Marcar visita</option>
+            <option value="VISITA_AGENDADA">Visita agendada</option>
+            <option value="EM_EXECUCAO">Em execução</option>
+            <option value="EM_ESPERA">Em espera</option>
+            <option value="FECHADO">Negócio fechado</option>
             <option value="PERDIDO">Perdido</option>
           </select></div>
         <div class="field"><label>Observações</label><textarea name="observacao" rows="3" placeholder="Detalhes do contato, necessidade, prazo…"></textarea></div>
@@ -1926,43 +1931,69 @@
   }
 
   // ---------- LEADS (comercial) ----------
-  const LEAD_ORIG_LABEL={GOOGLE:'Google',INSTAGRAM:'Instagram',INDICACAO:'Indicação',PARCEIRO:'Parceiro'};
-  const LEAD_ST_LABEL={NOVO:['t-wait','Novo'],EM_CONTATO:['t-info','Em contato'],QUALIFICADO:['t-lar','Qualificado'],GANHO:['t-ok','Ganho'],PERDIDO:['t-danger','Perdido']};
-  let LEADS=[], leadOrigemFiltro='';
+  const LEAD_ORIG_LABEL={GOOGLE:'Google',META:'Meta',INSTAGRAM:'Instagram',INDICACAO:'Indicação',PARCEIRO:'Parceiro'};
+  const LEAD_COLS=[
+    {k:'MARCAR_VISITA',t:'Marcar visita',c:'var(--wait)'},
+    {k:'VISITA_AGENDADA',t:'Visita agendada',c:'var(--info)'},
+    {k:'EM_EXECUCAO',t:'Em execução',c:'var(--laranja)'},
+    {k:'EM_ESPERA',t:'Em espera',c:'#8B5CF6'},
+    {k:'FECHADO',t:'Negócio fechado',c:'var(--ok)'},
+    {k:'PERDIDO',t:'Perdido',c:'var(--danger)'},
+  ];
+  const LEAD_ST_LABEL=Object.fromEntries(LEAD_COLS.map(c=>[c.k,c.t]));
+  const leadPagTag=p=>p==='CONCLUIDO'?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
+  let LEADS=[], leadOrigemFiltro='', leadsViewMode='quadro';
+  function leadCard(l){
+    const org=l.origem?`<span class="tag t-lar">${LEAD_ORIG_LABEL[l.origem]||l.origem}</span>`:'';
+    const fone=l.telefone?`<span class="tag">📞 ${esc(l.telefone)}</span>`:'';
+    const resp=l.responsavel?`<span class="tag t-info">👤 ${esc(l.responsavel)}</span>`:'';
+    return `<div class="card" draggable="true" data-card="${l.id}">
+      <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(l.nome)}</h4><button class="doc-cloud" data-leaddel="${l.id}" title="Excluir" style="padding:2px">${DE_TRASH}</button></div>
+      <div class="role">${esc(l.servico||'—')}</div>
+      <div class="tags" style="margin-top:8px">${org}${resp}${fone}${leadPagTag(l.situacao_pagamento)}</div>
+      <div class="cardfoot"><button class="miniact" data-lead="${l.id}">Abrir / editar</button></div></div>`;
+  }
   function renderLeads(){
     const lista=leadOrigemFiltro?LEADS.filter(l=>l.origem===leadOrigemFiltro):LEADS;
-    const el=document.getElementById('leads-content');
-    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum lead aqui ainda. Clique em <b>Novo Lead</b> para registrar um contato.</div>';return;}
-    el.innerHTML='<div class="doc-list">'+lista.map(l=>{
-      const[stc,stl]=LEAD_ST_LABEL[l.status]||['t-wait',l.status];
-      const org=l.origem?`<span class="tag t-lar">${LEAD_ORIG_LABEL[l.origem]||l.origem}</span>`:'';
-      const fone=l.telefone?`<span class="tag">📞 ${esc(l.telefone)}</span>`:'';
-      return `<div class="doc-row" data-lead="${l.id}" style="cursor:pointer">
-        <div class="di"><h4>${esc(l.nome)}</h4><div class="sub">${esc(l.servico||'—')}${l.observacao?' · '+esc(l.observacao):''}</div></div>
-        <div class="tags">${org}${fone}<span class="tag ${stc}">${stl}</span></div>
-        <button class="doc-cloud" data-leaddel="${l.id}" title="Excluir lead">${DE_TRASH}</button></div>`;
-    }).join('')+'</div>';
-    el.querySelectorAll('[data-lead]').forEach(r=>r.addEventListener('click',e=>{if(e.target.closest('[data-leaddel]'))return;abrirLead(LEADS.find(x=>x.id===r.dataset.lead));}));
-    el.querySelectorAll('[data-leaddel]').forEach(b=>b.addEventListener('click',async()=>{
-      if(!confirm('Excluir este lead?'))return;
+    const board=document.getElementById('board-leads'),tabs=document.getElementById('tabs-leads'),listEl=document.getElementById('leads-list');
+    if(leadsViewMode==='lista'){
+      board.classList.add('hidden');if(tabs)tabs.innerHTML='';listEl.classList.remove('hidden');
+      if(!lista.length){listEl.innerHTML='<div class="orc-empty">Nenhum lead ainda. Clique em <b>Novo Lead</b>.</div>';}
+      else{
+        const rows=lista.map(l=>`<tr data-lead="${l.id}" style="cursor:pointer">
+          <td><b>${esc(l.nome)}</b></td><td>${LEAD_ORIG_LABEL[l.origem]||'—'}</td><td>${esc(l.servico||'—')}</td>
+          <td>${esc(l.responsavel||'—')}</td><td>${esc(l.telefone||'—')}</td><td>${l.data_inicio?dtBR(l.data_inicio):'—'}</td>
+          <td>${leadPagTag(l.situacao_pagamento)}</td><td>${LEAD_ST_LABEL[l.status]||l.status}</td></tr>`).join('');
+        listEl.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Nome</th><th>Origem</th><th>Serviço</th><th>Responsável</th><th>Telefone</th><th>Início</th><th>Pagamento</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        listEl.querySelectorAll('[data-lead]').forEach(r=>r.addEventListener('click',()=>abrirLead(LEADS.find(x=>x.id===r.dataset.lead))));
+      }
+    }else{
+      listEl.classList.add('hidden');board.classList.remove('hidden');
+      board.innerHTML=LEAD_COLS.map(c=>renderCol(c,lista.filter(l=>l.status===c.k),leadCard,null)).join('');
+      buildColTabs('tabs-leads','board-leads',LEAD_COLS);
+    }
+    // ações comuns
+    document.querySelectorAll('#view-leads [data-leaddel]').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();if(!confirm('Excluir este lead?'))return;
       try{await api('/api/leads/'+b.dataset.leaddel,{method:'DELETE'});showToast('Lead excluído');loadLeads();}
-      catch(e){showToast('Erro ao excluir');console.error(e);}}));
+      catch(err){showToast('Erro ao excluir');console.error(err);}}));
+    document.querySelectorAll('#board-leads [data-lead]').forEach(b=>b.addEventListener('click',()=>abrirLead(LEADS.find(x=>x.id===b.dataset.lead))));
   }
   async function loadLeads(){try{LEADS=await api('/api/leads');}catch(e){LEADS=[];console.error(e);}renderLeads();}
   function abrirLead(l){
     const f=document.getElementById('form-lead');f.reset();
     document.getElementById('lead-titulo').textContent=l?'Editar Lead':'Novo Lead';
     document.getElementById('lead-id').value=l?l.id:'';
-    if(l){f.nome.value=l.nome||'';f.telefone.value=l.telefone||'';f.origem.value=l.origem||'';f.servico.value=l.servico||'';f.status.value=l.status||'NOVO';f.observacao.value=l.observacao||'';}
+    if(l){f.nome.value=l.nome||'';f.telefone.value=l.telefone||'';f.origem.value=l.origem||'';f.servico.value=l.servico||'';f.responsavel.value=l.responsavel||'';f.endereco.value=l.endereco||'';f.data_inicio.value=l.data_inicio||'';f.situacao_pagamento.value=l.situacao_pagamento||'PENDENTE';f.status.value=l.status||'MARCAR_VISITA';f.observacao.value=l.observacao||'';}
     openModal('ov-lead');
   }
   document.getElementById('btn-lead-novo').addEventListener('click',()=>abrirLead(null));
-  document.getElementById('leads-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    document.getElementById('leads-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');leadOrigemFiltro=b.dataset.origem;renderLeads();}));
+  document.getElementById('leads-viewmode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    leadsViewMode=b.dataset.vm;document.getElementById('leads-viewmode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderLeads();}));
+  document.getElementById('leads-origem-f').addEventListener('change',e=>{leadOrigemFiltro=e.target.value;renderLeads();});
   document.getElementById('form-lead').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('lead-id').value;
-    const payload={nome:f.nome.value,telefone:f.telefone.value||null,origem:f.origem.value||null,servico:f.servico.value||null,status:f.status.value,observacao:f.observacao.value||null};
+    const payload={nome:f.nome.value,telefone:f.telefone.value||null,origem:f.origem.value||null,servico:f.servico.value||null,responsavel:f.responsavel.value||null,endereco:f.endereco.value||null,data_inicio:f.data_inicio.value||null,situacao_pagamento:f.situacao_pagamento.value,status:f.status.value,observacao:f.observacao.value||null};
     try{
       if(id)await api('/api/leads/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -2188,6 +2219,8 @@
       reload:loadFin, rotulos:{aprovado:'Aguardando Sinal',execucao:'Em Execução',afericao:'Aferição de Margem',liquidado:'Concluído / Liquidado'} },
     'board-orc':{ path:id=>'/api/orcamentos/'+id, campo:'status',
       reload:loadOrc, rotulos:{PENDENTE_MEDICAO:'1º A Medir',AGUARDANDO_PROPOSTA:'2º Aguardando Proposta',PROPOSTA_ENVIADA:'3º Proposta Enviada',APROVADO:'4º Aprovado'} },
+    'board-leads':{ path:id=>'/api/leads/'+id, campo:'status',
+      reload:loadLeads, rotulos:{MARCAR_VISITA:'Marcar visita',VISITA_AGENDADA:'Visita agendada',EM_EXECUCAO:'Em execução',EM_ESPERA:'Em espera',FECHADO:'Negócio fechado',PERDIDO:'Perdido'} },
   };
   let dragCardId=null, dragBoard=null;
   function setupDnD(boardId){
@@ -2207,7 +2240,7 @@
       }catch(err){showToast('Erro ao mover');console.error(err);}
     });
   }
-  setupDnD('board-dp');setupDnD('board-fin');setupDnD('board-orc');
+  setupDnD('board-dp');setupDnD('board-fin');setupDnD('board-orc');setupDnD('board-leads');
 
   // Submit: Novo Colaborador
   document.getElementById('form-colab').addEventListener('submit',async e=>{

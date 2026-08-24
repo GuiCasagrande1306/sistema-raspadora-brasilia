@@ -628,7 +628,7 @@ export const db = {
       if (error) throw error;
       return data;
     }
-    const novo = { id: uid(), status: 'NOVO', criado_em: new Date().toISOString(), ...l };
+    const novo = { id: uid(), status: 'MARCAR_VISITA', situacao_pagamento: 'PENDENTE', criado_em: new Date().toISOString(), ...l };
     mock.leads.push(novo);
     return novo;
   },

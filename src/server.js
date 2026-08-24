@@ -341,8 +341,9 @@ app.delete('/api/docs-empresa/:id', requireAdmin, async (req, res, next) => {
 });
 
 // ---------- LEADS (comercial) ----------
-const LEAD_ORIGENS = ['GOOGLE', 'INSTAGRAM', 'INDICACAO', 'PARCEIRO'];
-const LEAD_STATUS = ['NOVO', 'EM_CONTATO', 'QUALIFICADO', 'GANHO', 'PERDIDO'];
+const LEAD_ORIGENS = ['GOOGLE', 'META', 'INSTAGRAM', 'INDICACAO', 'PARCEIRO'];
+const LEAD_STATUS = ['MARCAR_VISITA', 'VISITA_AGENDADA', 'EM_EXECUCAO', 'EM_ESPERA', 'FECHADO', 'PERDIDO'];
+const LEAD_PAGTO = ['PENDENTE', 'CONCLUIDO'];
 app.use('/api/leads', requireAdmin);
 app.get('/api/leads', async (req, res, next) => {
   try { res.json(await db.listLeads({ origem: req.query.origem, status: req.query.status })); }
@@ -355,18 +356,25 @@ app.post('/api/leads', async (req, res, next) => {
     if (origem && !LEAD_ORIGENS.includes(origem)) return res.status(400).json({ erro: 'origem inválida' });
     res.status(201).json(await db.createLead({
       nome, telefone: req.body.telefone || null, origem: origem || null,
-      servico: req.body.servico || null, observacao: req.body.observacao || null,
-      status: LEAD_STATUS.includes(req.body.status) ? req.body.status : 'NOVO',
+      servico: req.body.servico || null, responsavel: req.body.responsavel || null,
+      endereco: req.body.endereco || null, data_inicio: req.body.data_inicio || null,
+      situacao_pagamento: LEAD_PAGTO.includes(req.body.situacao_pagamento) ? req.body.situacao_pagamento : 'PENDENTE',
+      observacao: req.body.observacao || null,
+      status: LEAD_STATUS.includes(req.body.status) ? req.body.status : 'MARCAR_VISITA',
     }));
   } catch (e) { next(e); }
 });
 app.patch('/api/leads/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['nome', 'telefone', 'servico', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    for (const k of ['nome', 'telefone', 'servico', 'observacao', 'responsavel', 'endereco', 'data_inicio']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.origem !== undefined) {
       if (req.body.origem && !LEAD_ORIGENS.includes(req.body.origem)) return res.status(400).json({ erro: 'origem inválida' });
       patch.origem = req.body.origem;
+    }
+    if (req.body.situacao_pagamento !== undefined) {
+      if (!LEAD_PAGTO.includes(req.body.situacao_pagamento)) return res.status(400).json({ erro: 'situação de pagamento inválida' });
+      patch.situacao_pagamento = req.body.situacao_pagamento;
     }
     if (req.body.status !== undefined) {
       if (!LEAD_STATUS.includes(req.body.status)) return res.status(400).json({ erro: 'status inválido' });
