@@ -1040,7 +1040,7 @@
         <div class="metric"><div class="lbl">Aguardando proposta</div><div class="val" id="prop-aguard">—</div><div class="sub">para precificar</div></div>
         <div class="metric"><div class="lbl">Enviadas</div><div class="val" id="prop-enviadas">—</div><div class="sub">aguardando resposta</div></div>
         <div class="metric"><div class="lbl">Aprovadas</div><div class="val" id="prop-aprovadas">—</div><div class="sub">viraram obra</div></div>
-        <div class="metric"><div class="lbl">Valor em propostas</div><div class="val money" id="prop-valor">—</div><div class="sub">aguardando + enviadas</div></div>
+        <div class="metric"><div class="lbl">Valor Aprovado</div><div class="val money" id="prop-valor">—</div><div class="sub">só aprovadas · viram obra / saldo projetado</div></div>
       </div>
       <div id="prop-content" style="padding:18px 26px 96px;"></div>
     </section>
@@ -2576,7 +2576,7 @@
     document.getElementById('prop-aguard').textContent=PROP_ORC.filter(o=>o.status==='AGUARDANDO_PROPOSTA').length;
     document.getElementById('prop-enviadas').textContent=PROP_ORC.filter(o=>o.status==='PROPOSTA_ENVIADA').length;
     document.getElementById('prop-aprovadas').textContent=PROP_ORC.filter(o=>o.status==='APROVADO').length;
-    const valor=PROP_ORC.filter(o=>['AGUARDANDO_PROPOSTA','PROPOSTA_ENVIADA'].includes(o.status)).reduce((s,o)=>s+(o.valor_total||0),0);
+    const valor=PROP_ORC.filter(o=>o.status==='APROVADO').reduce((s,o)=>s+(o.valor_total||0),0);
     document.getElementById('prop-valor').textContent=brlN(valor);
     if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhuma proposta nesta etapa. Medições concluídas em <b>Visita Técnica (O.S)</b> entram aqui como <b>Aguardando proposta</b>.</div>';return;}
     el.innerHTML='<div class="orc-grid">'+lista.map(propCard).join('')+'</div>';
