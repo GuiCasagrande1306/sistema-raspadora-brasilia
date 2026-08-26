@@ -821,6 +821,7 @@
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Mês<input type="month" id="vt-mes" class="dash-sel"></label>
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Semana<select id="vt-semana" class="dash-sel"></select></label>
+          <button class="btn-ghost" id="vt-cronograma" style="min-height:40px" title="Preenche as viagens pela alocação do cronograma (2 por dia trabalhado)">🔄 Puxar do Cronograma</button>
           <button class="primary" id="vt-export" style="min-height:40px">Exportar PDF</button>
         </div>
       </div>
@@ -1968,11 +1969,11 @@
     const out=[];let n=1,ini=null;
     for(let d=1;d<=ult;d++){
       const dow=new Date(y,m-1,d).getDay(); // 0=dom .. 6=sáb
-      if(dow===0||dow===6){ if(ini!==null){out.push({n,label:`Semana ${n} (${p(ini)} a ${p(d-1)})`});n++;ini=null;} continue; }
+      if(dow===0||dow===6){ if(ini!==null){out.push({n,ini,fim:d-1,label:`Semana ${n} (${p(ini)} a ${p(d-1)})`});n++;ini=null;} continue; }
       if(ini===null)ini=d;
-      if(dow===5){out.push({n,label:`Semana ${n} (${p(ini)} a ${p(d)})`});n++;ini=null;} // sexta fecha a semana
+      if(dow===5){out.push({n,ini,fim:d,label:`Semana ${n} (${p(ini)} a ${p(d)})`});n++;ini=null;} // sexta fecha a semana
     }
-    if(ini!==null)out.push({n,label:`Semana ${n} (${p(ini)} a ${p(ult)})`});
+    if(ini!==null)out.push({n,ini,fim:ult,label:`Semana ${n} (${p(ini)} a ${p(ult)})`});
     return out;
   }
   function vtInitFiltros(){
@@ -2088,6 +2089,24 @@
     w.document.write(html);w.document.close();
   }
   document.getElementById('vt-export').addEventListener('click',vtExportPDF);
+  // Puxar do Cronograma: viagens = dias alocados na semana × 2; quem não foi alocado fica com 0 (faltou)
+  document.getElementById('vt-cronograma').addEventListener('click',async()=>{
+    const ano_mes=document.getElementById('vt-mes').value,semana=parseInt(document.getElementById('vt-semana').value,10)||1;
+    const sem=vtSemanasDoMes(ano_mes).find(s=>s.n===semana);if(!sem){showToast('Semana inválida');return;}
+    const p=x=>String(x).padStart(2,'0');
+    const desde=`${ano_mes}-${p(sem.ini)}`,ate=`${ano_mes}-${p(sem.fim)}`;
+    try{
+      const r=await api('/api/cronograma/dias-trabalhados?desde='+desde+'&ate='+ate);
+      const dd=r.porColaborador||{};let faltaram=0;
+      VT_STATE.linhas.forEach(l=>{
+        const dias=dd[l.colaborador_id]||0;if(dias===0)faltaram++;
+        l.qtd_viagens=dias*2;l.total=+(l.qtd_viagens*l.valor_passagem).toFixed(2);
+        vtSave(l);
+      });
+      vtRenderTabela();vtRecalc();
+      showToast(`VT preenchido pelo cronograma · ${faltaram} sem alocação (0 viagens)`);
+    }catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Cronograma: '+(m||'erro'));console.error(e);}
+  });
 
   // ---------- NOTAS FISCAIS (pastas: empresa > tipo > ano > PDFs) ----------
   const NF_EMP_LABEL={RB:'NF RB',ECO:'NF Eco Pisos'};

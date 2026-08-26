@@ -597,6 +597,22 @@ app.delete('/api/cronograma/funcao/:id', async (req, res, next) => {
   try { res.json(await db.deleteFuncao(req.params.id)); }
   catch (e) { next(e); }
 });
+// dias trabalhados por colaborador num período (para preencher o Vale-Transporte)
+app.get('/api/cronograma/dias-trabalhados', async (req, res, next) => {
+  try {
+    const { desde, ate } = req.query;
+    if (!desde || !ate) return res.status(400).json({ erro: 'desde e ate são obrigatórios' });
+    const alocs = await db.listAlocacoes({ desde, ate });
+    const porColaborador = {};
+    for (const a of alocs) {
+      if (!a.colaborador_id) continue;
+      (porColaborador[a.colaborador_id] ||= new Set()).add(a.data);
+    }
+    const dias = {};
+    for (const [id, set] of Object.entries(porColaborador)) dias[id] = set.size;
+    res.json({ desde, ate, porColaborador: dias });
+  } catch (e) { next(e); }
+});
 // quadro do dia: obras + colaboradores + alocações
 app.get('/api/cronograma', async (req, res, next) => {
   try {
