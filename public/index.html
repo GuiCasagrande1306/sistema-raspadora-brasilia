@@ -2075,13 +2075,13 @@
     const escolha=prompt('Qual mês criar? (competência = mês anterior)\n\n'+lista+'\n\nDigite o número:');
     if(!escolha)return;const idx=parseInt(escolha,10)-1;if(isNaN(idx)||idx<0||idx>=disp.length){showToast('Opção inválida');return;}
     try{await api('/api/gefip/pasta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ano:gState.ano,mes:disp[idx][0]})});showToast('Mês criado');renderGefip();}
-    catch(e){showToast('Erro ao criar mês');console.error(e);}
+    catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Criar mês: '+(m||'erro'));console.error(e);}
   }
   async function gefipNovaObra(){
     const nome=prompt('Nome da obra / incorporadora (ex.: Flamboyant, Opus, EBM):');
     if(!nome||!nome.trim())return;
     try{await api('/api/gefip/pasta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ano:gState.ano,mes:gState.mes,obra:nome.trim()})});showToast('Obra criada');renderGefip();}
-    catch(e){showToast('Erro ao criar obra');console.error(e);}
+    catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Criar obra: '+(m||'erro'));console.error(e);}
   }
   function gefipUpload(){
     const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';inp.multiple=true;
