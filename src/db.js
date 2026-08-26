@@ -1189,6 +1189,24 @@ export const db = {
     if (m.status !== 'PREVISTO') await this._saldoAjustar(m.conta_bancaria_id, m.tipo === 'ENTRADA' ? m.valor : -m.valor);
     return data;
   },
+  // Proposta aprovada → entrada PREVISTA no fluxo de caixa (recebível), uma única vez por orçamento
+  async lancarRecebivelProposta(orc) {
+    if (!USING_SUPABASE) return null;
+    const valor = Math.round((Number(orc.valor_total) || 0) * 100); // valor_total do orçamento é em reais
+    if (valor <= 0) return null;
+    // evita duplicar: já existe recebível deste orçamento?
+    const { data: existe } = await sb('movimentacoes_caixa').select('id')
+      .eq('categoria', 'RECEBIVEL_PROPOSTA').ilike('descricao', `%Nº ${orc.numero_orcamento} %`).limit(1);
+    if (existe && existe.length) return null;
+    const { data: contas } = await sb('contas_bancarias').select('id').limit(1);
+    const conta_id = contas && contas.length ? contas[0].id : null;
+    const data_prev = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10); // ~7 dias (sinal esperado)
+    return this.criarMovimentacao({
+      conta_bancaria_id: conta_id, obra_id: null, data_movimento: data_prev,
+      descricao: `Recebível — Proposta Nº ${orc.numero_orcamento} (${orc.cliente_nome || ''})`,
+      categoria: 'RECEBIVEL_PROPOSTA', tipo: 'ENTRADA', valor, status: 'PREVISTO', conciliado: false,
+    });
+  },
   // Vale: debita a caixinha e registra pendente de abate na folha
   async criarVale(v) {
     if (!USING_SUPABASE) return { vale: { ...v, id: uid() }, saldo_caixinha: 0, alerta_liquidez: false };

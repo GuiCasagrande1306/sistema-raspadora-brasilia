@@ -266,8 +266,14 @@ app.patch('/api/orcamentos/:id', async (req, res, next) => {
       const { itens, valor_total } = prepararItens(req.body.itens);
       patch.itens = itens; patch.valor_total = valor_total;
     }
+    // detecta transição para APROVADO (só lança o recebível na virada, sem duplicar)
+    let anterior = null;
+    if (patch.status === 'APROVADO') { try { anterior = await db.getOrcamento(req.params.id); } catch { } }
     const o = await db.updateOrcamento(req.params.id, patch);
     if (!o) return res.status(404).json({ erro: 'orçamento não encontrado' });
+    if (patch.status === 'APROVADO' && (!anterior || anterior.status !== 'APROVADO')) {
+      try { await db.lancarRecebivelProposta(o); } catch (e) { console.error('[recebivel-proposta]', e); }
+    }
     res.json(o);
   } catch (e) { next(e); }
 });
