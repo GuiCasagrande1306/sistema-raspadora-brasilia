@@ -1169,18 +1169,27 @@ export const db = {
   // Fechamento de folha no período [desde, ate]
   async fecharFolha(desde, ate) {
     if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
-    const [{ data: colabs }, { data: apeq }, { data: vales }] = await Promise.all([
+    const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }] = await Promise.all([
       sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status'),
       sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
       sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha').eq('abatido_folha', false),
+      // Cronograma Diário: alocações do período (fonte principal das diárias)
+      sb('cronograma_alocacoes').select('colaborador_id,data,obra_nome,funcao,valor_diaria').gte('data', desde).lte('data', ate),
     ]);
     const porColab = {};
-    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0 };
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, cronDiarias: 0, cronDias: new Set(), detalhe: [] };
     for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); p.m2 += Number(r.m2_rateado); }
     for (const v of (vales || [])) { const p = porColab[v.colaborador_id]; if (p) p.vales += v.valor; }
+    for (const a of (alocs || [])) {
+      const p = porColab[a.colaborador_id]; if (!p) continue;
+      p.cronDiarias += (a.valor_diaria || 0); p.cronDias.add(a.data);
+      p.detalhe.push({ data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0 });
+    }
     const linhas = Object.values(porColab).map(p => {
-      const dias = p.dias.size;
-      const diarias = dias * (p.valor_diaria || 0);
+      const temCron = p.cronDias.size > 0;
+      // Diárias: preferir o Cronograma; se não houver alocação, cai no antigo (dias de apontamento × diária base)
+      const dias = temCron ? p.cronDias.size : p.dias.size;
+      const diarias = temCron ? p.cronDiarias : (p.dias.size * (p.valor_diaria || 0));
       const comissao = Math.round(p.m2 * (p.comissao_por_m2 || 0));
       const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade)
       const bruto = diarias + comissao + bonus_assiduidade;
@@ -1188,7 +1197,9 @@ export const db = {
       return {
         colaborador_id: p.id, nome: p.nome, cargo: p.cargo,
         dias_trabalhados: dias, m2_processados: Math.round(p.m2 * 100) / 100,
+        origem_diaria: temCron ? 'cronograma' : 'apontamento',
         diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales, total_liquido,
+        detalhe: p.detalhe.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
       };
     }).filter(l => l.dias_trabalhados || l.vales_abatidos);
     const totais = {

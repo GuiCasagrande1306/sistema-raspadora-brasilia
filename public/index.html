@@ -3292,18 +3292,32 @@
     document.getElementById('folha-diarias').textContent=brl(r.totais.diarias||0);
     document.getElementById('folha-comissoes').textContent=brl(r.totais.comissoes||0);
     document.getElementById('folha-vales').textContent=brl(r.totais.vales||0);
-    const rows=r.colaboradores.length?r.colaboradores.map(l=>`<tr>
-        <td><div class="vt-nome"><div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}</div></td>
+    const rows=r.colaboradores.length?r.colaboradores.map((l,idx)=>{
+      const temDet=(l.detalhe||[]).length>0;
+      const cronTag=l.origem_diaria==='cronograma'?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">cronograma</span>':'';
+      const seta=temDet?'<span style="color:var(--ink-3);margin-right:4px" data-arrow>▸</span>':'';
+      const linha=`<tr data-folharow="${idx}" style="cursor:${temDet?'pointer':'default'}">
+        <td><div class="vt-nome">${seta}<div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}</div></td>
         <td class="num">${l.dias_trabalhados}</td><td class="num">${l.m2_processados}</td>
         <td class="num">${brl(l.diarias)}</td><td class="num">${brl(l.comissao)}</td>
         <td class="num">${l.bonus_assiduidade?brl(l.bonus_assiduidade):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td>
-        <td class="num money">${brl(l.total_liquido)}</td></tr>`).join('')
-      :'<tr><td colspan="8" style="text-align:center;color:var(--ink-3);padding:24px">Sem produção ou vales no período selecionado.</td></tr>';
+        <td class="num money">${brl(l.total_liquido)}</td></tr>`;
+      const det=temDet?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="8" style="background:var(--ground);padding:0">
+        <div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th></tr></thead>
+        <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div></td></tr>`:'';
+      return linha+det;
+    }).join('')
+      :'<tr><td colspan="8" style="text-align:center;color:var(--ink-3);padding:24px">Sem alocações (cronograma), produção ou vales no período selecionado.</td></tr>';
     document.getElementById('folha-content').innerHTML=
       `<div class="vt-wrap"><table class="vt-table"><thead><tr>
          <th>Colaborador</th><th class="num">Dias</th><th class="num">m²</th><th class="num">Diárias</th><th class="num">Comissão</th><th class="num">Bônus</th><th class="num">Vales</th><th class="num">Líquido</th>
        </tr></thead><tbody>${rows}</tbody></table></div>`;
+    document.querySelectorAll('#folha-content [data-folharow]').forEach(tr=>tr.addEventListener('click',()=>{
+      const d=document.querySelector('#folha-content [data-det="'+tr.dataset.folharow+'"]');if(!d)return;
+      d.classList.toggle('hidden');const ar=tr.querySelector('[data-arrow]');if(ar)ar.textContent=d.classList.contains('hidden')?'▸':'▾';
+    }));
   }
   document.getElementById('btn-folha-calc').addEventListener('click',()=>calcularFolha().catch(e=>{showToast('Erro na folha');console.error(e);}));
 
