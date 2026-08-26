@@ -2914,33 +2914,36 @@
   });
 
   // ---------- AGENDA (Google Calendar embed) ----------
-  function agendaUrl(){return localStorage.getItem('rb_agenda_url')||'';}
-  function loadAgenda(){
+  let AGENDA_URL='';
+  async function agendaFetch(){try{const c=await api('/api/config-app/agenda');AGENDA_URL=(c&&c.url)||'';}catch(e){AGENDA_URL='';console.error(e);}return AGENDA_URL;}
+  async function agendaSave(url){return api('/api/config-app/agenda',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url||null})});}
+  async function loadAgenda(){
     const el=document.getElementById('agenda-content');if(!el)return;
-    const url=agendaUrl();
-    if(url){
+    el.innerHTML='<div class="orc-empty">Carregando agenda…</div>';
+    await agendaFetch();
+    if(AGENDA_URL){
       el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn-ghost" id="agenda-config" style="min-height:36px">⚙️ Trocar agenda</button></div>
         <div style="border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
-        <iframe src="${esc(url)}" style="border:0;width:100%;height:70vh;min-height:520px" loading="lazy"></iframe></div>`;
+        <iframe src="${esc(AGENDA_URL)}" style="border:0;width:100%;height:70vh;min-height:520px" loading="lazy"></iframe></div>`;
       el.querySelector('#agenda-config').addEventListener('click',agendaConfig);
     }else{agendaConfig();}
   }
   function agendaConfig(){
     const el=document.getElementById('agenda-content');
     el.innerHTML=`<div class="orc-empty" style="text-align:left;max-width:680px">
-      <h3 style="margin:0 0 8px">Conectar o Google Calendar</h3>
+      <h3 style="margin:0 0 8px">Conectar o Google Calendar <span style="font-size:12px;color:var(--ink-3);font-weight:500">(vale para todo o time)</span></h3>
       <p style="margin:0 0 10px">No Google Calendar (computador): <b>Configurações → sua agenda → Integrar agenda → Incorporar código</b>. Copie o link que aparece dentro de <code>src="..."</code> (começa com <code>https://calendar.google.com/calendar/embed?...</code>) e cole abaixo.</p>
       <p style="margin:0 0 12px;font-size:12.5px;color:var(--ink-3)">Dica: para a equipe toda ver, deixe a agenda como <b>pública</b> ou compartilhada com os e-mails do time.</p>
-      <div class="field"><label>Link de incorporação (embed)</label><input id="agenda-url-inp" placeholder="https://calendar.google.com/calendar/embed?src=..." value="${esc(agendaUrl())}"></div>
-      <div style="display:flex;gap:8px;margin-top:12px"><button class="primary" id="agenda-salvar">Salvar agenda</button>${agendaUrl()?'<button class="btn-ghost" id="agenda-remover">Remover</button>':''}</div>
+      <div class="field"><label>Link de incorporação (embed)</label><input id="agenda-url-inp" placeholder="https://calendar.google.com/calendar/embed?src=..." value="${esc(AGENDA_URL)}"></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="primary" id="agenda-salvar">Salvar agenda</button>${AGENDA_URL?'<button class="btn-ghost" id="agenda-remover">Remover</button>':''}</div>
     </div>`;
-    el.querySelector('#agenda-salvar').addEventListener('click',()=>{
+    el.querySelector('#agenda-salvar').addEventListener('click',async()=>{
       let v=document.getElementById('agenda-url-inp').value.trim();
       const m=v.match(/src=["']([^"']+)["']/);if(m)v=m[1];
       if(!/^https:\/\/calendar\.google\.com\//.test(v)){showToast('Cole um link válido do Google Calendar');return;}
-      localStorage.setItem('rb_agenda_url',v);showToast('Agenda conectada');loadAgenda();
+      try{await agendaSave(v);showToast('Agenda conectada para o time');loadAgenda();}catch(e){showToast('Erro ao salvar agenda');console.error(e);}
     });
-    el.querySelector('#agenda-remover')?.addEventListener('click',()=>{localStorage.removeItem('rb_agenda_url');showToast('Agenda removida');loadAgenda();});
+    el.querySelector('#agenda-remover')?.addEventListener('click',async()=>{try{await agendaSave('');showToast('Agenda removida');loadAgenda();}catch(e){showToast('Erro');console.error(e);}});
   }
 
   // ---------- BOTTOM NAV (mobile) ----------
