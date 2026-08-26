@@ -503,6 +503,8 @@
   .apont-chip{display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:20px;border:1px solid var(--line-2);
     background:var(--surface-2);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;}
   .apont-chip.on{background:var(--laranja);color:#fff;border-color:transparent;}
+  .apont-chip[draggable]{cursor:grab;} .apont-chip.dragging{opacity:.5;}
+  .cron-col.dragover .cards{outline:2px dashed var(--laranja);outline-offset:4px;border-radius:12px;background:var(--laranja-50);}
   .dre-hero{background:var(--chumbo-900);color:#fff;padding:18px 20px;}
   .dre-hero h3{margin:0;font-size:17px;} .dre-hero .sub{color:var(--laranja);font-size:12.5px;font-weight:600;margin-top:2px;}
   .dre-line{display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line);font-size:14px;}
@@ -738,6 +740,9 @@
       <button data-view="prop" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg><span class="lbl">Propostas</span><span class="navbadge" id="badge-prop" style="display:none"></span></button>
       <button data-view="clientes" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="lbl">Clientes</span></button>
       <button data-view="contratos" data-g="com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 17c1 1 2 1 3 0s2-1 3 0"/></svg><span class="lbl">Contratos</span></button>
+
+      <div class="nav-group" data-group="oper">Operação</div>
+      <button data-view="cronograma" data-g="oper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg><span class="lbl">Cronograma Diário</span></button>
 
       <div class="nav-group" data-group="os">Visita Técnica (O.S)</div>
       <button data-view="orc" data-g="os"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Medição de Campo &amp; Orçamento</span></button>
@@ -1005,6 +1010,19 @@
       </div>
       <div class="coltabs" id="tabs-orc"></div>
       <div class="board" id="board-orc" style="padding-bottom:96px;"></div>
+    </section>
+    <section id="view-cronograma" class="hidden">
+      <div class="modhead"><h1>Cronograma Diário</h1><p>Aloque a equipe nas obras do dia — função/equipamento e diária alimentam a Folha e o Vale-Transporte.</p></div>
+      <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="cron-data" class="dash-sel"></label>
+        <button class="btn-ghost" id="btn-funcoes" style="min-height:40px">⚙️ Funções &amp; Diárias</button>
+        <div class="metric" style="margin-left:auto;min-width:170px"><div class="lbl">Total de diárias do dia</div><div class="val money" id="cron-total">—</div></div>
+      </div>
+      <div style="padding:16px 26px 0">
+        <div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:6px">Arraste um colaborador para dentro de uma obra (ou use “+ Alocar”).</div>
+        <div id="cron-equipe" class="apont-equipe" style="margin-bottom:8px"></div>
+      </div>
+      <div class="board" id="cron-board" style="padding-bottom:96px"></div>
     </section>
     <section id="view-prop" class="hidden">
       <div class="modhead"><h1>Propostas Comerciais</h1><p>Precificação das medições — defina o valor por m²/ml/m³, gere o total, envie e aprove.</p></div>
@@ -1278,6 +1296,44 @@
   </div>
 </div>
 
+<!-- MODAL: Alocar colaborador (Cronograma) -->
+<div class="overlay" id="ov-alocar">
+  <div class="modal">
+    <header><h3 id="alocar-titulo">Alocar na obra</h3><button class="x" data-close>×</button></header>
+    <form id="form-alocar">
+      <input type="hidden" name="id" id="alocar-id">
+      <div class="body">
+        <div class="field"><label>Colaborador *</label><select name="colaborador_id" id="alocar-colab" required></select></div>
+        <div class="field"><label>Obra *</label><select name="obra_id" id="alocar-obra" required></select></div>
+        <div class="grid2">
+          <div class="field"><label>Função / equipamento</label><select name="funcao" id="alocar-funcao"></select></div>
+          <div class="field"><label>Diária (R$)</label><input name="valor_diaria" id="alocar-valor" type="number" step="0.01" min="0" placeholder="0,00"></div>
+        </div>
+        <div class="hint">A diária vem da função escolhida, mas você pode ajustar aqui. Sem função na lista? Abra “Funções &amp; Diárias”.</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar alocação</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Funções & Diárias (editável) -->
+<div class="overlay" id="ov-funcoes">
+  <div class="modal">
+    <header><h3>Funções &amp; Diárias</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div id="funcoes-lista" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
+        <div class="grid2">
+          <div class="field"><label>Nova função / equipamento</label><input id="funcao-nome" placeholder="Ex.: Servente, Mangote, Máquina…"></div>
+          <div class="field"><label>Diária (R$)</label><input id="funcao-valor" type="number" step="0.01" min="0" placeholder="0,00"></div>
+        </div>
+        <button type="button" class="primary" id="btn-add-funcao" style="min-height:40px">+ Adicionar função</button>
+      </div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
+  </div>
+</div>
+
 <!-- MODAL: Lançamento diário -->
 <div class="overlay" id="ov-lancdia">
   <div class="modal">
@@ -1532,6 +1588,7 @@
     if(view==='leads')loadLeads().catch(e=>console.error(e));
     if(view==='clientes')loadClientes().catch(e=>console.error(e));
     if(view==='prop')loadPropostas().catch(e=>console.error(e));
+    if(view==='cronograma')loadCronograma().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
     const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
@@ -2420,6 +2477,108 @@
     w.document.write(html);w.document.close();
   }
 
+  // ---------- CRONOGRAMA DIÁRIO ----------
+  let CRON={data:null,obras:[],colaboradores:[],alocacoes:[],total:0}, FUNCOES=[], cronDragColab=null;
+  async function loadCronograma(){
+    const el=document.getElementById('cron-data');if(!el.value)el.value=isoHoje();
+    try{FUNCOES=await api('/api/cronograma/funcoes');}catch(e){FUNCOES=[];console.error(e);}
+    try{CRON=await api('/api/cronograma?data='+el.value);}catch(e){console.error(e);CRON={data:el.value,obras:[],colaboradores:[],alocacoes:[],total:0};}
+    renderCron();
+  }
+  function renderCron(){
+    const equipe=document.getElementById('cron-equipe');
+    equipe.innerHTML=(CRON.colaboradores||[]).map(c=>`<span class="apont-chip" draggable="true" data-dragcolab="${c.id}">${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3)">Nenhum colaborador ativo.</span>';
+    document.getElementById('cron-total').textContent=brl(CRON.total||0);
+    const board=document.getElementById('cron-board');
+    if(!(CRON.obras||[]).length){board.innerHTML='<div class="orc-empty">Nenhuma obra ativa. Cadastre uma obra em <b>Obras &amp; Resultado</b> (ou feche um lead).</div>';}
+    else{
+      board.innerHTML=CRON.obras.map(o=>{
+        const alocs=CRON.alocacoes.filter(a=>a.obra_id===o.id);
+        const cards=alocs.map(a=>`<div class="card" style="cursor:pointer" data-editaloc="${a.id}">
+          <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(a.colaborador_nome||'')}</h4><button class="doc-cloud" data-delaloc="${a.id}" title="Remover" style="padding:2px">${DE_TRASH}</button></div>
+          <div class="tags" style="margin-top:6px"><span class="tag t-lar">${esc(a.funcao||'sem função')}</span><span class="tag money">${brl(a.valor_diaria||0)}</span></div></div>`).join('');
+        const sub=alocs.reduce((s,a)=>s+(a.valor_diaria||0),0);
+        return `<div class="col cron-col" data-obra="${o.id}"><div class="colhead"><span class="swatch" style="background:var(--laranja)"></span><h3>${esc(o.cliente)}</h3><span class="count">${alocs.length}</span></div>
+          <div class="cards">${cards}<button class="addcard" data-alocobra="${o.id}">+ Alocar</button></div>
+          <div style="padding:4px 6px 0;font-size:11.5px;color:var(--ink-3)">Diárias: ${brl(sub)}</div></div>`;
+      }).join('');
+    }
+    // drag da equipe
+    equipe.querySelectorAll('[data-dragcolab]').forEach(t=>{
+      t.addEventListener('dragstart',()=>{cronDragColab=t.dataset.dragcolab;t.classList.add('dragging');});
+      t.addEventListener('dragend',()=>t.classList.remove('dragging'));
+    });
+    board.querySelectorAll('.cron-col').forEach(col=>{
+      col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('dragover');});
+      col.addEventListener('dragleave',()=>col.classList.remove('dragover'));
+      col.addEventListener('drop',e=>{e.preventDefault();col.classList.remove('dragover');if(cronDragColab){abrirAlocar(cronDragColab,col.dataset.obra,null);cronDragColab=null;}});
+    });
+    board.querySelectorAll('[data-alocobra]').forEach(b=>b.addEventListener('click',()=>abrirAlocar(null,b.dataset.alocobra,null)));
+    board.querySelectorAll('[data-editaloc]').forEach(c=>c.addEventListener('click',e=>{if(e.target.closest('[data-delaloc]'))return;const a=CRON.alocacoes.find(x=>x.id===c.dataset.editaloc);abrirAlocar(a.colaborador_id,a.obra_id,a);}));
+    board.querySelectorAll('[data-delaloc]').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();if(!confirm('Remover esta alocação?'))return;
+      try{await api('/api/cronograma/alocacao/'+b.dataset.delaloc,{method:'DELETE'});showToast('Removido');loadCronograma();}
+      catch(err){showToast('Erro');console.error(err);}}));
+  }
+  function abrirAlocar(colabId,obraId,aloc){
+    const f=document.getElementById('form-alocar');f.reset();
+    document.getElementById('alocar-id').value=aloc?aloc.id:'';
+    document.getElementById('alocar-titulo').textContent=aloc?'Editar alocação':'Alocar na obra';
+    f.colaborador_id.innerHTML=(CRON.colaboradores||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    f.obra_id.innerHTML=(CRON.obras||[]).map(o=>`<option value="${o.id}">${esc(o.cliente)}</option>`).join('');
+    f.funcao.innerHTML='<option value="">— função / equipamento —</option>'+FUNCOES.map(fu=>`<option value="${esc(fu.nome)}" data-val="${fu.valor}">${esc(fu.nome)} · ${brl(fu.valor)}</option>`).join('');
+    if(colabId)f.colaborador_id.value=colabId;
+    if(obraId)f.obra_id.value=obraId;
+    if(aloc){f.funcao.value=aloc.funcao||'';f.valor_diaria.value=aloc.valor_diaria?(aloc.valor_diaria/100).toFixed(2):'';}
+    openModal('ov-alocar');
+  }
+  document.getElementById('alocar-funcao').addEventListener('change',e=>{
+    const opt=e.target.selectedOptions[0];const v=opt&&opt.dataset.val?(+opt.dataset.val/100):null;
+    if(v!=null)document.getElementById('alocar-valor').value=v.toFixed(2);
+  });
+  document.getElementById('form-alocar').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;const id=document.getElementById('alocar-id').value;
+    const colab=(CRON.colaboradores||[]).find(c=>c.id===f.colaborador_id.value);
+    const obra=(CRON.obras||[]).find(o=>o.id===f.obra_id.value);
+    const payload={data:CRON.data,colaborador_id:f.colaborador_id.value,colaborador_nome:colab?colab.nome:null,obra_id:f.obra_id.value,obra_nome:obra?obra.cliente:null,funcao:f.funcao.value||null,valor_diaria:parseFloat(f.valor_diaria.value)||0};
+    try{
+      if(id)await api('/api/cronograma/alocacao/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      else await api('/api/cronograma/alocacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-alocar').classList.remove('open');showToast('Alocação salva');loadCronograma();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Alocar: '+(m||'erro'));console.error(err);}});
+  document.getElementById('cron-data').addEventListener('change',loadCronograma);
+  // Funções & Diárias (editável)
+  document.getElementById('btn-funcoes').addEventListener('click',()=>{renderFuncoes();openModal('ov-funcoes');});
+  function renderFuncoes(){
+    const el=document.getElementById('funcoes-lista');
+    if(!FUNCOES.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12.5px">Nenhuma função ainda. Adicione abaixo (ex.: Servente, Mangote, Máquina).</div>';return;}
+    el.innerHTML=FUNCOES.map(f=>`<div style="display:flex;gap:8px;align-items:center">
+      <input value="${esc(f.nome)}" data-fn-nome="${f.id}" style="flex:1">
+      <input type="number" step="0.01" min="0" value="${(f.valor/100).toFixed(2)}" data-fn-valor="${f.id}" style="width:110px" placeholder="R$">
+      <button class="doc-cloud" data-fn-del="${f.id}" title="Excluir">${DE_TRASH}</button></div>`).join('');
+    el.querySelectorAll('[data-fn-nome]').forEach(i=>i.addEventListener('change',()=>salvarFuncao(i.dataset.fnNome)));
+    el.querySelectorAll('[data-fn-valor]').forEach(i=>i.addEventListener('change',()=>salvarFuncao(i.dataset.fnValor)));
+    el.querySelectorAll('[data-fn-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir esta função?'))return;
+      try{await api('/api/cronograma/funcao/'+b.dataset.fnDel,{method:'DELETE'});FUNCOES=await api('/api/cronograma/funcoes');renderFuncoes();}
+      catch(e){showToast('Erro');console.error(e);}}));
+  }
+  async function salvarFuncao(id){
+    const nome=document.querySelector('[data-fn-nome="'+id+'"]').value;
+    const valor=parseFloat(document.querySelector('[data-fn-valor="'+id+'"]').value)||0;
+    try{await api('/api/cronograma/funcao/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,valor})});
+      FUNCOES=await api('/api/cronograma/funcoes');showToast('Função atualizada');}
+    catch(e){showToast('Erro ao salvar função');console.error(e);}
+  }
+  document.getElementById('btn-add-funcao').addEventListener('click',async()=>{
+    const nome=document.getElementById('funcao-nome').value.trim();const valor=parseFloat(document.getElementById('funcao-valor').value)||0;
+    if(!nome){showToast('Informe o nome da função');return;}
+    try{await api('/api/cronograma/funcao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,valor})});
+      document.getElementById('funcao-nome').value='';document.getElementById('funcao-valor').value='';
+      FUNCOES=await api('/api/cronograma/funcoes');renderFuncoes();showToast('Função adicionada');}
+    catch(e){showToast('Erro ao adicionar');console.error(e);}
+  });
+
   // ---------- AGENDA (Google Calendar embed) ----------
   function agendaUrl(){return localStorage.getItem('rb_agenda_url')||'';}
   function loadAgenda(){
@@ -3278,7 +3437,7 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
+    const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','cronograma','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     if(admin)atualizarBadges();
     // esconde cabeçalhos de grupo sem itens visíveis

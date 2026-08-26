@@ -570,6 +570,74 @@ app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
   try { res.json(await db.gastosPorCategoria(req.query.mes || new Date().toISOString().slice(0, 7))); }
   catch (e) { next(e); }
 });
+
+// ---------- CRONOGRAMA DIÁRIO (funções/diárias editáveis + alocação por obra/dia) ----------
+app.use('/api/cronograma', requireAdmin);
+app.get('/api/cronograma/funcoes', async (_req, res, next) => {
+  try { res.json(await db.listFuncoes()); }
+  catch (e) { next(e); }
+});
+app.post('/api/cronograma/funcao', async (req, res, next) => {
+  try {
+    if (!req.body.nome) return res.status(400).json({ erro: 'nome é obrigatório' });
+    res.status(201).json(await db.createFuncao({ nome: req.body.nome, valor: cents(req.body.valor) }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/cronograma/funcao/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    if (req.body.nome !== undefined) patch.nome = req.body.nome;
+    if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
+    const f = await db.updateFuncao(req.params.id, patch);
+    if (!f) return res.status(404).json({ erro: 'função não encontrada' });
+    res.json(f);
+  } catch (e) { next(e); }
+});
+app.delete('/api/cronograma/funcao/:id', async (req, res, next) => {
+  try { res.json(await db.deleteFuncao(req.params.id)); }
+  catch (e) { next(e); }
+});
+// quadro do dia: obras + colaboradores + alocações
+app.get('/api/cronograma', async (req, res, next) => {
+  try {
+    const data = req.query.data || new Date().toISOString().slice(0, 10);
+    const [obras, colaboradores, alocacoes] = await Promise.all([
+      db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }),
+    ]);
+    const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado')
+      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco }));
+    const colabs = (colaboradores || [])
+      .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
+      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo }));
+    const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
+    res.json({ data, obras: obrasAtivas, colaboradores: colabs, alocacoes, total });
+  } catch (e) { next(e); }
+});
+app.post('/api/cronograma/alocacao', async (req, res, next) => {
+  try {
+    const { data, colaborador_id } = req.body;
+    if (!data || !colaborador_id) return res.status(400).json({ erro: 'data e colaborador são obrigatórios' });
+    res.status(201).json(await db.createAlocacao({
+      data, colaborador_id, colaborador_nome: req.body.colaborador_nome || null,
+      obra_id: req.body.obra_id || null, obra_nome: req.body.obra_nome || null,
+      funcao: req.body.funcao || null, valor_diaria: cents(req.body.valor_diaria),
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/cronograma/alocacao/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['obra_id', 'obra_nome', 'funcao', 'colaborador_id', 'colaborador_nome', 'data']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.valor_diaria !== undefined) patch.valor_diaria = cents(req.body.valor_diaria);
+    const a = await db.updateAlocacao(req.params.id, patch);
+    if (!a) return res.status(404).json({ erro: 'alocação não encontrada' });
+    res.json(a);
+  } catch (e) { next(e); }
+});
+app.delete('/api/cronograma/alocacao/:id', async (req, res, next) => {
+  try { res.json(await db.deleteAlocacao(req.params.id)); }
+  catch (e) { next(e); }
+});
 app.use('/api/lancamentos-diarios', requireAdmin);
 app.post('/api/lancamentos-diarios', async (req, res, next) => {
   try {

@@ -89,6 +89,10 @@ const mock = {
   gefipDocs: [],
   boletos: [],
   lancDiarios: [],
+  funcoesDiaria: [
+    // valores iniciais editáveis (Adelino ajusta na tela)
+  ],
+  cronogramaAloc: [],
   _orcSeq: 193,
 };
 
@@ -858,6 +862,77 @@ export const db = {
     mock.lancDiarios = mock.lancDiarios.filter(l => l.id !== id);
     return { ok: true };
   },
+  // ---- CRONOGRAMA DIÁRIO: funções/diárias (editáveis) + alocações do dia ----
+  async listFuncoes() {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('funcoes_diaria').select('*').order('nome');
+      if (error) throw error;
+      return data || [];
+    }
+    return [...mock.funcoesDiaria].sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  },
+  async createFuncao(f) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('funcoes_diaria').insert(f).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...f };
+    mock.funcoesDiaria.push(novo);
+    return novo;
+  },
+  async updateFuncao(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('funcoes_diaria').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const f = mock.funcoesDiaria.find(x => x.id === id);
+    if (!f) return null; Object.assign(f, patch); return f;
+  },
+  async deleteFuncao(id) {
+    if (USING_SUPABASE) { const { error } = await sb('funcoes_diaria').delete().eq('id', id); if (error) throw error; return { ok: true }; }
+    mock.funcoesDiaria = mock.funcoesDiaria.filter(f => f.id !== id); return { ok: true };
+  },
+  async listAlocacoes({ data, colaborador_id, desde, ate } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('cronograma_alocacoes').select('*');
+      if (data) q = q.eq('data', data);
+      if (colaborador_id) q = q.eq('colaborador_id', colaborador_id);
+      if (desde) q = q.gte('data', desde);
+      if (ate) q = q.lte('data', ate);
+      const { data: rows, error } = await q.order('data');
+      if (error) throw error;
+      return rows || [];
+    }
+    return mock.cronogramaAloc.filter(a =>
+      (!data || a.data === data) && (!colaborador_id || a.colaborador_id === colaborador_id) &&
+      (!desde || a.data >= desde) && (!ate || a.data <= ate));
+  },
+  async createAlocacao(a) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('cronograma_alocacoes').insert(a).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...a };
+    mock.cronogramaAloc.push(novo);
+    return novo;
+  },
+  async updateAlocacao(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('cronograma_alocacoes').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const a = mock.cronogramaAloc.find(x => x.id === id);
+    if (!a) return null; Object.assign(a, patch); return a;
+  },
+  async deleteAlocacao(id) {
+    if (USING_SUPABASE) { const { error } = await sb('cronograma_alocacoes').delete().eq('id', id); if (error) throw error; return { ok: true }; }
+    mock.cronogramaAloc = mock.cronogramaAloc.filter(a => a.id !== id); return { ok: true };
+  },
+
   // Gastos por categoria no mês (boletos por vencimento + lançamentos por data)
   async gastosPorCategoria(mes) {
     let boletos, lancs;
