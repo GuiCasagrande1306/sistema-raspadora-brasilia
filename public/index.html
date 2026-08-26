@@ -841,20 +841,44 @@
       <div id="bancos-protegido" class="hidden">
         <div class="modhead"><h1 id="bancos-titulo">Bancos &amp; Fluxo de Caixa</h1><p id="bancos-sub">Saldos, projeção de 30 dias e fluxo de caixa das contas.</p></div>
         <div class="tabsrow">
-          <div class="tabs"><button class="on">Contas &amp; Fluxo</button><button>Movimentações</button></div>
+          <div class="tabs" id="bancos-tabs"><button class="on" data-bt="contas">Contas &amp; Fluxo</button><button data-bt="pagdiario">Pagamento Diário</button><button data-bt="boletos">Boletos</button></div>
           <div style="display:flex;gap:8px">
             <button class="btn-ghost cofre-only" id="btn-bloquear" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Bloquear agora</button>
             <button class="btn-ghost cofre-only" id="btn-nova-conta" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Nova Conta</button>
             <button class="primary cofre-only" id="btn-transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/></svg> Transferência</button>
           </div>
         </div>
-        <div class="metrics">
-          <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
-          <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
-          <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores</div></div>
-          <div class="metric"><div class="lbl">Saldo projetado</div><div class="val money" id="bancos-proj">—</div><div class="sub">ao fim de 30 dias</div></div>
+        <!-- Painel: Contas & Fluxo -->
+        <div id="bancos-panel-contas">
+          <div class="metrics">
+            <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
+            <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
+            <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores</div></div>
+            <div class="metric"><div class="lbl">Saldo projetado</div><div class="val money" id="bancos-proj">—</div><div class="sub">ao fim de 30 dias</div></div>
+          </div>
+          <div id="bancos-content" style="padding:18px 26px 96px;"></div>
         </div>
-        <div id="bancos-content" style="padding:18px 26px 96px;"></div>
+        <!-- Painel: Pagamento Diário -->
+        <div id="bancos-panel-pagdiario" class="hidden">
+          <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="pd-data" class="dash-sel"></label>
+            <button class="primary" id="btn-novo-lanc-dia" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Novo lançamento</button>
+          </div>
+          <div class="metrics">
+            <div class="metric"><div class="lbl">Total do dia</div><div class="val money" id="pd-total">—</div><div class="sub">boletos + lançamentos</div></div>
+            <div class="metric"><div class="lbl">Pago</div><div class="val money" id="pd-pago">—</div><div class="sub">já quitado</div></div>
+            <div class="metric"><div class="lbl">Pendente</div><div class="val money" id="pd-pendente">—</div><div class="sub">a pagar hoje</div></div>
+          </div>
+          <div id="pd-content" style="padding:18px 26px 96px;"></div>
+        </div>
+        <!-- Painel: Boletos -->
+        <div id="bancos-panel-boletos" class="hidden">
+          <div class="tabsrow">
+            <div class="tabs" id="boletos-filtros"><button class="on" data-bf="PENDENTE">Pendentes</button><button data-bf="PAGO">Pagos</button><button data-bf="">Todos</button></div>
+            <button class="primary" id="btn-novo-boleto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Boleto</button>
+          </div>
+          <div id="boletos-content" style="padding:18px 26px 96px;"></div>
+        </div>
       </div>
     </section>
 
@@ -1211,6 +1235,50 @@
         <div class="field"><label>Descrição</label><input name="descricao" placeholder="Ex: recarga da caixinha"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Transferir</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Novo Boleto -->
+<div class="overlay" id="ov-boleto">
+  <div class="modal">
+    <header><h3 id="boleto-titulo">Novo Boleto</h3><button class="x" data-close>×</button></header>
+    <form id="form-boleto">
+      <input type="hidden" name="id" id="boleto-id">
+      <div class="body">
+        <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Energia, Fornecedor de resina…"></div>
+        <div class="grid2">
+          <div class="field"><label>Fornecedor</label><input name="fornecedor" placeholder="Quem emitiu o boleto"></div>
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Vencimento *</label><input name="vencimento" type="date" required></div>
+          <div class="field"><label>Categoria</label><select name="categoria" id="boleto-cat"></select></div>
+        </div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar boleto</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Lançamento diário -->
+<div class="overlay" id="ov-lancdia">
+  <div class="modal">
+    <header><h3>Novo lançamento do dia</h3><button class="x" data-close>×</button></header>
+    <form id="form-lancdia">
+      <div class="body">
+        <div class="grid2">
+          <div class="field"><label>Data</label><input name="data" type="date" required></div>
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+        </div>
+        <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Almoço equipe, PIX fornecedor…"></div>
+        <div class="grid2">
+          <div class="field"><label>Categoria</label><select name="categoria" id="lancdia-cat"></select></div>
+          <div class="field"><label>Forma</label><select name="forma"><option>PIX</option><option>DINHEIRO</option><option>BOLETO</option><option>CARTÃO</option><option>TRANSFERÊNCIA</option></select></div>
+        </div>
+        <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" name="pago" id="lancdia-pago" checked> Já foi pago</label>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Lançar</button></footer>
     </form>
   </div>
 </div>
@@ -2916,6 +2984,107 @@
       await loadBancos();showToast('Transferência realizada');
     }catch(err){showToast('Erro: '+((err.message||'').includes('insuficiente')?'saldo insuficiente':'transferência'));console.error(err);}
   });
+
+  // ---------- BANCOS: abas (Contas & Fluxo · Pagamento Diário · Boletos) ----------
+  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['INSUMO','Insumo'],['OUTRO','Outro']];
+  const CAT_LABEL=Object.fromEntries(CAT_GASTO_OPTS);
+  document.getElementById('boleto-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  document.getElementById('lancdia-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  let bancosTab='contas';
+  function trocarBancoTab(t){
+    bancosTab=t;
+    document.getElementById('bancos-tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.bt===t));
+    ['contas','pagdiario','boletos'].forEach(p=>document.getElementById('bancos-panel-'+p).classList.toggle('hidden',p!==t));
+    if(t==='pagdiario')loadPagDiario();
+    if(t==='boletos')loadBoletos();
+  }
+  document.getElementById('bancos-tabs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>trocarBancoTab(b.dataset.bt)));
+
+  // ---- Boletos ----
+  let boletoFiltro='PENDENTE';
+  function boletoRow(b){
+    const venc=b.vencimento?dtBR(b.vencimento):'—';
+    const atrasado=!b.pago&&b.vencimento&&b.vencimento<isoHoje();
+    const st=b.pago?'<span class="tag t-ok">Pago</span>':(atrasado?'<span class="tag t-danger">Vencido</span>':'<span class="tag t-wait">A vencer</span>');
+    const comp=b.comprovante_url?`<a class="doc-open" href="${b.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
+    return `<div class="doc-row">
+      <div class="di"><h4>${esc(b.descricao)} — ${brl(b.valor)}</h4><div class="sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${CAT_LABEL[b.categoria]||b.categoria||''}</div></div>
+      <div class="tags">${st}</div>
+      ${comp}
+      ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}" style="min-height:34px;font-size:12px">Marcar pago</button>`}
+      <button class="doc-cloud" data-compb="${b.id}" title="Anexar comprovante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button>
+      <button class="doc-cloud" data-delb="${b.id}" title="Excluir">${DE_TRASH}</button></div>`;
+  }
+  async function loadBoletos(){
+    const el=document.getElementById('boletos-content');
+    let lista=[];try{lista=await api('/api/boletos'+(boletoFiltro?'?status='+boletoFiltro:''));}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar boletos.</div>';console.error(e);return;}
+    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum boleto '+(boletoFiltro==='PENDENTE'?'pendente':(boletoFiltro==='PAGO'?'pago':''))+'. Clique em <b>Novo Boleto</b>.</div>';return;}
+    el.innerHTML='<div class="doc-list">'+lista.map(boletoRow).join('')+'</div>';
+    el.querySelectorAll('[data-pagar]').forEach(b=>b.addEventListener('click',async()=>{
+      try{await api('/api/boletos/'+b.dataset.pagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Boleto pago');loadBoletos();}
+      catch(e){showToast('Erro');console.error(e);}}));
+    el.querySelectorAll('[data-compb]').forEach(b=>b.addEventListener('click',()=>anexarComprovante('/api/boletos/'+b.dataset.compb+'/comprovante',loadBoletos)));
+    el.querySelectorAll('[data-delb]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este boleto?'))return;
+      try{await api('/api/boletos/'+b.dataset.delb,{method:'DELETE'});showToast('Boleto excluído');loadBoletos();}
+      catch(e){showToast('Erro');console.error(e);}}));
+  }
+  document.getElementById('boletos-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    document.getElementById('boletos-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');boletoFiltro=b.dataset.bf;loadBoletos();}));
+  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();openModal('ov-boleto');});
+  document.getElementById('form-boleto').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;
+    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value};
+    try{await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-boleto').classList.remove('open');showToast('Boleto salvo');loadBoletos();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Boleto: '+(m||'erro'));console.error(err);}});
+
+  // ---- Pagamento Diário ----
+  function anexarComprovante(url,reload){
+    const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';
+    inp.onchange=async()=>{const fl=inp.files[0];if(!fl)return;const fd=new FormData();fd.append('arquivo',fl);
+      try{showToast('Enviando comprovante…');await api(url,{method:'POST',body:fd});showToast('Comprovante anexado (pago)');reload&&reload();}
+      catch(e){showToast('Erro ao anexar');console.error(e);}};
+    inp.click();
+  }
+  async function loadPagDiario(){
+    const el=document.getElementById('pd-data');if(!el.value)el.value=isoHoje();
+    let r;try{r=await api('/api/pagamento-diario?data='+el.value);}catch(e){document.getElementById('pd-content').innerHTML='<div class="orc-empty">Erro ao carregar.</div>';console.error(e);return;}
+    document.getElementById('pd-total').textContent=brl(r.resumo.total);
+    document.getElementById('pd-pago').textContent=brl(r.resumo.pago);
+    document.getElementById('pd-pendente').textContent=brl(r.resumo.pendente);
+    const cont=document.getElementById('pd-content');
+    if(!r.itens.length){cont.innerHTML='<div class="orc-empty">Nada lançado nem vencendo neste dia. Boletos com vencimento nesta data aparecem aqui automaticamente.</div>';return;}
+    cont.innerHTML='<div class="doc-list">'+r.itens.map(i=>{
+      const tag=i.origem==='BOLETO'?'<span class="tag t-lar">Boleto</span>':`<span class="tag">${esc(i.forma||'Lançamento')}</span>`;
+      const st=i.pago?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
+      const comp=i.comprovante_url?`<a class="doc-open" href="${i.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
+      const base=i.origem==='BOLETO'?'/api/boletos/'+i.id:'/api/lancamentos-diarios/'+i.id;
+      return `<div class="doc-row">
+        <div class="di"><h4>${esc(i.descricao)} — ${brl(i.valor)}</h4><div class="sub">${CAT_LABEL[i.categoria]||i.categoria||''}</div></div>
+        <div class="tags">${tag}${st}</div>${comp}
+        ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}" style="min-height:34px;font-size:12px">Marcar pago</button>`}
+        <button class="doc-cloud" data-pd-comp="${base}/comprovante" title="Anexar comprovante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button>
+        ${i.origem==='LANCAMENTO'?`<button class="doc-cloud" data-pd-del="${i.id}" title="Excluir">${DE_TRASH}</button>`:''}</div>`;
+    }).join('')+'</div>';
+    cont.querySelectorAll('[data-pd-pagar]').forEach(b=>b.addEventListener('click',async()=>{
+      try{await api(b.dataset.pdPagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Marcado como pago');loadPagDiario();}
+      catch(e){showToast('Erro');console.error(e);}}));
+    cont.querySelectorAll('[data-pd-comp]').forEach(b=>b.addEventListener('click',()=>anexarComprovante(b.dataset.pdComp,loadPagDiario)));
+    cont.querySelectorAll('[data-pd-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este lançamento?'))return;
+      try{await api('/api/lancamentos-diarios/'+b.dataset.pdDel,{method:'DELETE'});showToast('Excluído');loadPagDiario();}
+      catch(e){showToast('Erro');console.error(e);}}));
+  }
+  document.getElementById('pd-data').addEventListener('change',loadPagDiario);
+  document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;openModal('ov-lancdia');});
+  document.getElementById('form-lancdia').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;
+    const payload={data:f.data.value,descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,categoria:f.categoria.value,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
+    try{await api('/api/lancamentos-diarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-lancdia').classList.remove('open');showToast('Lançamento salvo');loadPagDiario();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Lançamento: '+(m||'erro'));console.error(err);}});
 
   // ---- Folha ----
   async function loadFolha(){

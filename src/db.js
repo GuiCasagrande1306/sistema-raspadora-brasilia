@@ -87,6 +87,8 @@ const mock = {
   clientes: [],
   gefipPastas: [],
   gefipDocs: [],
+  boletos: [],
+  lancDiarios: [],
   _orcSeq: 193,
 };
 
@@ -767,6 +769,110 @@ export const db = {
     }
     mock.gefipDocs = mock.gefipDocs.filter(d => d.id !== id);
     return { ok: true };
+  },
+
+  // ---- BOLETOS ----
+  async listBoletos({ status, mes } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('boletos').select('*').order('vencimento');
+      if (status === 'PENDENTE') q = q.eq('pago', false);
+      if (status === 'PAGO') q = q.eq('pago', true);
+      if (mes) q = q.gte('vencimento', mes + '-01').lte('vencimento', mes + '-31');
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    }
+    return mock.boletos
+      .filter(b => (!status || (status === 'PENDENTE' ? !b.pago : b.pago)) && (!mes || (b.vencimento || '').startsWith(mes)))
+      .sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
+  },
+  async createBoleto(b) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('boletos').insert(b).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), pago: false, criado_em: new Date().toISOString(), ...b };
+    mock.boletos.push(novo);
+    return novo;
+  },
+  async updateBoleto(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('boletos').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const b = mock.boletos.find(x => x.id === id);
+    if (!b) return null;
+    Object.assign(b, patch);
+    return b;
+  },
+  async deleteBoleto(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('boletos').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.boletos = mock.boletos.filter(b => b.id !== id);
+    return { ok: true };
+  },
+
+  // ---- LANÇAMENTOS DIÁRIOS (gastos do dia: pix, vale, dinheiro…) ----
+  async listLancDiarios({ data } = {}) {
+    if (USING_SUPABASE) {
+      let q = sb('lancamentos_diarios').select('*').order('criado_em', { ascending: false });
+      if (data) q = q.eq('data', data);
+      const { data: rows, error } = await q;
+      if (error) throw error;
+      return rows || [];
+    }
+    return mock.lancDiarios.filter(l => !data || l.data === data);
+  },
+  async createLancDiario(l) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('lancamentos_diarios').insert(l).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...l };
+    mock.lancDiarios.push(novo);
+    return novo;
+  },
+  async updateLancDiario(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('lancamentos_diarios').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const l = mock.lancDiarios.find(x => x.id === id);
+    if (!l) return null;
+    Object.assign(l, patch);
+    return l;
+  },
+  async deleteLancDiario(id) {
+    if (USING_SUPABASE) {
+      const { error } = await sb('lancamentos_diarios').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+    mock.lancDiarios = mock.lancDiarios.filter(l => l.id !== id);
+    return { ok: true };
+  },
+  // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
+  async pagamentoDiario(data) {
+    const [boletos, lancs] = await Promise.all([
+      USING_SUPABASE
+        ? sb('boletos').select('*').eq('vencimento', data).then(r => r.data || [])
+        : Promise.resolve(mock.boletos.filter(b => b.vencimento === data)),
+      this.listLancDiarios({ data }),
+    ]);
+    const itens = [
+      ...boletos.map(b => ({ ...b, origem: 'BOLETO' })),
+      ...lancs.map(l => ({ ...l, origem: 'LANCAMENTO' })),
+    ];
+    const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
+    const pago = itens.filter(i => i.pago).reduce((s, i) => s + (i.valor || 0), 0);
+    return { data, itens, resumo: { total, pago, pendente: total - pago } };
   },
   // Acha um cliente pelo nome (case-insensitive) ou cria a partir dos dados do lead
   async acharOuCriarCliente({ nome, telefone, endereco, origem, responsavel, observacao }) {

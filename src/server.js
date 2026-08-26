@@ -506,6 +506,104 @@ app.get('/api/gefip/zip', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
+const cents = (v) => Math.round((Number(v) || 0) * 100);
+const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'INSUMO', 'OUTRO'];
+async function subirComprovante(prefixo, id, file) {
+  if (!file || !USING_SUPABASE) return null;
+  const safe = (file.originalname || 'comprovante').replace(/[^\w.\-]+/g, '_');
+  const path = `comprovantes/${prefixo}/${id}_${Date.now()}_${safe}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file.buffer, { contentType: file.mimetype });
+  if (error) throw error;
+  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl || path;
+}
+
+app.use('/api/boletos', requireAdmin);
+app.get('/api/boletos', async (req, res, next) => {
+  try { res.json(await db.listBoletos({ status: req.query.status, mes: req.query.mes })); }
+  catch (e) { next(e); }
+});
+app.post('/api/boletos', async (req, res, next) => {
+  try {
+    const { descricao, vencimento } = req.body;
+    if (!descricao) return res.status(400).json({ erro: 'descrição é obrigatória' });
+    if (!vencimento) return res.status(400).json({ erro: 'vencimento é obrigatório' });
+    res.status(201).json(await db.createBoleto({
+      descricao, fornecedor: req.body.fornecedor || null, vencimento,
+      valor: cents(req.body.valor), categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
+      pago: false,
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/boletos/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['descricao', 'fornecedor', 'vencimento', 'data_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
+    if (req.body.categoria !== undefined) patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO';
+    if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
+    const b = await db.updateBoleto(req.params.id, patch);
+    if (!b) return res.status(404).json({ erro: 'boleto não encontrado' });
+    res.json(b);
+  } catch (e) { next(e); }
+});
+app.post('/api/boletos/:id/comprovante', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const url = await subirComprovante('boletos', req.params.id, req.file);
+    const b = await db.updateBoleto(req.params.id, { comprovante_url: url, pago: true, data_pagamento: new Date().toISOString().slice(0, 10) });
+    if (!b) return res.status(404).json({ erro: 'boleto não encontrado' });
+    res.json(b);
+  } catch (e) { next(e); }
+});
+app.delete('/api/boletos/:id', async (req, res, next) => {
+  try { res.json(await db.deleteBoleto(req.params.id)); }
+  catch (e) { next(e); }
+});
+
+app.use('/api/pagamento-diario', requireAdmin);
+app.get('/api/pagamento-diario', async (req, res, next) => {
+  try { res.json(await db.pagamentoDiario(req.query.data || new Date().toISOString().slice(0, 10))); }
+  catch (e) { next(e); }
+});
+app.use('/api/lancamentos-diarios', requireAdmin);
+app.post('/api/lancamentos-diarios', async (req, res, next) => {
+  try {
+    const { descricao, data } = req.body;
+    if (!descricao) return res.status(400).json({ erro: 'descrição é obrigatória' });
+    res.status(201).json(await db.createLancDiario({
+      data: data || new Date().toISOString().slice(0, 10), descricao,
+      valor: cents(req.body.valor), categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
+      forma: req.body.forma || 'PIX', pago: req.body.pago !== undefined ? !!req.body.pago : true,
+      data_pagamento: (req.body.pago === false ? null : (data || new Date().toISOString().slice(0, 10))),
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/lancamentos-diarios/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['descricao', 'data', 'forma', 'data_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
+    if (req.body.categoria !== undefined) patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO';
+    if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
+    const l = await db.updateLancDiario(req.params.id, patch);
+    if (!l) return res.status(404).json({ erro: 'lançamento não encontrado' });
+    res.json(l);
+  } catch (e) { next(e); }
+});
+app.post('/api/lancamentos-diarios/:id/comprovante', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    const url = await subirComprovante('lancamentos', req.params.id, req.file);
+    const l = await db.updateLancDiario(req.params.id, { comprovante_url: url, pago: true, data_pagamento: new Date().toISOString().slice(0, 10) });
+    if (!l) return res.status(404).json({ erro: 'lançamento não encontrado' });
+    res.json(l);
+  } catch (e) { next(e); }
+});
+app.delete('/api/lancamentos-diarios/:id', async (req, res, next) => {
+  try { res.json(await db.deleteLancDiario(req.params.id)); }
+  catch (e) { next(e); }
+});
+
 // ---------- VALE-TRANSPORTE ----------
 app.get('/api/dp/vt/balanco', async (_req, res, next) => {
   try {
