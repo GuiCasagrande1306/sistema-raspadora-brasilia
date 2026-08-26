@@ -94,6 +94,7 @@ const mock = {
   ],
   cronogramaAloc: [],
   servicosCatalogo: [],
+  config: {},
   _orcSeq: 193,
 };
 
@@ -871,6 +872,25 @@ export const db = {
     mock.lancDiarios = mock.lancDiarios.filter(l => l.id !== id);
     return { ok: true };
   },
+  // ---- CONFIG DO APP (chave/valor jsonb) ----
+  async getConfig(chave) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('config_app').select('valor').eq('chave', chave).maybeSingle();
+      if (error) throw error;
+      return data ? data.valor : null;
+    }
+    return mock.config[chave] || null;
+  },
+  async setConfig(chave, valor) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('config_app').upsert({ chave, valor, atualizado_em: new Date().toISOString() }, { onConflict: 'chave' }).select().single();
+      if (error) throw error;
+      return data.valor;
+    }
+    mock.config[chave] = valor;
+    return valor;
+  },
+
   // ---- CATÁLOGO DE SERVIÇOS (descrição padrão + preço por unidade) ----
   async listServicos() {
     if (USING_SUPABASE) {

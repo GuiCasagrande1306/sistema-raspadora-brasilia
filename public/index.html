@@ -1034,6 +1034,7 @@
           <button data-pf="APROVADO">Aprovadas</button>
         </div>
         <button class="btn-ghost" id="btn-catalogo" style="min-height:40px">⚙️ Catálogo de Serviços</button>
+        <button class="btn-ghost" id="btn-empresa" style="min-height:40px">🏢 Dados da Empresa</button>
       </div>
       <div class="metrics">
         <div class="metric"><div class="lbl">Aguardando proposta</div><div class="val" id="prop-aguard">—</div><div class="sub">para precificar</div></div>
@@ -1525,6 +1526,50 @@
       <div class="hint" id="env-hint">O PDF da proposta abre para você salvar e anexar no WhatsApp. (Anexo automático exige a API do WhatsApp conectada.)</div>
     </div>
     <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="env-enviar">Gerar PDF e abrir WhatsApp</button></footer>
+  </div>
+</div>
+
+<!-- MODAL: Dados da Empresa (proposta) -->
+<div class="overlay" id="ov-empresa">
+  <div class="modal wide">
+    <header><h3>Dados da Empresa (proposta)</h3><button class="x" data-close>×</button></header>
+    <form id="form-empresa">
+      <div class="body">
+        <div class="orc-block">
+          <div class="orc-block-head"><span class="orc-marca">CABEÇALHO DO PDF</span></div>
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:10px">
+            <div id="emp-logo-prev" style="width:72px;height:72px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;background:var(--ground);font-size:11px;color:var(--ink-3)">sem logo</div>
+            <button type="button" class="btn-ghost" id="btn-emp-logo" style="min-height:38px">Enviar logo (PNG/JPG)</button>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Razão social / Nome</label><input name="razao_social" placeholder="Ex.: Raspadora Brasília LTDA"></div>
+            <div class="field"><label>CNPJ</label><input name="cnpj" placeholder="00.000.000/0001-00"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Inscrição Estadual</label><input name="ie" placeholder="Opcional"></div>
+            <div class="field"><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(61) 9____-____"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>E-mail</label><input name="email" placeholder="contato@empresa.com"></div>
+            <div class="field"><label>Site / Instagram</label><input name="site" placeholder="@ ou www."></div>
+          </div>
+          <div class="field"><label>Endereço</label><input name="endereco" placeholder="Rua, nº, bairro, cidade/UF"></div>
+        </div>
+        <div class="orc-block" style="margin-top:12px">
+          <div class="orc-block-head"><span class="orc-marca">CONDIÇÕES PADRÃO (entram no rodapé da proposta)</span></div>
+          <div class="grid2">
+            <div class="field"><label>Condições de pagamento</label><input name="pagamento" placeholder="Ex.: 50% na aprovação, 50% na entrega"></div>
+            <div class="field"><label>Prazo de execução</label><input name="prazo" placeholder="Ex.: 5 dias úteis"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Validade da proposta</label><input name="validade" placeholder="Ex.: 15 dias"></div>
+            <div class="field"><label>Garantia</label><input name="garantia" placeholder="Ex.: 12 meses"></div>
+          </div>
+          <div class="field"><label>Observações padrão</label><textarea name="obs_padrao" rows="2" placeholder="Texto fixo que entra em toda proposta (opcional)"></textarea></div>
+        </div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Fechar</button><button type="submit" class="primary">Salvar dados</button></footer>
+    </form>
   </div>
 </div>
 
@@ -2538,12 +2583,35 @@
     el.querySelectorAll('[data-prop]').forEach(c=>c.addEventListener('click',async()=>{
       try{abrirProposta(await api('/api/orcamentos/'+c.dataset.prop));}catch(err){showToast('Erro ao abrir');console.error(err);}}));
   }
-  let SERVICOS=[];
+  let SERVICOS=[], EMPRESA={};
   async function loadPropostas(){
     try{const {orcamentos}=await api('/api/orcamentos');PROP_ORC=orcamentos||[];}catch(e){PROP_ORC=[];console.error(e);}
     try{SERVICOS=await api('/api/catalogo-servicos');}catch(e){SERVICOS=[];console.error(e);}
+    try{EMPRESA=await api('/api/config-app/empresa')||{};}catch(e){EMPRESA={};console.error(e);}
     renderPropostas();
   }
+  // ---- Dados da Empresa (proposta) ----
+  document.getElementById('btn-empresa').addEventListener('click',async()=>{
+    try{EMPRESA=await api('/api/config-app/empresa')||{};}catch{}
+    const f=document.getElementById('form-empresa');f.reset();
+    ['razao_social','cnpj','ie','telefone','email','site','endereco','pagamento','prazo','validade','garantia','obs_padrao'].forEach(k=>{if(f[k])f[k].value=EMPRESA[k]||'';});
+    const prev=document.getElementById('emp-logo-prev');prev.innerHTML=EMPRESA.logo_url?`<img src="${EMPRESA.logo_url}" style="max-width:100%;max-height:100%">`:'sem logo';
+    openModal('ov-empresa');
+  });
+  document.getElementById('btn-emp-logo').addEventListener('click',()=>{
+    const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+    inp.onchange=async()=>{const fl=inp.files[0];if(!fl)return;const fd=new FormData();fd.append('arquivo',fl);
+      try{showToast('Enviando logo…');EMPRESA=await api('/api/config-app/empresa/logo',{method:'POST',body:fd});
+        document.getElementById('emp-logo-prev').innerHTML=EMPRESA.logo_url?`<img src="${EMPRESA.logo_url}" style="max-width:100%;max-height:100%">`:'sem logo';showToast('Logo salvo');}
+      catch(e){showToast('Erro ao enviar logo');console.error(e);}};
+    inp.click();
+  });
+  document.getElementById('form-empresa').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;const payload={...EMPRESA};
+    ['razao_social','cnpj','ie','telefone','email','site','endereco','pagamento','prazo','validade','garantia','obs_padrao'].forEach(k=>{payload[k]=f[k]?f[k].value||null:null;});
+    try{EMPRESA=await api('/api/config-app/empresa',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-empresa').classList.remove('open');showToast('Dados da empresa salvos');}
+    catch(err){showToast('Erro ao salvar');console.error(err);}});
   // ---- Catálogo de Serviços ----
   document.getElementById('btn-catalogo').addEventListener('click',async()=>{try{SERVICOS=await api('/api/catalogo-servicos');}catch{}renderCatalogo();openModal('ov-catalogo');});
   function renderCatalogo(){
@@ -2694,27 +2762,51 @@
   });
   document.getElementById('prop-pdf').addEventListener('click',propExportPDF);
   function propExportPDF(){
-    if(!propAtual)return;const o=propAtual;
-    const rows=(o.itens||[]).map(it=>`<tr><td>${esc(it.descricao||'')}</td><td class="c">${it.area_m2||0} ${UNI_LABEL[it.unidade]||'m²'}</td><td class="r">${brlN(it.valor_unit||0)}</td><td class="r">${brlN((it.area_m2||0)*(it.valor_unit||0))}</td></tr>`).join('');
+    if(!propAtual)return;const o=propAtual;const E=EMPRESA||{};
+    const rows=(o.itens||[]).map((it,i)=>`<tr><td class="c">${i+1}</td><td>${esc(it.descricao||'')}</td><td class="c">${it.area_m2||0} ${UNI_LABEL[it.unidade]||'m²'}</td><td class="r">${brlN(it.valor_unit||0)}</td><td class="r">${brlN((it.area_m2||0)*(it.valor_unit||0))}</td></tr>`).join('');
     const total=(o.itens||[]).reduce((s,it)=>s+(it.area_m2||0)*(it.valor_unit||0),0);
-    const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Proposta Nº ${o.numero_orcamento}</title>
-    <style>*{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}body{margin:32px;color:#1E1E1E}
-      h1{font-size:20px;margin:0;color:#ED7118}.sub{color:#666;font-size:12px;margin:2px 0 18px}
-      .box{border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px}
-      table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ddd;padding:7px 9px;text-align:left}
-      th{background:#1E1E1E;color:#fff;font-size:11px;text-transform:uppercase}td.c{text-align:center}td.r{text-align:right}
-      tfoot td{font-weight:800;font-size:13px}.obs{margin-top:16px;font-size:12px;white-space:pre-wrap}
-      .foot{margin-top:26px;font-size:10px;color:#999}@media print{@page{margin:14mm}}</style></head><body>
-      <h1>Raspadora Brasília — Proposta Comercial</h1>
-      <p class="sub">Proposta Nº ${o.numero_orcamento} · ${new Date().toLocaleDateString('pt-BR')}</p>
+    const nome=E.razao_social||'Raspadora Brasília';
+    const contatos=[E.telefone,E.email,E.site].filter(Boolean).map(esc).join(' · ');
+    const docLinha=[E.cnpj?('CNPJ: '+esc(E.cnpj)):'',E.ie?('IE: '+esc(E.ie)):'',E.endereco?esc(E.endereco):''].filter(Boolean).join(' · ');
+    const logo=E.logo_url?`<img src="${E.logo_url}" style="max-height:64px;max-width:180px;object-fit:contain">`:`<div class="logofb">${esc((nome||'RB').slice(0,2).toUpperCase())}</div>`;
+    const cond=[['Condições de pagamento',E.pagamento],['Prazo de execução',E.prazo],['Validade da proposta',E.validade],['Garantia',E.garantia]].filter(([,v])=>v);
+    const condBlock=cond.length?`<div class="cond"><h3>Condições</h3>${cond.map(([k,v])=>`<div class="cl"><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>`:'';
+    const obs=[o.observacoes,E.obs_padrao].filter(Boolean).join('\n');
+    const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Proposta ${o.numero_orcamento} - ${esc(o.cliente_nome||'')}</title>
+    <style>*{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{margin:0;color:#1E1E1E}.wrap{padding:34px 40px}
+      .head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #ED7118;padding-bottom:14px;margin-bottom:6px}
+      .head .co{text-align:right}.head .co .nm{font-size:16px;font-weight:800}.head .co .ln{font-size:10.5px;color:#555;margin-top:2px}
+      .logofb{width:64px;height:64px;border-radius:12px;background:#ED7118;color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px}
+      .tit{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 12px}
+      .tit h1{font-size:19px;margin:0;color:#ED7118;letter-spacing:.5px}.tit .dt{font-size:12px;color:#666}
+      .box{border:1px solid #e2e2e2;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.55;background:#fafafa}
+      .box b{color:#111}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      th,td{border-bottom:1px solid #e6e6e6;padding:9px 10px;text-align:left}
+      thead th{background:#1E1E1E;color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;border:0}
+      td.c{text-align:center}td.r{text-align:right}
+      tfoot td{font-weight:800;font-size:14px;border-top:2px solid #1E1E1E;background:#FFF3E9}
+      .cond{margin-top:20px}.cond h3{font-size:12px;text-transform:uppercase;color:#ED7118;margin:0 0 8px;letter-spacing:.04em}
+      .cl{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed #eee}
+      .obs{margin-top:18px;font-size:12px;white-space:pre-wrap;line-height:1.5}.obs h3{font-size:12px;text-transform:uppercase;color:#666;margin:0 0 6px}
+      .sign{margin-top:44px;display:flex;justify-content:space-between;gap:40px}
+      .sign div{flex:1;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:11px;color:#555}
+      .foot{margin-top:24px;font-size:9.5px;color:#aaa;text-align:center}
+      @media print{@page{margin:12mm}}</style></head><body><div class="wrap">
+      <div class="head">${logo}<div class="co"><div class="nm">${esc(nome)}</div>${docLinha?`<div class="ln">${docLinha}</div>`:''}${contatos?`<div class="ln">${contatos}</div>`:''}</div></div>
+      <div class="tit"><h1>PROPOSTA COMERCIAL</h1><div class="dt">Nº ${o.numero_orcamento} · ${new Date().toLocaleDateString('pt-BR')}</div></div>
       <div class="box"><b>Cliente:</b> ${esc(o.cliente_nome||'')}${o.cliente_fone?' · '+esc(o.cliente_fone):''}<br>
-        <b>Local:</b> ${esc(o.endereco_obra||'—')}<br><b>Serviço:</b> ${esc(o.servico_tipo||'—')}</div>
-      <table><thead><tr><th>Item</th><th>Medida</th><th>R$/unid.</th><th>Total</th></tr></thead>
+        <b>Local da obra:</b> ${esc(o.endereco_obra||'—')}<br>
+        <b>Serviço:</b> ${esc(o.servico_tipo||'—')}${o.responsavel_tecnico?`<br><b>Responsável técnico:</b> ${esc(o.responsavel_tecnico)}`:''}</div>
+      <table><thead><tr><th style="width:34px">#</th><th>Descrição do serviço</th><th style="width:90px">Medida</th><th style="width:90px">R$/unid.</th><th style="width:100px">Total</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="3">Valor total</td><td class="r">${brlN(total)}</td></tr></tfoot></table>
-      ${o.observacoes?`<div class="obs"><b>Observações:</b><br>${esc(o.observacoes)}</div>`:''}
-      <p class="foot">Documento gerado pelo sistema — Raspadora Brasília · ${new Date().toLocaleString('pt-BR')}</p>
-      <script>window.onload=function(){window.print();}<\/script></body></html>`;
+        <tfoot><tr><td colspan="4" class="r">VALOR TOTAL DA PROPOSTA</td><td class="r">${brlN(total)}</td></tr></tfoot></table>
+      ${condBlock}
+      ${obs?`<div class="obs"><h3>Observações</h3>${esc(obs)}</div>`:''}
+      <div class="sign"><div>${esc(nome)}</div><div>${esc(o.cliente_nome||'Cliente')}</div></div>
+      <p class="foot">${esc(nome)} · Proposta gerada em ${new Date().toLocaleString('pt-BR')}</p>
+      </div><script>window.onload=function(){window.print();}<\/script></body></html>`;
     const w=window.open('','_blank');if(!w){showToast('Permita pop-ups para exportar');return;}
     w.document.write(html);w.document.close();
   }

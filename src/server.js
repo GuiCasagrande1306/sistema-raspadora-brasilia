@@ -655,6 +655,33 @@ app.delete('/api/cronograma/alocacao/:id', async (req, res, next) => {
   catch (e) { next(e); }
 });
 
+// ---------- CONFIG DO APP (dados da empresa / proposta) ----------
+app.use('/api/config-app', requireAdmin);
+app.get('/api/config-app/:chave', async (req, res, next) => {
+  try { res.json((await db.getConfig(req.params.chave)) || {}); }
+  catch (e) { next(e); }
+});
+app.put('/api/config-app/:chave', async (req, res, next) => {
+  try { res.json(await db.setConfig(req.params.chave, req.body || {})); }
+  catch (e) { next(e); }
+});
+app.post('/api/config-app/:chave/logo', upload.single('arquivo'), async (req, res, next) => {
+  try {
+    let url = null;
+    if (req.file && USING_SUPABASE) {
+      const safe = (req.file.originalname || 'logo').replace(/[^\w.\-]+/g, '_');
+      const path = `config/${req.params.chave}_logo_${Date.now()}_${safe}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+      if (error) throw error;
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+      url = data?.signedUrl || path;
+    }
+    const cfg = (await db.getConfig(req.params.chave)) || {};
+    cfg.logo_url = url;
+    res.json(await db.setConfig(req.params.chave, cfg));
+  } catch (e) { next(e); }
+});
+
 // ---------- CATÁLOGO DE SERVIÇOS (descrição padrão + preço por unidade, em REAIS) ----------
 const UNID_SERV = ['m2', 'ml', 'm3'];
 app.use('/api/catalogo-servicos', requireAdmin);
