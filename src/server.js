@@ -638,6 +638,39 @@ app.delete('/api/cronograma/alocacao/:id', async (req, res, next) => {
   try { res.json(await db.deleteAlocacao(req.params.id)); }
   catch (e) { next(e); }
 });
+
+// ---------- CATÁLOGO DE SERVIÇOS (descrição padrão + preço por unidade, em REAIS) ----------
+const UNID_SERV = ['m2', 'ml', 'm3'];
+app.use('/api/catalogo-servicos', requireAdmin);
+app.get('/api/catalogo-servicos', async (_req, res, next) => {
+  try { res.json(await db.listServicos()); }
+  catch (e) { next(e); }
+});
+app.post('/api/catalogo-servicos', async (req, res, next) => {
+  try {
+    if (!req.body.nome) return res.status(400).json({ erro: 'nome é obrigatório' });
+    res.status(201).json(await db.createServico({
+      nome: req.body.nome, descricao: req.body.descricao || null,
+      unidade: UNID_SERV.includes(req.body.unidade) ? req.body.unidade : 'm2',
+      preco: Number(req.body.preco) || 0,
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/catalogo-servicos/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['nome', 'descricao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.unidade !== undefined) patch.unidade = UNID_SERV.includes(req.body.unidade) ? req.body.unidade : 'm2';
+    if (req.body.preco !== undefined) patch.preco = Number(req.body.preco) || 0;
+    const s = await db.updateServico(req.params.id, patch);
+    if (!s) return res.status(404).json({ erro: 'serviço não encontrado' });
+    res.json(s);
+  } catch (e) { next(e); }
+});
+app.delete('/api/catalogo-servicos/:id', async (req, res, next) => {
+  try { res.json(await db.deleteServico(req.params.id)); }
+  catch (e) { next(e); }
+});
 app.use('/api/lancamentos-diarios', requireAdmin);
 app.post('/api/lancamentos-diarios', async (req, res, next) => {
   try {

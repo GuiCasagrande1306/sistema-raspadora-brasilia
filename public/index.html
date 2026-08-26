@@ -1032,6 +1032,7 @@
           <button data-pf="PROPOSTA_ENVIADA">Enviadas</button>
           <button data-pf="APROVADO">Aprovadas</button>
         </div>
+        <button class="btn-ghost" id="btn-catalogo" style="min-height:40px">⚙️ Catálogo de Serviços</button>
       </div>
       <div class="metrics">
         <div class="metric"><div class="lbl">Aguardando proposta</div><div class="val" id="prop-aguard">—</div><div class="sub">para precificar</div></div>
@@ -1507,6 +1508,29 @@
       <button type="button" class="btn-ghost" id="prop-salvar">Salvar preços</button>
       <button type="button" class="primary" id="prop-enviar">Enviar proposta</button>
     </footer>
+  </div>
+</div>
+
+<!-- MODAL: Catálogo de Serviços -->
+<div class="overlay" id="ov-catalogo">
+  <div class="modal wide">
+    <header><h3>Catálogo de Serviços</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <p class="dv" style="font-size:12.5px;color:var(--ink-3);margin:0 0 12px">Cadastre cada serviço uma vez com a <b>descrição padrão</b> e o <b>preço por unidade</b>. Nas propostas você aplica com um clique.</p>
+      <div id="catalogo-lista" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:14px">
+        <div class="grid2">
+          <div class="field"><label>Nome do serviço</label><input id="serv-nome" placeholder="Ex.: Fulget, Concreto polido, Piso tátil…"></div>
+          <div class="field"><label>Preço (R$/unid.)</label><input id="serv-preco" type="number" step="0.01" min="0" placeholder="0,00"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Unidade</label><select id="serv-unid"><option value="m2">m²</option><option value="ml">metro linear (ml)</option><option value="m3">m³</option></select></div>
+          <div class="field" style="display:flex;flex-direction:column;justify-content:flex-end"><button type="button" class="primary" id="btn-add-servico" style="min-height:44px">+ Adicionar serviço</button></div>
+        </div>
+        <div class="field"><label>Descrição padrão (entra na proposta)</label><textarea id="serv-desc" rows="2" placeholder="Texto que descreve o serviço na proposta…"></textarea></div>
+      </div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
   </div>
 </div>
 
@@ -2390,10 +2414,49 @@
     el.querySelectorAll('[data-prop]').forEach(c=>c.addEventListener('click',async()=>{
       try{abrirProposta(await api('/api/orcamentos/'+c.dataset.prop));}catch(err){showToast('Erro ao abrir');console.error(err);}}));
   }
+  let SERVICOS=[];
   async function loadPropostas(){
     try{const {orcamentos}=await api('/api/orcamentos');PROP_ORC=orcamentos||[];}catch(e){PROP_ORC=[];console.error(e);}
+    try{SERVICOS=await api('/api/catalogo-servicos');}catch(e){SERVICOS=[];console.error(e);}
     renderPropostas();
   }
+  // ---- Catálogo de Serviços ----
+  document.getElementById('btn-catalogo').addEventListener('click',async()=>{try{SERVICOS=await api('/api/catalogo-servicos');}catch{}renderCatalogo();openModal('ov-catalogo');});
+  function renderCatalogo(){
+    const el=document.getElementById('catalogo-lista');
+    if(!SERVICOS.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12.5px">Nenhum serviço ainda. Adicione abaixo.</div>';return;}
+    el.innerHTML=SERVICOS.map(s=>`<div style="border:1px solid var(--line);border-radius:10px;padding:10px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input value="${esc(s.nome)}" data-sv-nome="${s.id}" style="flex:1" placeholder="Nome">
+        <select data-sv-unid="${s.id}" style="width:120px">${['m2','ml','m3'].map(u=>`<option value="${u}"${s.unidade===u?' selected':''}>${UNI_LABEL[u]}</option>`).join('')}</select>
+        <input type="number" step="0.01" min="0" value="${s.preco||''}" data-sv-preco="${s.id}" style="width:110px" placeholder="R$/un">
+        <button class="doc-cloud" data-sv-del="${s.id}" title="Excluir">${DE_TRASH}</button></div>
+      <textarea data-sv-desc="${s.id}" rows="2" style="width:100%;margin-top:8px" placeholder="Descrição padrão">${esc(s.descricao||'')}</textarea></div>`).join('');
+    el.querySelectorAll('[data-sv-nome],[data-sv-unid],[data-sv-preco],[data-sv-desc]').forEach(i=>{
+      const id=i.dataset.svNome||i.dataset.svUnid||i.dataset.svPreco||i.dataset.svDesc;
+      i.addEventListener('change',()=>salvarServico(id));
+    });
+    el.querySelectorAll('[data-sv-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este serviço?'))return;
+      try{await api('/api/catalogo-servicos/'+b.dataset.svDel,{method:'DELETE'});SERVICOS=await api('/api/catalogo-servicos');renderCatalogo();}
+      catch(e){showToast('Erro');console.error(e);}}));
+  }
+  async function salvarServico(id){
+    const g=(a)=>{const el=document.querySelector('['+a+'="'+id+'"]');return el?el.value:undefined;};
+    const payload={nome:g('data-sv-nome'),unidade:g('data-sv-unid'),preco:parseFloat(g('data-sv-preco'))||0,descricao:g('data-sv-desc')};
+    try{await api('/api/catalogo-servicos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      SERVICOS=await api('/api/catalogo-servicos');showToast('Serviço atualizado');}
+    catch(e){showToast('Erro ao salvar');console.error(e);}
+  }
+  document.getElementById('btn-add-servico').addEventListener('click',async()=>{
+    const nome=document.getElementById('serv-nome').value.trim();
+    if(!nome){showToast('Informe o nome do serviço');return;}
+    const payload={nome,unidade:document.getElementById('serv-unid').value,preco:parseFloat(document.getElementById('serv-preco').value)||0,descricao:document.getElementById('serv-desc').value||null};
+    try{await api('/api/catalogo-servicos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('serv-nome').value='';document.getElementById('serv-preco').value='';document.getElementById('serv-desc').value='';
+      SERVICOS=await api('/api/catalogo-servicos');renderCatalogo();showToast('Serviço adicionado');}
+    catch(e){showToast('Erro ao adicionar');console.error(e);}
+  });
   document.getElementById('prop-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     document.getElementById('prop-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');propFiltro=b.dataset.pf;renderPropostas();}));
@@ -2401,9 +2464,11 @@
     const box=document.getElementById('prop-itens');
     const itens=propAtual.itens||[];
     if(!itens.length){box.innerHTML='<div class="orc-empty">Esta medição não tem itens medidos.</div>';document.getElementById('prop-total').textContent=brlN(0);return;}
-    box.innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr><th>Item medido</th><th class="num">Medida</th><th>R$ / unid.</th><th class="num">Total</th></tr></thead>
+    const catOpts='<option value="">— catálogo —</option>'+SERVICOS.map(s=>`<option value="${s.id}">${esc(s.nome)} · ${brlN(s.preco||0)}/${UNI_LABEL[s.unidade]||'m²'}</option>`).join('');
+    box.innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr><th style="min-width:220px">Item / descrição</th><th class="num">Medida</th><th>R$ / unid.</th><th class="num">Total</th></tr></thead>
       <tbody>${itens.map((it,i)=>`<tr>
-        <td>${esc(it.descricao||'(sem descrição)')}</td>
+        <td><textarea class="prop-desc" data-pd="${i}" rows="2" style="width:100%;font-size:12.5px" placeholder="Descrição do item">${esc(it.descricao||'')}</textarea>
+          ${SERVICOS.length?`<select class="prop-cat" data-pc="${i}" style="width:100%;margin-top:4px;font-size:11.5px">${catOpts}</select>`:''}</td>
         <td class="num">${it.area_m2||0} ${UNI_LABEL[it.unidade]||'m²'}</td>
         <td><input class="vte-inp" type="number" step="0.01" min="0" data-pi="${i}" value="${it.valor_unit||''}" placeholder="0,00"></td>
         <td class="num" data-pt="${i}">${brlN((it.area_m2||0)*(it.valor_unit||0))}</td></tr>`).join('')}</tbody></table></div>`;
@@ -2412,6 +2477,17 @@
       const i=+inp.dataset.pi;propAtual.itens[i].valor_unit=parseFloat(inp.value)||0;
       box.querySelector('[data-pt="'+i+'"]').textContent=brlN((propAtual.itens[i].area_m2||0)*(propAtual.itens[i].valor_unit||0));
       propRecalcTotal();}));
+    box.querySelectorAll('[data-pd]').forEach(t=>t.addEventListener('input',()=>{propAtual.itens[+t.dataset.pd].descricao=t.value;}));
+    box.querySelectorAll('[data-pc]').forEach(sel=>sel.addEventListener('change',()=>{
+      const i=+sel.dataset.pc,s=SERVICOS.find(x=>x.id===sel.value);if(!s)return;
+      // aplica preço do catálogo; usa a descrição padrão só se o item estiver sem descrição
+      propAtual.itens[i].valor_unit=Number(s.preco)||0;
+      const dt=box.querySelector('[data-pi="'+i+'"]');if(dt)dt.value=s.preco||'';
+      const desc=box.querySelector('[data-pd="'+i+'"]');
+      if(desc&&!desc.value.trim()&&s.descricao){desc.value=s.descricao;propAtual.itens[i].descricao=s.descricao;}
+      box.querySelector('[data-pt="'+i+'"]').textContent=brlN((propAtual.itens[i].area_m2||0)*(propAtual.itens[i].valor_unit||0));
+      propRecalcTotal();sel.value='';
+    }));
   }
   function propRecalcTotal(){
     const t=(propAtual.itens||[]).reduce((s,it)=>s+(it.area_m2||0)*(it.valor_unit||0),0);

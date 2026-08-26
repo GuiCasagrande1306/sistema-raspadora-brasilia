@@ -93,6 +93,7 @@ const mock = {
     // valores iniciais editáveis (Adelino ajusta na tela)
   ],
   cronogramaAloc: [],
+  servicosCatalogo: [],
   _orcSeq: 193,
 };
 
@@ -862,6 +863,39 @@ export const db = {
     mock.lancDiarios = mock.lancDiarios.filter(l => l.id !== id);
     return { ok: true };
   },
+  // ---- CATÁLOGO DE SERVIÇOS (descrição padrão + preço por unidade) ----
+  async listServicos() {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('servicos_catalogo').select('*').order('nome');
+      if (error) throw error;
+      return data || [];
+    }
+    return [...mock.servicosCatalogo].sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  },
+  async createServico(s) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('servicos_catalogo').insert(s).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const novo = { id: uid(), criado_em: new Date().toISOString(), ...s };
+    mock.servicosCatalogo.push(novo);
+    return novo;
+  },
+  async updateServico(id, patch) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('servicos_catalogo').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const s = mock.servicosCatalogo.find(x => x.id === id);
+    if (!s) return null; Object.assign(s, patch); return s;
+  },
+  async deleteServico(id) {
+    if (USING_SUPABASE) { const { error } = await sb('servicos_catalogo').delete().eq('id', id); if (error) throw error; return { ok: true }; }
+    mock.servicosCatalogo = mock.servicosCatalogo.filter(s => s.id !== id); return { ok: true };
+  },
+
   // ---- CRONOGRAMA DIÁRIO: funções/diárias (editáveis) + alocações do dia ----
   async listFuncoes() {
     if (USING_SUPABASE) {
