@@ -173,6 +173,14 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').insert(base).select().single(); if (error) throw error; return data; }
     const novo = { id: uid(), ...base }; mock.obras.push(novo); return novo;
   },
+  async getObra(id) {
+    if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').select('*').eq('id', id).single(); if (error) throw error; return data; }
+    return mock.obras.find(o => o.id === id) || null;
+  },
+  async updateObra(id, patch) {
+    if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').update(patch).eq('id', id).select().single(); if (error) throw error; return data; }
+    const o = mock.obras.find(x => x.id === id); if (!o) return null; Object.assign(o, patch); return o;
+  },
   async createLancamento(l) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos').insert(l).select().single(); if (error) throw error;

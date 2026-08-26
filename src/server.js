@@ -873,6 +873,34 @@ app.get('/api/financeiro/obras', async (_req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Detalhe/execução da obra
+app.get('/api/financeiro/obra/:id', async (req, res, next) => {
+  try {
+    const o = await db.getObra(req.params.id);
+    if (!o) return res.status(404).json({ erro: 'obra não encontrada' });
+    res.json(o);
+  } catch (e) { next(e); }
+});
+app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['cliente', 'endereco', 'tipo_piso', 'responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
+      if (req.body[k] !== undefined) patch[k] = req.body[k];
+    }
+    if (req.body.metragem_m2 !== undefined) patch.metragem_m2 = Number(req.body.metragem_m2) || 0;
+    if (req.body.valor_contrato !== undefined) patch.valor_contrato = Math.round((Number(req.body.valor_contrato) || 0) * 100);
+    if (req.body.progresso !== undefined) patch.progresso = Math.max(0, Math.min(100, Math.round(Number(req.body.progresso) || 0)));
+    if (req.body.coluna_kanban !== undefined) {
+      const v = ['aprovado', 'execucao', 'afericao', 'liquidado'];
+      if (!v.includes(req.body.coluna_kanban)) return res.status(400).json({ erro: 'coluna_kanban inválida' });
+      patch.coluna_kanban = req.body.coluna_kanban;
+    }
+    const o = await db.updateObra(req.params.id, patch);
+    if (!o) return res.status(404).json({ erro: 'obra não encontrada' });
+    res.json(o);
+  } catch (e) { next(e); }
+});
+
 app.post('/api/financeiro/lancamento', async (req, res, next) => {
   try {
     const { obra_id, tipo, categoria, valor } = req.body;

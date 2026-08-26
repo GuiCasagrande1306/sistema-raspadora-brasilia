@@ -1554,6 +1554,59 @@
   </div>
 </div>
 
+<!-- MODAL: Execução da Obra -->
+<div class="overlay" id="ov-obra-exec">
+  <div class="modal wide">
+    <header><h3 id="oe-titulo">Obra</h3><button class="x" data-close>×</button></header>
+    <form id="form-obra-exec">
+      <input type="hidden" name="id" id="oe-id">
+      <div class="body">
+        <div class="orc-block">
+          <div class="orc-block-head"><span class="orc-marca">DADOS COMERCIAIS</span></div>
+          <div class="grid2">
+            <div class="field"><label>Cliente</label><input name="cliente" id="oe-cliente"></div>
+            <div class="field"><label>Endereço</label><input name="endereco" id="oe-endereco"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Tipo de piso / serviço</label><input name="tipo_piso" id="oe-tipo"></div>
+            <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" id="oe-metragem" type="number" step="0.01" min="0"></div>
+          </div>
+          <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" id="oe-valor" type="number" step="0.01" min="0"></div>
+        </div>
+
+        <div class="orc-block" style="margin-top:12px">
+          <div class="orc-block-head"><span class="orc-marca">EXECUÇÃO</span></div>
+          <div class="grid2">
+            <div class="field"><label>Data de início</label><input name="data_inicio" id="oe-inicio" type="date"></div>
+            <div class="field"><label>Data prevista de término</label><input name="data_prevista_termino" id="oe-termino" type="date"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Responsável técnico</label><input name="responsavel" id="oe-responsavel" placeholder="Quem toca a obra"></div>
+            <div class="field"><label>Etapa</label><select name="coluna_kanban" id="oe-etapa"><option value="aprovado">Aguardando Sinal / Entrada</option><option value="execucao">Em Execução</option><option value="afericao">Aferição de Margem</option><option value="liquidado">Concluído / Liquidado</option></select></div>
+          </div>
+          <div class="field"><label>Equipe responsável</label><input name="equipe_responsavel" id="oe-equipe" placeholder="Ex.: Diego, Cleber, Luiz"></div>
+          <div class="field"><label>Andamento da obra: <b id="oe-prog-lbl">0%</b></label><input name="progresso" id="oe-progresso" type="range" min="0" max="100" step="5" style="width:100%"></div>
+        </div>
+
+        <div class="orc-block" style="margin-top:12px">
+          <div class="orc-block-head"><span class="orc-marca">CUSTOS & PAGAMENTO</span></div>
+          <div class="fb-counts" style="grid-template-columns:repeat(3,1fr)">
+            <div class="fb-count"><b class="money" id="oe-insumos">—</b><span>Insumos</span></div>
+            <div class="fb-count"><b class="money" id="oe-maoobra">—</b><span>Mão de obra</span></div>
+            <div class="fb-count"><b class="money" id="oe-custo">—</b><span>Custo total</span></div>
+          </div>
+          <div class="field"><label>Situação de pagamento</label><input name="status_pagamento" id="oe-pagto" placeholder="Ex.: 50% sinal pago, 100% pago…"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+            <button type="button" class="btn-ghost" id="oe-lancar" style="min-height:38px">+ Lançar custo</button>
+            <button type="button" class="btn-ghost" id="oe-dre" style="min-height:38px">Ver resultado (DRE)</button>
+          </div>
+        </div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Fechar</button><button type="submit" class="primary">Salvar obra</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Nova Conta Bancária (Cofre) -->
 <div class="overlay" id="ov-conta">
   <div class="modal">
@@ -1698,7 +1751,7 @@
     const prog=o.coluna_kanban==='execucao'?`<div class="prog"><div class="plabel"><span>Execução</span><span>${o.progresso}%</span></div><div class="pbar"><div class="pfill" style="width:${o.progresso}%"></div></div></div>`:'';
     const margemCor=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
     return `<div class="card" draggable="true" data-card="${o.id}"><div class="crow"><div class="ini" style="background:${hue(o.cliente)}">${ini(o.cliente)}</div>
-      <div><h4>${esc(o.cliente)}</h4><div class="role">${esc(o.endereco)}</div></div><button class="menu">⋯</button></div>
+      <div><h4>${esc(o.cliente)}</h4><div class="role">${esc(o.endereco)}</div></div><button class="menu" data-obraedit="${o.id}" title="Abrir / editar obra">⋯</button></div>
       <div class="tags"><span class="tag t-lar">${esc(o.tipo_piso)}</span><span class="tag t-info">${o.metragem_m2} m²</span></div>${prog}
       <div class="meta">
         <div class="mline"><span>Contrato</span><b class="money">${brl(o.valor_contrato)}</b></div>
@@ -1728,7 +1781,7 @@
       if(!OBRAS.length){board.innerHTML='<div class="orc-empty">Nenhuma obra cadastrada. Clique em <b>Nova Obra</b>.</div>';return;}
       const rows=OBRAS.map(o=>{const mc=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
         const sel=`<select class="fin-etapa" data-obra="${o.id}">${FIN_COLS.map(c=>`<option value="${c.k}"${c.k===o.coluna_kanban?' selected':''}>${c.t}</option>`).join('')}</select>`;
-        return `<tr><td><b>${esc(o.cliente)}</b></td><td>${esc(o.endereco||'—')}</td><td>${o.metragem_m2||0} m²</td><td class="num">${brl(o.valor_contrato)}</td><td class="num">${brl(o.custo_operacional)}</td><td class="num" style="color:${mc}">${o.margem_pct}%</td><td>${sel}</td></tr>`;}).join('');
+        return `<tr><td><b data-obraedit="${o.id}" style="cursor:pointer;color:var(--laranja-2)">${esc(o.cliente)}</b></td><td>${esc(o.endereco||'—')}</td><td>${o.metragem_m2||0} m²</td><td class="num">${brl(o.valor_contrato)}</td><td class="num">${brl(o.custo_operacional)}</td><td class="num" style="color:${mc}">${o.margem_pct}%</td><td>${sel}</td></tr>`;}).join('');
       board.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Cliente</th><th>Local</th><th>Metragem</th><th class="num">Contrato</th><th class="num">Custo</th><th class="num">Margem</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
       board.querySelectorAll('.fin-etapa').forEach(s=>s.addEventListener('change',async()=>{
         try{await api('/api/financeiro/obra/'+s.dataset.obra+'/mover',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({coluna_kanban:s.value})});showToast('Etapa atualizada');await loadFin();}
@@ -1744,6 +1797,42 @@
   function abrirNovaObra(){document.getElementById('form-obra').reset();openModal('ov-obra');}
   document.getElementById('btn-nova-obra').addEventListener('click',abrirNovaObra);
   document.getElementById('board-fin').addEventListener('click',e=>{if(e.target.closest('.addcard'))abrirNovaObra();});
+  // Abrir tela de execução da obra (card ⋯ ou nome na lista)
+  document.getElementById('board-fin').addEventListener('click',e=>{const b=e.target.closest('[data-obraedit]');if(b){e.stopPropagation();abrirObraExec(b.dataset.obraedit);}});
+  async function abrirObraExec(id){
+    let o;try{o=await api('/api/financeiro/obra/'+id);}catch(err){showToast('Erro ao abrir obra');console.error(err);return;}
+    const resumo=(OBRAS||[]).find(x=>x.id===id)||{};
+    const f=document.getElementById('form-obra-exec');
+    document.getElementById('oe-id').value=id;
+    document.getElementById('oe-titulo').textContent='Obra — '+(o.cliente||'');
+    f.cliente.value=o.cliente||'';f.endereco.value=o.endereco||'';f.tipo_piso.value=o.tipo_piso||'';
+    f.metragem_m2.value=o.metragem_m2||'';f.valor_contrato.value=o.valor_contrato?(o.valor_contrato/100).toFixed(2):'';
+    f.data_inicio.value=o.data_inicio||'';f.data_prevista_termino.value=o.data_prevista_termino||'';
+    f.responsavel.value=o.responsavel||'';f.equipe_responsavel.value=o.equipe_responsavel||'';
+    f.coluna_kanban.value=o.coluna_kanban||'aprovado';f.status_pagamento.value=o.status_pagamento||'';
+    const prog=o.progresso||0;f.progresso.value=prog;document.getElementById('oe-prog-lbl').textContent=prog+'%';
+    document.getElementById('oe-insumos').textContent=brl(o.custo_insumos||0);
+    document.getElementById('oe-maoobra').textContent=brl(o.custo_mao_obra||0);
+    document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));
+    openModal('ov-obra-exec');
+  }
+  document.getElementById('oe-progresso').addEventListener('input',e=>{document.getElementById('oe-prog-lbl').textContent=e.target.value+'%';});
+  document.getElementById('oe-lancar').addEventListener('click',()=>{
+    const id=document.getElementById('oe-id').value;document.getElementById('ov-obra-exec').classList.remove('open');
+    document.getElementById('lanc-tipo').value='saida';fillCats();openModal('ov-lanc');
+    const sel=document.getElementById('lanc-obra');if(sel)sel.value=id;
+  });
+  document.getElementById('oe-dre').addEventListener('click',()=>{const id=document.getElementById('oe-id').value;document.getElementById('ov-obra-exec').classList.remove('open');abrirDre&&abrirDre(id);});
+  document.getElementById('form-obra-exec').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;const id=document.getElementById('oe-id').value;
+    const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,
+      metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,
+      data_inicio:f.data_inicio.value||null,data_prevista_termino:f.data_prevista_termino.value||null,
+      responsavel:f.responsavel.value||null,equipe_responsavel:f.equipe_responsavel.value||null,
+      coluna_kanban:f.coluna_kanban.value,progresso:parseInt(f.progresso.value,10)||0,status_pagamento:f.status_pagamento.value||null};
+    try{await api('/api/financeiro/obra/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-obra-exec').classList.remove('open');await loadFin();showToast('Obra atualizada');
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Obra: '+(m||'erro'));console.error(err);}});
   document.getElementById('form-obra').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
     if(!f.cliente.value.trim()){showToast('Informe o cliente');return;}
@@ -3453,10 +3542,10 @@
   });
 
   // ---- DRE (a partir do board Financeiro) ----
-  document.getElementById('board-fin').addEventListener('click',async e=>{
-    const b=e.target.closest('[data-dre]');if(!b)return;
+  document.getElementById('board-fin').addEventListener('click',e=>{const b=e.target.closest('[data-dre]');if(b)abrirDre(b.dataset.dre);});
+  async function abrirDre(id){
     openModal('ov-dre');document.getElementById('dre-body').innerHTML='<div class="sec">Carregando…</div>';
-    try{const d=await api('/api/obras/'+b.dataset.dre+'/dre');
+    try{const d=await api('/api/obras/'+id+'/dre');
       const cor=d.margem_lucro_percentual>=35?'var(--ok)':d.margem_lucro_percentual>=20?'var(--warn)':'var(--danger)';
       document.getElementById('dre-body').innerHTML=`
         <div class="dre-hero"><button class="x" data-close style="float:right;border:0;background:none;color:#9CA3AF;font-size:22px;cursor:pointer;line-height:1">×</button>
@@ -3468,7 +3557,7 @@
         <div class="dre-margem">Margem de lucro<b style="color:${cor}">${d.margem_lucro_percentual}%</b></div>`;
       document.querySelector('#ov-dre [data-close]').addEventListener('click',()=>document.getElementById('ov-dre').classList.remove('open'));
     }catch(err){document.getElementById('dre-body').innerHTML='<div class="sec">Erro ao carregar DRE.</div>';console.error(err);}
-  });
+  }
 
   // ================= AUTENTICAÇÃO & ROLES =================
   const loginScreen=document.getElementById('login-screen');
