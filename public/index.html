@@ -1507,8 +1507,24 @@
       <button type="button" class="btn-ghost" data-close>Fechar</button>
       <button type="button" class="btn-ghost" id="prop-pdf">Exportar PDF</button>
       <button type="button" class="btn-ghost" id="prop-salvar">Salvar preços</button>
+      <button type="button" class="btn-ghost" id="prop-aprovar" style="display:none;border-color:var(--ok);color:var(--ok)">✓ Marcar Aprovada</button>
       <button type="button" class="primary" id="prop-enviar">Enviar proposta</button>
     </footer>
+  </div>
+</div>
+
+<!-- MODAL: Enviar Proposta -->
+<div class="overlay" id="ov-enviar">
+  <div class="modal">
+    <header><h3 id="env-titulo">Enviar proposta</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div class="seg" id="env-canal" style="margin-bottom:12px"><button data-canal="whatsapp" class="on">📱 WhatsApp</button><button data-canal="email">✉️ E-mail</button></div>
+      <div class="field" id="env-fone-wrap"><label>WhatsApp do cliente (com DDD)</label><input id="env-fone" placeholder="(61) 9____-____"></div>
+      <div class="field hidden" id="env-email-wrap"><label>E-mail do cliente</label><input id="env-email" type="email" placeholder="cliente@email.com"></div>
+      <div class="field"><label>Mensagem (edite como quiser)</label><textarea id="env-msg" rows="4"></textarea></div>
+      <div class="hint" id="env-hint">O PDF da proposta abre para você salvar e anexar no WhatsApp. (Anexo automático exige a API do WhatsApp conectada.)</div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="env-enviar">Gerar PDF e abrir WhatsApp</button></footer>
   </div>
 </div>
 
@@ -2610,7 +2626,9 @@
     document.getElementById('prop-info').innerHTML=[orc.servico_tipo,orc.endereco_obra,orc.responsavel_tecnico?('Resp.: '+esc(orc.responsavel_tecnico)):''].filter(Boolean).map(esc).join(' · ');
     document.getElementById('prop-obs').value=orc.observacoes||'';
     document.getElementById('prop-global').value='';
-    document.getElementById('prop-enviar').textContent=orc.status==='APROVADO'?'Reabrir p/ envio':(orc.status==='PROPOSTA_ENVIADA'?'Marcar como aprovada':'Enviar proposta');
+    document.getElementById('prop-enviar').textContent=orc.status==='PROPOSTA_ENVIADA'?'Reenviar proposta':'Enviar proposta';
+    document.getElementById('prop-enviar').style.display=orc.status==='APROVADO'?'none':'';
+    document.getElementById('prop-aprovar').style.display=orc.status==='APROVADO'?'none':'';
     propRenderItens();
     openModal('ov-proposta');
   }
@@ -2630,9 +2648,49 @@
     }catch(err){showToast('Erro ao salvar proposta');console.error(err);}
   }
   document.getElementById('prop-salvar').addEventListener('click',()=>propSalvar(null));
-  document.getElementById('prop-enviar').addEventListener('click',()=>{
-    const st=propAtual.status==='AGUARDANDO_PROPOSTA'?'PROPOSTA_ENVIADA':(propAtual.status==='PROPOSTA_ENVIADA'?'APROVADO':'PROPOSTA_ENVIADA');
-    propSalvar(st);
+  document.getElementById('prop-aprovar').addEventListener('click',()=>{if(confirm('Marcar esta proposta como APROVADA? (o cliente aceitou)'))propSalvar('APROVADO');});
+  document.getElementById('prop-enviar').addEventListener('click',abrirEnviar);
+  // ---- Envio da proposta (WhatsApp / E-mail) ----
+  let envCanal='whatsapp';
+  function msgPadrao(nome){const primeiro=(nome||'').trim().split(/\s+/)[0]||'';return `${primeiro?primeiro+', ':''}segue a proposta para análise. Qualquer dúvida, fico à disposição!`;}
+  function abrirEnviar(){
+    if(!propAtual)return;
+    // salva os preços atuais antes (silencioso), pra proposta/pdf ficarem coerentes
+    document.getElementById('env-titulo').textContent='Enviar proposta — Nº '+propAtual.numero_orcamento;
+    document.getElementById('env-fone').value=propAtual.cliente_fone||'';
+    document.getElementById('env-email').value=propAtual.cliente_email||'';
+    document.getElementById('env-msg').value=msgPadrao(propAtual.cliente_nome);
+    setCanal('whatsapp');
+    openModal('ov-enviar');
+  }
+  function setCanal(c){
+    envCanal=c;
+    document.getElementById('env-canal').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.canal===c));
+    document.getElementById('env-fone-wrap').classList.toggle('hidden',c!=='whatsapp');
+    document.getElementById('env-email-wrap').classList.toggle('hidden',c!=='email');
+    document.getElementById('env-enviar').textContent=c==='whatsapp'?'Gerar PDF e abrir WhatsApp':'Gerar PDF e abrir E-mail';
+    document.getElementById('env-hint').textContent=c==='whatsapp'
+      ?'O PDF da proposta abre para você salvar e anexar no WhatsApp. (Anexo automático exige a API do WhatsApp conectada.)'
+      :'Abre seu app de e-mail com a mensagem; anexe o PDF que será gerado.';
+  }
+  document.getElementById('env-canal').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setCanal(b.dataset.canal)));
+  document.getElementById('env-enviar').addEventListener('click',async()=>{
+    const msg=document.getElementById('env-msg').value||'';
+    // 1) abre o canal escolhido com a mensagem (link principal — antes do PDF, p/ não ser bloqueado)
+    if(envCanal==='whatsapp'){
+      let fone=(document.getElementById('env-fone').value||'').replace(/\D/g,'');
+      if(fone&&!fone.startsWith('55'))fone='55'+fone.replace(/^0+/,'');
+      window.open('https://wa.me/'+fone+'?text='+encodeURIComponent(msg),'_blank');
+    }else{
+      const email=document.getElementById('env-email').value||'';
+      const assunto='Proposta Nº '+propAtual.numero_orcamento+' — Raspadora Brasília';
+      window.open('mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(assunto)+'&body='+encodeURIComponent(msg),'_blank');
+    }
+    // 2) gera o PDF (janela de impressão -> salvar como PDF, p/ anexar)
+    setTimeout(()=>{try{propExportPDF();}catch(e){console.error(e);}},300);
+    // 3) marca como enviada
+    document.getElementById('ov-enviar').classList.remove('open');
+    await propSalvar('PROPOSTA_ENVIADA');
   });
   document.getElementById('prop-pdf').addEventListener('click',propExportPDF);
   function propExportPDF(){
