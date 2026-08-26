@@ -566,6 +566,10 @@ app.get('/api/pagamento-diario', async (req, res, next) => {
   try { res.json(await db.pagamentoDiario(req.query.data || new Date().toISOString().slice(0, 10))); }
   catch (e) { next(e); }
 });
+app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
+  try { res.json(await db.gastosPorCategoria(req.query.mes || new Date().toISOString().slice(0, 7))); }
+  catch (e) { next(e); }
+});
 app.use('/api/lancamentos-diarios', requireAdmin);
 app.post('/api/lancamentos-diarios', async (req, res, next) => {
   try {

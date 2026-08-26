@@ -858,6 +858,28 @@ export const db = {
     mock.lancDiarios = mock.lancDiarios.filter(l => l.id !== id);
     return { ok: true };
   },
+  // Gastos por categoria no mês (boletos por vencimento + lançamentos por data)
+  async gastosPorCategoria(mes) {
+    let boletos, lancs;
+    if (USING_SUPABASE) {
+      const [b, l] = await Promise.all([
+        sb('boletos').select('categoria,valor').gte('vencimento', mes + '-01').lte('vencimento', mes + '-31'),
+        sb('lancamentos_diarios').select('categoria,valor').gte('data', mes + '-01').lte('data', mes + '-31'),
+      ]);
+      boletos = b.data || []; lancs = l.data || [];
+    } else {
+      boletos = mock.boletos.filter(x => (x.vencimento || '').startsWith(mes));
+      lancs = mock.lancDiarios.filter(x => (x.data || '').startsWith(mes));
+    }
+    const acc = {};
+    for (const x of [...boletos, ...lancs]) {
+      const c = x.categoria || 'OUTRO';
+      acc[c] = (acc[c] || 0) + (x.valor || 0);
+    }
+    const categorias = Object.entries(acc).map(([categoria, total]) => ({ categoria, total })).sort((a, b) => b.total - a.total);
+    const total_geral = categorias.reduce((s, c) => s + c.total, 0);
+    return { mes, total_geral, categorias };
+  },
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {
     const [boletos, lancs] = await Promise.all([
