@@ -1087,7 +1087,7 @@ export const db = {
   async getVTSemana(ano_mes, semana) {
     if (!USING_SUPABASE) return { linhas: [], resumo: {} };
     const [{ data: colabs }, { data: semRows }, { data: mesRows }] = await Promise.all([
-      sb('colaboradores').select('id,nome,status_colaborador').neq('status_colaborador', 'DESLIGADO').order('nome'),
+      sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt').neq('status_colaborador', 'DESLIGADO').order('nome'),
       sb('vt_semanal').select('*').eq('ano_mes', ano_mes).eq('semana', semana),
       sb('vt_semanal').select('qtd_viagens,valor_passagem').eq('ano_mes', ano_mes),
     ]);
@@ -1097,7 +1097,7 @@ export const db = {
       const qtd = r ? r.qtd_viagens : 0;
       const vp = r ? Number(r.valor_passagem) : 4.30;
       return {
-        colaborador_id: c.id, nome: c.nome,
+        colaborador_id: c.id, nome: c.nome, carteirinha: c.carteirinha_vt || '',
         qtd_viagens: qtd, valor_passagem: vp, total: +(qtd * vp).toFixed(2),
         forma_pagamento: r ? r.forma_pagamento : 'CARTEIRINHA', observacao: r ? r.observacao : '',
       };
@@ -1120,6 +1120,13 @@ export const db = {
     if (forma_pagamento !== undefined) row.forma_pagamento = ['CARTEIRINHA', 'CONTA'].includes(forma_pagamento) ? forma_pagamento : 'CARTEIRINHA';
     if (observacao !== undefined) row.observacao = observacao;
     const { data, error } = await sb('vt_semanal').upsert(row, { onConflict: 'colaborador_id,ano_mes,semana' }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  // Código da carteirinha de VT (fica no cadastro do colaborador)
+  async setCarteirinhaVT(colaborador_id, carteirinha) {
+    if (!USING_SUPABASE) return { ok: true };
+    const { data, error } = await sb('colaboradores').update({ carteirinha_vt: carteirinha || null }).eq('id', colaborador_id).select('id,carteirinha_vt').single();
     if (error) throw error;
     return data;
   },

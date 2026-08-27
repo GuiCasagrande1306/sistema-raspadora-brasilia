@@ -791,6 +791,15 @@ app.post('/api/dp/vt/semana', async (req, res, next) => {
     res.json(await db.upsertVTSemana(req.body));
   } catch (e) { next(e); }
 });
+// Código da carteirinha (fica no cadastro do colaborador)
+app.use('/api/dp/vt/carteirinha', requireAuth);
+app.post('/api/dp/vt/carteirinha', async (req, res, next) => {
+  try {
+    const { colaborador_id, carteirinha } = req.body;
+    if (!colaborador_id) return res.status(400).json({ erro: 'colaborador_id é obrigatório' });
+    res.json(await db.setCarteirinhaVT(colaborador_id, carteirinha));
+  } catch (e) { next(e); }
+});
 
 app.post('/api/dp/vt/registro', async (req, res, next) => {
   try {

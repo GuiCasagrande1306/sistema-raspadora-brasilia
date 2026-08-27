@@ -2155,13 +2155,14 @@
   function vtRenderTabela(){
     const rows=VT_STATE.linhas.map((l,i)=>`<tr data-i="${i}">
       <td><div class="vte-nome"><div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}</div></td>
+      <td><input class="vte-obs" data-f="cart" value="${esc(l.carteirinha||'')}" placeholder="Nº carteirinha" style="min-width:120px"></td>
       <td><input class="vte-inp" type="number" min="0" step="1" data-f="qtd" value="${l.qtd_viagens}"></td>
       <td class="num">${brlN(l.valor_passagem)}</td>
       <td class="num vte-total" data-total>${brlN(l.total)}</td>
       <td><span class="pgtoggle"><button data-pg="CARTEIRINHA" class="${l.forma_pagamento==='CARTEIRINHA'?'on-cart':''}">Carteirinha</button><button data-pg="CONTA" class="${l.forma_pagamento==='CONTA'?'on-conta':''}">Conta</button></span></td>
       <td><input class="vte-obs" data-f="obs" value="${esc(l.observacao||'')}" placeholder="Observações…"></td></tr>`).join('');
     document.getElementById('vt-content').innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr>
-      <th>Funcionário</th><th>Qtd. Viagens</th><th class="num">Passagem</th><th class="num">Total</th><th>Pagamento</th><th>Observações</th>
+      <th>Funcionário</th><th>Carteirinha</th><th>Qtd. Viagens</th><th class="num">Passagem</th><th class="num">Total</th><th>Pagamento</th><th>Observações</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function vtSave(l){api('/api/dp/vt/semana',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -2177,6 +2178,10 @@
       clearTimeout(vtDebounce[l.colaborador_id]);vtDebounce[l.colaborador_id]=setTimeout(()=>vtSave(l),500);
     }else if(e.target.dataset.f==='obs'){l.observacao=e.target.value;
       clearTimeout(vtDebounce['o'+l.colaborador_id]);vtDebounce['o'+l.colaborador_id]=setTimeout(()=>vtSave(l),700);}
+    else if(e.target.dataset.f==='cart'){l.carteirinha=e.target.value;
+      clearTimeout(vtDebounce['c'+l.colaborador_id]);vtDebounce['c'+l.colaborador_id]=setTimeout(()=>{
+        api('/api/dp/vt/carteirinha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({colaborador_id:l.colaborador_id,carteirinha:l.carteirinha})}).catch(err=>{showToast('Erro ao salvar carteirinha');console.error(err);});
+      },700);}
   });
   document.getElementById('vt-content').addEventListener('click',e=>{
     const b=e.target.closest('[data-pg]');if(!b)return;const tr=b.closest('tr[data-i]'),l=VT_STATE.linhas[+tr.dataset.i];
@@ -2195,6 +2200,7 @@
     const R=VT_STATE.resumo||{};
     const rows=VT_STATE.linhas.map(l=>`<tr class="${l.forma_pagamento==='CARTEIRINHA'?'cart':''}">
       <td>${esc(l.nome)}</td>
+      <td>${esc(l.carteirinha||'—')}</td>
       <td class="c">${l.qtd_viagens}</td>
       <td class="r">${brlN(l.valor_passagem)}</td>
       <td class="r">${brlN(l.total)}</td>
@@ -2228,9 +2234,9 @@
         <div class="card"><div class="k">Colaboradores</div><div class="v">${R.total_colaboradores||VT_STATE.linhas.length}</div></div>
         <div class="card"><div class="k">Balanço Mensal</div><div class="v">${brlN(R.balanco_mensal||0)}</div></div>
       </div>
-      <table><thead><tr><th>Funcionário</th><th>Qtd. Viagens</th><th>Passagem</th><th>Total</th><th>Pagamento</th><th>Observações</th></tr></thead>
+      <table><thead><tr><th>Funcionário</th><th>Carteirinha</th><th>Qtd. Viagens</th><th>Passagem</th><th>Total</th><th>Pagamento</th><th>Observações</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td>Total</td><td class="c"></td><td></td><td class="r">${brlN(R.total_semanal||0)}</td><td colspan="2"></td></tr></tfoot></table>
+      <tfoot><tr><td>Total</td><td></td><td class="c"></td><td></td><td class="r">${brlN(R.total_semanal||0)}</td><td colspan="2"></td></tr></tfoot></table>
       <p class="foot">Raspadora Brasília — gerado em ${new Date().toLocaleString('pt-BR')}</p>
       <script>window.onload=function(){window.print();}<\/script>
     </body></html>`;
