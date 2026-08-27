@@ -1197,7 +1197,7 @@ export const db = {
     return data;
   },
   // Proposta aprovada → entrada PREVISTA no fluxo de caixa (recebível), uma única vez por orçamento
-  async lancarRecebivelProposta(orc) {
+  async lancarRecebivelProposta(orc, hojeStr) {
     if (!USING_SUPABASE) return null;
     const valor = Math.round((Number(orc.valor_total) || 0) * 100); // valor_total do orçamento é em reais
     if (valor <= 0) return null;
@@ -1207,7 +1207,8 @@ export const db = {
     if (existe && existe.length) return null;
     const { data: contas } = await sb('contas_bancarias').select('id').limit(1);
     const conta_id = contas && contas.length ? contas[0].id : null;
-    const data_prev = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10); // ~7 dias (sinal esperado)
+    const base = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? new Date(hojeStr + 'T12:00:00Z') : new Date();
+    const data_prev = new Date(base.getTime() + 7 * 86400000).toISOString().slice(0, 10); // ~7 dias (sinal esperado)
     return this.criarMovimentacao({
       conta_bancaria_id: conta_id, obra_id: null, data_movimento: data_prev,
       descricao: `Recebível — Proposta Nº ${orc.numero_orcamento} (${orc.cliente_nome || ''})`,
@@ -1355,10 +1356,12 @@ export const db = {
     await this.criarMovimentacao({ conta_bancaria_id: destinoId, data_movimento: new Date().toISOString().slice(0, 10), descricao: descricao || 'Transferência interna', categoria: 'TRANSFERENCIA', tipo: 'ENTRADA', valor, status: 'REALIZADO', conciliado: true });
     return { ok: true, movimentacao_id: saida.id };
   },
-  async fluxoProjetado(dias) {
+  async fluxoProjetado(dias, hojeStr) {
     if (!USING_SUPABASE) return { dias: [], resumo: {} };
-    const hoje = new Date(); const ate = new Date(Date.now() + dias * 86400000);
-    const d0 = hoje.toISOString().slice(0, 10), d1 = ate.toISOString().slice(0, 10);
+    // usa a data enviada pelo cliente (mesma linha do tempo dos dados); senão, o relógio do servidor
+    const base = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? new Date(hojeStr + 'T12:00:00Z') : new Date();
+    const ate = new Date(base.getTime() + dias * 86400000);
+    const d0 = base.toISOString().slice(0, 10), d1 = ate.toISOString().slice(0, 10);
     const { data: contas } = await sb('contas_bancarias').select('saldo_atual');
     const saldo_atual = (contas || []).reduce((s, c) => s + c.saldo_atual, 0);
     const [{ data: prev }, { data: boletos }, { data: lancs }] = await Promise.all([

@@ -272,7 +272,7 @@ app.patch('/api/orcamentos/:id', async (req, res, next) => {
     const o = await db.updateOrcamento(req.params.id, patch);
     if (!o) return res.status(404).json({ erro: 'orçamento não encontrado' });
     if (patch.status === 'APROVADO' && (!anterior || anterior.status !== 'APROVADO')) {
-      try { await db.lancarRecebivelProposta(o); } catch (e) { console.error('[recebivel-proposta]', e); }
+      try { await db.lancarRecebivelProposta(o, req.body.hoje); } catch (e) { console.error('[recebivel-proposta]', e); }
     }
     res.json(o);
   } catch (e) { next(e); }
@@ -1084,7 +1084,7 @@ app.post('/api/bancos/transferencia-interna', async (req, res, next) => {
 
 // Fluxo de caixa projetado (próximos N dias)
 app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
-  try { res.json(await db.fluxoProjetado(Number(req.query.dias) || 30)); }
+  try { res.json(await db.fluxoProjetado(Number(req.query.dias) || 30, req.query.hoje)); }
   catch (e) { next(e); }
 });
 

@@ -2723,7 +2723,7 @@
   });
   async function propSalvar(novoStatus){
     if(!propAtual)return;
-    const body={itens:propAtual.itens,observacoes:document.getElementById('prop-obs').value||null};
+    const body={itens:propAtual.itens,observacoes:document.getElementById('prop-obs').value||null,hoje:isoHoje()};
     if(novoStatus)body.status=novoStatus;
     try{
       await api('/api/orcamentos/'+propAtual.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -3481,7 +3481,7 @@
 
   let BANCOS_STATE=null;
   async function loadBancosData(){
-    const [saldos,fluxo]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30')]);
+    const [saldos,fluxo]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30&hoje='+isoHoje())]);
     BANCOS_STATE={saldos,fluxo};
     document.getElementById('bancos-total').textContent=brl(saldos.total_consolidado);
     document.getElementById('bancos-ent').textContent=brl(fluxo.resumo.entradas_previstas||0);
