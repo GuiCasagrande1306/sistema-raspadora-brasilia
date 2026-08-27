@@ -2953,9 +2953,19 @@
     irParaView({dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'}[t]);
   }));
 
-  // ---------- SERVICE WORKER (PWA) ----------
+  // ---------- SERVICE WORKER (PWA) — auto-atualização ----------
   if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(e=>console.warn('SW falhou',e)));
+    // recarrega automaticamente quando um SW novo assume o controle (evita ficar preso em versão antiga)
+    let __swReloading=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!__swReloading){__swReloading=true;location.reload();}});
+    window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('/sw.js').then(reg=>{
+        reg.update();                                   // força checagem de versão nova a cada carga
+        setInterval(()=>reg.update(),60*60*1000);       // e de hora em hora
+        reg.addEventListener('updatefound',()=>{const nw=reg.installing;if(!nw)return;
+          nw.addEventListener('statechange',()=>{if(nw.state==='installed'&&navigator.serviceWorker.controller){nw.postMessage&&nw.postMessage('skip');}});});
+      }).catch(e=>console.warn('SW falhou',e));
+    });
   }
 
   // ---------- BANNER DE INSTALAÇÃO (beforeinstallprompt) ----------
