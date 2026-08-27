@@ -352,6 +352,13 @@
   .nf-folder:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px);}
   .nf-folder svg{width:38px;height:38px;color:var(--laranja);} .nf-folder h4{margin:0;font-size:15px;} .nf-folder .dv{font-size:12px;color:var(--ink-3);}
   .nf-bar{display:flex;justify-content:flex-end;margin-bottom:12px;}
+  .fin-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);}
+  .fin-item .fi-main{flex:1 1 200px;min-width:0;}
+  .fin-item .fi-main h4{margin:0;font-size:14px;font-weight:700;}
+  .fin-item .fi-sub{font-size:12px;color:var(--ink-3);margin-top:3px;}
+  .fin-item .fi-val{font-weight:800;font-size:15.5px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .fin-item .fi-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto;}
+  .fin-item .fi-act .btn-ghost{min-height:32px;font-size:12px;padding:5px 10px;}
   .gastos-wrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap;}
   .gastos-chart{position:relative;width:220px;height:220px;flex:none;}
   .gastos-chart svg{width:220px;height:220px;}
@@ -866,6 +873,7 @@
         </div>
         <!-- Painel: Contas & Fluxo -->
         <div id="bancos-panel-contas">
+          <div style="display:flex;justify-content:flex-end;padding:0 26px"><button class="btn-ghost" id="btn-contas-pdf" style="min-height:38px">🖨️ Exportar PDF</button></div>
           <div class="metrics">
             <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
             <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
@@ -879,6 +887,7 @@
           <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
             <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="pd-data" class="dash-sel"></label>
             <button class="primary" id="btn-novo-lanc-dia" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Novo lançamento</button>
+            <button class="btn-ghost" id="btn-pd-pdf" style="min-height:40px">🖨️ Exportar PDF</button>
           </div>
           <div class="metrics">
             <div class="metric"><div class="lbl">Total do dia</div><div class="val money" id="pd-total">—</div><div class="sub">boletos + lançamentos</div></div>
@@ -899,6 +908,7 @@
         <div id="bancos-panel-gastos" class="hidden">
           <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
             <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Mês<input type="month" id="gastos-mes" class="dash-sel"></label>
+            <button class="btn-ghost" id="btn-gastos-pdf" style="min-height:40px">🖨️ Relatório do mês (PDF)</button>
           </div>
           <div id="gastos-content" style="padding:18px 26px 96px;"></div>
         </div>
@@ -2311,6 +2321,7 @@
 
   // ---------- DOCUMENTOS EMPRESARIAIS (empresa > pasta > PDFs) ----------
   const DE_TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+  const UP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>';
   const DOCEMP_PASTAS=[['CONSTITUTIVOS','Documentos Constitutivos'],['CERTIDOES','Certidões / CND'],['OUTROS','Outros Documentos']];
   let deState={empresa:'RB',pasta:null};
   function loadDocEmp(){deState={empresa:'RB',pasta:null};renderDocEmp();}
@@ -3468,8 +3479,10 @@
   });
   document.getElementById('btn-bloquear').addEventListener('click',()=>{bancosUnlocked=false;bancosGate();showToast('Área bancária bloqueada');});
 
+  let BANCOS_STATE=null;
   async function loadBancosData(){
     const [saldos,fluxo]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30')]);
+    BANCOS_STATE={saldos,fluxo};
     document.getElementById('bancos-total').textContent=brl(saldos.total_consolidado);
     document.getElementById('bancos-ent').textContent=brl(fluxo.resumo.entradas_previstas||0);
     document.getElementById('bancos-sai').textContent=brl(fluxo.resumo.saidas_previstas||0);
@@ -3537,13 +3550,13 @@
     const atrasado=!b.pago&&b.vencimento&&b.vencimento<isoHoje();
     const st=b.pago?'<span class="tag t-ok">Pago</span>':(atrasado?'<span class="tag t-danger">Vencido</span>':'<span class="tag t-wait">A vencer</span>');
     const comp=b.comprovante_url?`<a class="doc-open" href="${b.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
-    return `<div class="doc-row">
-      <div class="di"><h4>${esc(b.descricao)} — ${brl(b.valor)}</h4><div class="sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${CAT_LABEL[b.categoria]||b.categoria||''}</div></div>
-      <div class="tags">${st}</div>
-      ${comp}
-      ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}" style="min-height:34px;font-size:12px">Marcar pago</button>`}
-      <button class="doc-cloud" data-compb="${b.id}" title="Anexar comprovante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button>
-      <button class="doc-cloud" data-delb="${b.id}" title="Excluir">${DE_TRASH}</button></div>`;
+    return `<div class="fin-item">
+      <div class="fi-main"><h4>${esc(b.descricao)}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${CAT_LABEL[b.categoria]||b.categoria||''}</div></div>
+      <div class="fi-val">${brl(b.valor)}</div>${st}
+      <div class="fi-act">${comp}
+        ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
+        <button class="doc-cloud" data-compb="${b.id}" title="Anexar comprovante">${UP_SVG}</button>
+        <button class="doc-cloud" data-delb="${b.id}" title="Excluir">${DE_TRASH}</button></div></div>`;
   }
   async function loadBoletos(){
     const el=document.getElementById('boletos-content');
@@ -3578,9 +3591,11 @@
       catch(e){showToast('Erro ao anexar');console.error(e);}};
     inp.click();
   }
+  let PD_STATE=null;
   async function loadPagDiario(){
     const el=document.getElementById('pd-data');if(!el.value)el.value=isoHoje();
     let r;try{r=await api('/api/pagamento-diario?data='+el.value);}catch(e){document.getElementById('pd-content').innerHTML='<div class="orc-empty">Erro ao carregar.</div>';console.error(e);return;}
+    PD_STATE={data:el.value,...r};
     document.getElementById('pd-total').textContent=brl(r.resumo.total);
     document.getElementById('pd-pago').textContent=brl(r.resumo.pago);
     document.getElementById('pd-pendente').textContent=brl(r.resumo.pendente);
@@ -3591,12 +3606,13 @@
       const st=i.pago?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
       const comp=i.comprovante_url?`<a class="doc-open" href="${i.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
       const base=i.origem==='BOLETO'?'/api/boletos/'+i.id:'/api/lancamentos-diarios/'+i.id;
-      return `<div class="doc-row">
-        <div class="di"><h4>${esc(i.descricao)} — ${brl(i.valor)}</h4><div class="sub">${CAT_LABEL[i.categoria]||i.categoria||''}</div></div>
-        <div class="tags">${tag}${st}</div>${comp}
-        ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}" style="min-height:34px;font-size:12px">Marcar pago</button>`}
-        <button class="doc-cloud" data-pd-comp="${base}/comprovante" title="Anexar comprovante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button>
-        ${i.origem==='LANCAMENTO'?`<button class="doc-cloud" data-pd-del="${i.id}" title="Excluir">${DE_TRASH}</button>`:''}</div>`;
+      return `<div class="fin-item">
+        <div class="fi-main"><h4>${esc(i.descricao)}</h4><div class="fi-sub">${CAT_LABEL[i.categoria]||i.categoria||''}</div></div>
+        <div class="fi-val">${brl(i.valor)}</div>${tag}${st}
+        <div class="fi-act">${comp}
+          ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
+          <button class="doc-cloud" data-pd-comp="${base}/comprovante" title="Anexar comprovante">${UP_SVG}</button>
+          ${i.origem==='LANCAMENTO'?`<button class="doc-cloud" data-pd-del="${i.id}" title="Excluir">${DE_TRASH}</button>`:''}</div></div>`;
     }).join('')+'</div>';
     cont.querySelectorAll('[data-pd-pagar]').forEach(b=>b.addEventListener('click',async()=>{
       try{await api(b.dataset.pdPagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Marcado como pago');loadPagDiario();}
@@ -3618,10 +3634,12 @@
 
   // ---- Gastos (pizza por categoria) ----
   const GASTO_CORES=['#ED7118','#3B82F6','#10B981','#8B5CF6','#EF4444','#F59E0B','#14B8A6','#EC4899','#6366F1','#84CC16'];
+  let GASTOS_STATE=null;
   async function loadGastos(){
     const mel=document.getElementById('gastos-mes');if(!mel.value)mel.value=new Date().toISOString().slice(0,7);
     const el=document.getElementById('gastos-content');
     let r;try{r=await api('/api/gastos/resumo?mes='+mel.value);}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar gastos.</div>';console.error(e);return;}
+    GASTOS_STATE={mes:mel.value,...r};
     if(!r.total_geral){el.innerHTML='<div class="orc-empty">Nenhum gasto em '+mel.value+'. Cadastre boletos e lançamentos para ver a distribuição por categoria.</div>';return;}
     const C=2*Math.PI*80;let off=0;
     const slices=r.categorias.map((c,i)=>{const len=(c.total/r.total_geral)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('');
@@ -3632,6 +3650,66 @@
       <div class="gastos-leg">${legenda}</div></div>`;
   }
   document.getElementById('gastos-mes').addEventListener('change',loadGastos);
+
+  // ---- Exportar PDF (financeiro) ----
+  function finPrint(titulo,corpo){
+    const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)}</title>
+    <style>*{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{margin:28px;color:#1E1E1E}h1{font-size:18px;margin:0 0 2px;color:#ED7118}.sub{color:#666;font-size:12px;margin:0 0 16px}
+      .cards{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:8px;padding:9px 13px;min-width:150px}
+      .card .k{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.03em}.card .v{font-size:16px;font-weight:800}
+      table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e2e2e2;padding:7px 9px;text-align:left}
+      th{background:#1E1E1E;color:#fff;font-size:10.5px;text-transform:uppercase}td.r{text-align:right}td.c{text-align:center}
+      tfoot td{font-weight:800;background:#FFF3E9}.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+      .row2{display:flex;gap:26px;align-items:center;flex-wrap:wrap}.foot{margin-top:22px;font-size:10px;color:#999}
+      @media print{@page{margin:12mm}}</style></head><body>${corpo}
+      <p class="foot">Raspadora Brasília · gerado em ${new Date().toLocaleString('pt-BR')}</p>
+      <script>window.onload=function(){window.print();}<\/script></body></html>`;
+    const w=window.open('','_blank');if(!w){showToast('Permita pop-ups para exportar');return;}w.document.write(html);w.document.close();
+  }
+  function donutSVG(cats,total){
+    const C=2*Math.PI*80;let off=0;
+    return `<svg viewBox="0 0 200 200" width="200" height="200">${cats.map((c,i)=>{const len=(c.total/total)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('')}</svg>`;
+  }
+  // Pagamento Diário (lista do dia)
+  document.getElementById('btn-pd-pdf').addEventListener('click',()=>{
+    if(!PD_STATE){showToast('Abra um dia primeiro');return;}
+    const d=PD_STATE;const dataBR=new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR');
+    const rows=(d.itens||[]).map(i=>`<tr><td>${esc(i.descricao)}</td><td>${CAT_LABEL[i.categoria]||i.categoria||''}</td><td class="c">${i.origem==='BOLETO'?'Boleto':esc(i.forma||'Lançamento')}</td><td class="c">${i.pago?'Pago':'Pendente'}</td><td class="r">${brl(i.valor)}</td></tr>`).join('')||'<tr><td colspan="5" class="c">Nada neste dia.</td></tr>';
+    finPrint('Pagamento Diário '+dataBR,`<h1>Pagamento Diário</h1><p class="sub">${dataBR}</p>
+      <div class="cards"><div class="card"><div class="k">Total do dia</div><div class="v">${brl(d.resumo.total)}</div></div>
+        <div class="card"><div class="k">Pago</div><div class="v">${brl(d.resumo.pago)}</div></div>
+        <div class="card"><div class="k">Pendente</div><div class="v">${brl(d.resumo.pendente)}</div></div></div>
+      <table><thead><tr><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Status</th><th>Valor</th></tr></thead><tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="4" class="r">Total</td><td class="r">${brl(d.resumo.total)}</td></tr></tfoot></table>`);
+  });
+  // Relatório do mês por categoria (com pizza)
+  document.getElementById('btn-gastos-pdf').addEventListener('click',()=>{
+    if(!GASTOS_STATE||!GASTOS_STATE.total_geral){showToast('Sem gastos no mês para exportar');return;}
+    const g=GASTOS_STATE;const [y,m]=g.mes.split('-');const mesBR=new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const rows=g.categorias.map((c,i)=>`<tr><td><span class="dot" style="background:${GASTO_CORES[i%GASTO_CORES.length]}"></span>${CAT_LABEL[c.categoria]||c.categoria}</td><td class="r">${brl(c.total)}</td><td class="r">${(c.total/g.total_geral*100).toFixed(1)}%</td></tr>`).join('');
+    finPrint('Relatório de gastos — '+mesBR,`<h1>Relatório de gastos por categoria</h1><p class="sub">${mesBR}</p>
+      <div class="row2"><div>${donutSVG(g.categorias,g.total_geral)}</div>
+        <table style="flex:1;min-width:280px"><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>${rows}</tbody>
+          <tfoot><tr><td>Total do mês</td><td class="r">${brl(g.total_geral)}</td><td class="r">100%</td></tr></tfoot></table></div>`);
+  });
+  // Contas & Fluxo (saldos + projeção)
+  document.getElementById('btn-contas-pdf').addEventListener('click',()=>{
+    if(!BANCOS_STATE){showToast('Abra Contas & Fluxo primeiro');return;}
+    const {saldos,fluxo}=BANCOS_STATE;
+    const contasRows=(saldos.contas||[]).map(c=>`<tr><td>${esc(c.nome_instituicao)}</td><td>${esc(c.tipo_conta||'')}</td><td class="r">${brl(c.saldo_atual)}</td></tr>`).join('');
+    const fluxoRows=(fluxo.dias||[]).map(d=>`<tr><td>${new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="r">${d.entradas?brl(d.entradas):'—'}</td><td class="r">${d.saidas?brl(d.saidas):'—'}</td><td class="r">${brl(d.saldo_projetado)}</td></tr>`).join('')||'<tr><td colspan="4" class="c">Sem movimentações previstas.</td></tr>';
+    finPrint('Fluxo de Caixa',`<h1>Bancos & Fluxo de Caixa</h1><p class="sub">Saldos e projeção de 30 dias</p>
+      <div class="cards">
+        <div class="card"><div class="k">Saldo consolidado</div><div class="v">${brl(saldos.total_consolidado)}</div></div>
+        <div class="card"><div class="k">Entradas previstas (30d)</div><div class="v" style="color:#137a3e">${brl(fluxo.resumo.entradas_previstas||0)}</div></div>
+        <div class="card"><div class="k">Saídas previstas (30d)</div><div class="v" style="color:#b91c1c">${brl(fluxo.resumo.saidas_previstas||0)}</div></div>
+        <div class="card"><div class="k">Saldo projetado</div><div class="v">${brl(fluxo.resumo.saldo_final_projetado||saldos.total_consolidado)}</div></div></div>
+      <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">Contas</h3>
+      <table style="margin-bottom:18px"><thead><tr><th>Instituição</th><th>Tipo</th><th>Saldo</th></tr></thead><tbody>${contasRows}</tbody></table>
+      <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">Fluxo projetado — 30 dias</h3>
+      <table><thead><tr><th>Data</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead><tbody>${fluxoRows}</tbody></table>`);
+  });
 
   // ---- Folha ----
   async function loadFolha(){
