@@ -1407,7 +1407,7 @@ export const db = {
     const recibos = resumo.colaboradores.map(l => ({
       tipo: 'FOLHA', colaborador_id: l.colaborador_id, colaborador_nome: l.nome, referencia: ref,
       periodo_desde: desde, periodo_ate: ate, valor: l.total_liquido, folha_fechamento_id: fech.id, data: hoje,
-      detalhe: { dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos, faltas: l.faltas || 0, inss: l.inss || 0, outros_desconto: l.outros_desconto || 0 },
+      detalhe: { dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos, faltas: l.faltas || 0, inss: l.inss || 0, outros_desconto: l.outros_desconto || 0, presenca: l.detalhe || [], faltas_lista: l.faltas_itens || [] },
     }));
     if (recibos.length) { const { error: er } = await sb('recibos').insert(recibos); if (er) throw er; }
     // abate os vales e descontos que entraram nesta folha (todos os pendentes)

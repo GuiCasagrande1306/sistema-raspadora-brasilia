@@ -4040,15 +4040,52 @@
   });
   document.getElementById('ffz-confirmar').addEventListener('click',async()=>{
     const btn=document.getElementById('ffz-confirmar');btn.disabled=true;btn.textContent='Fechando…';
+    const snap=folhaAtual;  // guarda a foto ANTES do fechamento (depois os descontos ficam abatidos)
     try{
-      const p=folhaAtual.periodo||{};
+      const p=snap.periodo||{};
       const r=await api('/api/dp/folha-fechar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({desde:p.desde,ate:p.ate,hoje:isoHoje()})});
       document.getElementById('ov-folha-fechar').classList.remove('open');
-      showToast(`Folha fechada — ${r.recibos} recibo(s), ${r.vales_abatidos} vale(s) abatido(s)`);
+      showToast(`Folha fechada — ${r.recibos} recibo(s) gerado(s). Abrindo PDF por colaborador…`);
+      folhaPrintTodos(snap);   // 1 página por colaborador: presença, faltas e descontos
       await calcularFolha();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fechar folha: '+(m||'erro'));console.error(err);}
     finally{btn.disabled=false;btn.textContent='Confirmar fechamento';}
   });
+  // Corpo do recibo/folha de UM colaborador (presença + faltas + descontos). Usado no Fechar folha e no módulo Recibos.
+  function reciboBody(o){
+    const has=a=>a&&a.length;
+    const presRows=has(o.presenca)?o.presenca.map(d=>`<tr><td>${d.data?dtBR(d.data):'—'}</td><td>${esc(d.obra||'—')}</td><td>${esc(d.funcao||'—')}</td><td class="r">${brl(d.valor||0)}</td></tr>`).join(''):'<tr><td colspan="4" class="c">Sem diárias no período.</td></tr>';
+    const faltasSec=has(o.faltas)?`<h3 style="font-size:12px;text-transform:uppercase;color:#b91c1c;margin-top:16px">Faltas</h3>
+      <table><thead><tr><th>Dia</th><th style="text-align:right">Desconto</th></tr></thead><tbody>${o.faltas.map(f=>`<tr><td>${f.data?dtBR(f.data):'—'}</td><td class="r">${f.valor?'− '+brl(f.valor):'—'}</td></tr>`).join('')}</tbody></table>`:'';
+    const lin=(k,v)=>`<tr><td>${k}</td><td class="r">${v}</td></tr>`;
+    return `<h1>Folha de Pagamento — ${esc(o.nome||'')}</h1><p class="sub">${esc(o.ref||'')}</p>
+      <div class="cards">
+        <div class="card"><div class="k">Presença</div><div class="v">${has(o.presenca)?o.presenca.length:0} dia(s)</div></div>
+        <div class="card"><div class="k">Faltas</div><div class="v">${has(o.faltas)?o.faltas.length:0}</div></div>
+        <div class="card"><div class="k">Líquido a receber</div><div class="v">${brl(o.liquido||0)}</div></div></div>
+      <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">Presença — diárias</h3>
+      <table><thead><tr><th>Dia</th><th>Obra</th><th>Função / equipamento</th><th style="text-align:right">Diária</th></tr></thead><tbody>${presRows}</tbody></table>
+      ${faltasSec}
+      <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118;margin-top:16px">Resumo</h3>
+      <table><tbody>
+        ${lin('Diárias ('+(has(o.presenca)?o.presenca.length:0)+' dia(s))',brl(o.diarias||0))}
+        ${lin('Comissão por m²',brl(o.comissao||0))}
+        ${o.bonus?lin('Bônus assiduidade',brl(o.bonus)):''}
+        ${o.vales?lin('(−) Vales adiantados','− '+brl(o.vales)):''}
+        ${o.faltasTotal?lin('(−) Faltas','− '+brl(o.faltasTotal)):''}
+        ${o.inss?lin('(−) INSS','− '+brl(o.inss)):''}
+        ${o.outros?lin('(−) Outros descontos','− '+brl(o.outros)):''}
+      </tbody><tfoot><tr><td class="r">Líquido a receber</td><td class="r">${brl(o.liquido||0)}</td></tr></tfoot></table>
+      <div class="row2" style="margin-top:40px"><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Assinatura do colaborador</div><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Raspadora Brasília</div></div>
+      <p style="margin-top:12px;font-size:10px;color:#777">Recebi a importância de ${brl(o.liquido||0)} referente ao período acima.</p>`;
+  }
+  function linhaToRecibo(l,ref){return {nome:l.nome,ref,presenca:l.detalhe||[],faltas:l.faltas_itens||[],diarias:l.diarias,comissao:l.comissao,bonus:l.bonus_assiduidade,vales:l.vales_abatidos,faltasTotal:l.faltas,inss:l.inss,outros:l.outros_desconto,liquido:l.total_liquido};}
+  function folhaPrintTodos(folha){
+    if(!folha||!folha.colaboradores.length){showToast('Nada para imprimir');return;}
+    const p=folha.periodo||{};const ref='Período '+(p.desde?dtBR(p.desde):'')+' a '+(p.ate?dtBR(p.ate):'');
+    const paginas=folha.colaboradores.map(l=>reciboBody(linhaToRecibo(l,ref))).join('<div style="page-break-before:always"></div>');
+    finPrint('Folha por colaborador',paginas);
+  }
 
   // ---- Recibos ----
   let recibosCache=[];
@@ -4069,23 +4106,13 @@
   }
   function reciboPrint(r){
     if(!r)return;const d=r.detalhe||{};
-    const linha=(k,v)=>`<tr><td>${k}</td><td class="r">${v}</td></tr>`;
-    finPrint('Recibo — '+(r.colaborador_nome||''),`<h1>Recibo de Pagamento</h1>
-      <p class="sub">${esc(r.referencia||'')}</p>
-      <div class="cards"><div class="card"><div class="k">Colaborador</div><div class="v" style="font-size:14px">${esc(r.colaborador_nome||'—')}</div></div>
-        <div class="card"><div class="k">Valor líquido</div><div class="v">${brl(r.valor)}</div></div></div>
-      <table><thead><tr><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>
-        ${linha('Diárias ('+(d.dias||0)+' dia(s))',brl(d.diarias||0))}
-        ${linha('Comissão por m² ('+(d.m2||0)+' m²)',brl(d.comissao||0))}
-        ${d.bonus?linha('Bônus assiduidade',brl(d.bonus)):''}
-        ${d.vales?linha('(−) Vales adiantados','− '+brl(d.vales)):''}
-        ${d.faltas?linha('(−) Faltas','− '+brl(d.faltas)):''}
-        ${d.inss?linha('(−) INSS','− '+brl(d.inss)):''}
-        ${d.outros_desconto?linha('(−) Outros descontos','− '+brl(d.outros_desconto)):''}
-      </tbody><tfoot><tr><td class="r">Líquido a receber</td><td class="r">${brl(r.valor)}</td></tr></tfoot></table>
-      <div class="row2" style="margin-top:44px"><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Assinatura do colaborador</div>
-        <div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Raspadora Brasília</div></div>
-      <p class="foot">Recebi a importância de ${brl(r.valor)} referente ao período acima.</p>`);
+    finPrint('Recibo — '+(r.colaborador_nome||''),reciboBody({
+      nome:r.colaborador_nome,ref:r.referencia,
+      presenca:d.presenca||[],faltas:d.faltas_lista||[],
+      diarias:d.diarias,comissao:d.comissao,bonus:d.bonus,
+      vales:d.vales,faltasTotal:d.faltas,inss:d.inss,outros:d.outros_desconto,
+      liquido:r.valor
+    }));
   }
 
   // ---- Vale ----
