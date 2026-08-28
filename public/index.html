@@ -515,6 +515,7 @@
   .apont-chip.on{background:var(--laranja);color:#fff;border-color:transparent;}
   .apont-chip[draggable]{cursor:grab;} .apont-chip.dragging{opacity:.5;}
   .cron-col.dragover .cards{outline:2px dashed var(--laranja);outline-offset:4px;border-radius:12px;background:var(--laranja-50);}
+  .cron-resp{font-size:12px;font-weight:700;color:var(--laranja-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .dre-hero{background:var(--chumbo-900);color:#fff;padding:18px 20px;}
   .dre-hero h3{margin:0;font-size:17px;} .dre-hero .sub{color:var(--laranja);font-size:12.5px;font-weight:600;margin-top:2px;}
   .dre-line{display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line);font-size:14px;}
@@ -2965,7 +2966,8 @@
           <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(a.colaborador_nome||'')}</h4><button class="doc-cloud" data-delaloc="${a.id}" title="Remover" style="padding:2px">${DE_TRASH}</button></div>
           <div class="tags" style="margin-top:6px"><span class="tag t-lar">${esc(a.funcao||'sem função')}</span><span class="tag money">${brl(a.valor_diaria||0)}</span></div></div>`).join('');
         const sub=alocs.reduce((s,a)=>s+(a.valor_diaria||0),0);
-        return `<div class="col cron-col" data-obra="${o.id}"><div class="colhead"><span class="swatch" style="background:var(--laranja)"></span><h3>${esc(o.cliente)}</h3><span class="count">${alocs.length}</span></div>
+        const resp=o.responsavel?`<div class="cron-resp">👤 ${esc(o.responsavel)}</div>`:'';
+        return `<div class="col cron-col" data-obra="${o.id}"><div class="colhead"><span class="swatch" style="background:var(--laranja)"></span><div style="flex:1;min-width:0"><h3 style="margin:0">${esc(o.cliente)}</h3>${resp}</div><span class="count">${alocs.length}</span></div>
           <div class="cards">${cards}<button class="addcard" data-alocobra="${o.id}">+ Alocar</button></div>
           <div style="padding:4px 6px 0;font-size:11.5px;color:var(--ink-3)">Diárias: ${brl(sub)}</div></div>`;
       }).join('');

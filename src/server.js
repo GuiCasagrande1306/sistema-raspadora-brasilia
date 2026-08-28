@@ -655,7 +655,7 @@ app.get('/api/cronograma', async (req, res, next) => {
       db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }),
     ]);
     const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado')
-      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco }));
+      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null }));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
       .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo }));
