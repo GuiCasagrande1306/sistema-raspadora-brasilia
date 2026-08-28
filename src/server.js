@@ -71,6 +71,7 @@ app.use('/api/perfil', requireAuth);             // cada usuário edita o própr
 // Gestão v2
 app.use('/api/dp/apontamento', requireAuth);     // apontamento de campo (equipe)
 app.use('/api/dp/vale', requireAdmin);           // vale debita caixa — controle admin
+app.use('/api/dp/desconto', requireAdmin);       // falta / INSS / outros descontos na folha
 app.use('/api/dp/folha-fechamento', requireAdmin);
 app.use('/api/dp/folha-fechar', requireAdmin);   // fechamento efetivo (gera recibos, abate vales)
 app.use('/api/recibos', requireAdmin);
@@ -1053,6 +1054,18 @@ app.post('/api/dp/vale', async (req, res, next) => {
     const cents = emCentavos(valor);
     if (!(cents > 0)) return res.status(400).json({ erro: 'valor deve ser > 0' });
     const r = await db.criarVale({ colaborador_id, obra_id: req.body.obra_id, tipo: req.body.tipo, valor: cents, observacao: req.body.observacao, data_lancamento: req.body.data_lancamento });
+    res.status(201).json(r);
+  } catch (e) { next(e); }
+});
+
+// DP — Desconto na folha (FALTA / INSS / OUTRO) — valor manual, abate no líquido
+app.post('/api/dp/desconto', async (req, res, next) => {
+  try {
+    const { colaborador_id, valor, tipo } = req.body;
+    if (!colaborador_id) return res.status(400).json({ erro: 'colaborador_id é obrigatório' });
+    const cents = emCentavos(valor);
+    if (!(cents > 0)) return res.status(400).json({ erro: 'valor deve ser > 0' });
+    const r = await db.criarDesconto({ colaborador_id, tipo: (tipo || 'FALTA'), valor: cents, observacao: req.body.observacao, data_lancamento: req.body.data_lancamento });
     res.status(201).json(r);
   } catch (e) { next(e); }
 });

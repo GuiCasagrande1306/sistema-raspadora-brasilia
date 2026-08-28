@@ -937,6 +937,7 @@
         <div style="display:flex;gap:8px">
           <button class="primary" id="btn-apont" style="background:var(--chumbo-800)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Apontar produção</button>
           <button class="primary" id="btn-novo-vale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Registrar vale</button>
+          <button class="primary" id="btn-novo-desconto" style="background:var(--chumbo-800)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg> Falta / INSS</button>
         </div>
       </div>
       <div class="metrics">
@@ -1397,6 +1398,25 @@
         <div class="login-hint" style="text-align:left">Debita da <b>Caixinha PIX Campo</b> e fica pendente de abate na próxima folha.</div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Pagar via PIX</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Falta / INSS / Desconto -->
+<div class="overlay" id="ov-desconto">
+  <div class="modal">
+    <header><h3>Lançar desconto na folha</h3><button class="x" data-close>×</button></header>
+    <form id="form-desconto">
+      <div class="body">
+        <div class="field"><label>Colaborador</label><select name="colaborador_id" id="desc-colab" required><option value="">Selecione…</option></select></div>
+        <div class="grid2">
+          <div class="field"><label>Tipo</label><select name="tipo"><option value="FALTA">Falta</option><option value="INSS">INSS</option><option value="OUTRO">Outro desconto</option></select></div>
+          <div class="field"><label>Valor (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="150,00"></div>
+        </div>
+        <div class="field"><label>Observação</label><input name="observacao" placeholder="Ex.: falta dia 22 / INSS competência 08"></div>
+        <div class="login-hint" style="text-align:left">Desconto <b>abatido no líquido</b> ao fechar a folha. Não mexe no caixa. Como o valor varia, é lançado manualmente aqui.</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Lançar desconto</button></footer>
     </form>
   </div>
 </div>
@@ -3929,17 +3949,19 @@
         <td class="num">${brl(l.diarias)}</td><td class="num">${brl(l.comissao)}</td>
         <td class="num">${l.bonus_assiduidade?brl(l.bonus_assiduidade):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td>
+        <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):'—'}</td>
+        <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
         <td class="num money">${brl(l.total_liquido)}</td></tr>`;
-      const det=temDet?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="8" style="background:var(--ground);padding:0">
+      const det=temDet?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="10" style="background:var(--ground);padding:0">
         <div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th></tr></thead>
         <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div></td></tr>`:'';
       return linha+det;
     }).join('')
-      :'<tr><td colspan="8" style="text-align:center;color:var(--ink-3);padding:24px">Sem alocações (cronograma), produção ou vales no período selecionado.</td></tr>';
+      :'<tr><td colspan="10" style="text-align:center;color:var(--ink-3);padding:24px">Sem alocações (cronograma), produção, vales ou descontos no período selecionado.</td></tr>';
     document.getElementById('folha-content').innerHTML=
       `<div class="vt-wrap"><table class="vt-table"><thead><tr>
-         <th>Colaborador</th><th class="num">Dias</th><th class="num">m²</th><th class="num">Diárias</th><th class="num">Comissão</th><th class="num">Bônus</th><th class="num">Vales</th><th class="num">Líquido</th>
+         <th>Colaborador</th><th class="num">Dias</th><th class="num">m²</th><th class="num">Diárias</th><th class="num">Comissão</th><th class="num">Bônus</th><th class="num">Vales</th><th class="num">Faltas</th><th class="num">INSS</th><th class="num">Líquido</th>
        </tr></thead><tbody>${rows}</tbody></table></div>`;
     document.querySelectorAll('#folha-content [data-folharow]').forEach(tr=>tr.addEventListener('click',()=>{
       const d=document.querySelector('#folha-content [data-det="'+tr.dataset.folharow+'"]');if(!d)return;
@@ -3956,8 +3978,8 @@
     const p=folhaAtual.periodo||{};
     document.getElementById('ffz-periodo').innerHTML=`Período <b>${p.desde?dtBR(p.desde):''} a ${p.ate?dtBR(p.ate):''}</b> — <b>${folhaAtual.colaboradores.length}</b> colaborador(es), total líquido <b>${brl(folhaAtual.totais.a_pagar||0)}</b>.`;
     document.getElementById('ffz-lista').innerHTML=`<table style="width:100%;font-size:13px;border-collapse:collapse">
-      <thead><tr style="color:var(--ink-3);text-align:left"><th style="padding:6px 4px">Colaborador</th><th style="padding:6px 4px;text-align:right">Vales</th><th style="padding:6px 4px;text-align:right">Líquido</th></tr></thead>
-      <tbody>${folhaAtual.colaboradores.map(l=>`<tr style="border-top:1px solid var(--line)"><td style="padding:6px 4px">${esc(l.nome)}</td><td style="padding:6px 4px;text-align:right;color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td><td style="padding:6px 4px;text-align:right;font-weight:700">${brl(l.total_liquido)}</td></tr>`).join('')}</tbody></table>`;
+      <thead><tr style="color:var(--ink-3);text-align:left"><th style="padding:6px 4px">Colaborador</th><th style="padding:6px 4px;text-align:right">Vales</th><th style="padding:6px 4px;text-align:right">Descontos</th><th style="padding:6px 4px;text-align:right">Líquido</th></tr></thead>
+      <tbody>${folhaAtual.colaboradores.map(l=>{const desc=(l.faltas||0)+(l.inss||0)+(l.outros_desconto||0);return `<tr style="border-top:1px solid var(--line)"><td style="padding:6px 4px">${esc(l.nome)}</td><td style="padding:6px 4px;text-align:right;color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td><td style="padding:6px 4px;text-align:right;color:var(--danger)">${desc?'−'+brl(desc):'—'}</td><td style="padding:6px 4px;text-align:right;font-weight:700">${brl(l.total_liquido)}</td></tr>`;}).join('')}</tbody></table>`;
     openModal('ov-folha-fechar');
   });
   document.getElementById('ffz-confirmar').addEventListener('click',async()=>{
@@ -4001,6 +4023,9 @@
         ${linha('Comissão por m² ('+(d.m2||0)+' m²)',brl(d.comissao||0))}
         ${d.bonus?linha('Bônus assiduidade',brl(d.bonus)):''}
         ${d.vales?linha('(−) Vales adiantados','− '+brl(d.vales)):''}
+        ${d.faltas?linha('(−) Faltas','− '+brl(d.faltas)):''}
+        ${d.inss?linha('(−) INSS','− '+brl(d.inss)):''}
+        ${d.outros_desconto?linha('(−) Outros descontos','− '+brl(d.outros_desconto)):''}
       </tbody><tfoot><tr><td class="r">Líquido a receber</td><td class="r">${brl(r.valor)}</td></tr></tfoot></table>
       <div class="row2" style="margin-top:44px"><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Assinatura do colaborador</div>
         <div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Raspadora Brasília</div></div>
@@ -4018,6 +4043,18 @@
       if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
       if(!document.getElementById('view-bancos').classList.contains('hidden'))loadBancos();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Vale: '+(m||'erro'));console.error(err);}
+  });
+
+  // ---- Desconto (Falta / INSS / Outro) ----
+  document.getElementById('btn-novo-desconto').addEventListener('click',async()=>{await popularColabSelect('desc-colab');openModal('ov-desconto');});
+  document.getElementById('form-desconto').addEventListener('submit',async e=>{
+    e.preventDefault();const f=new FormData(e.target);
+    try{await api('/api/dp/desconto',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseFloat(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
+      document.getElementById('ov-desconto').classList.remove('open');e.target.reset();
+      showToast('Desconto lançado — abate no próximo fechamento');
+      if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Desconto: '+(m||'erro'));console.error(err);}
   });
 
   // ---- Apontamento ----

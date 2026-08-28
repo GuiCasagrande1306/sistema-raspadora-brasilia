@@ -1270,6 +1270,17 @@ export const db = {
     const saldo = caixinha ? (caixinha.saldo_atual - v.valor) : null;
     return { vale: data, saldo_caixinha: saldo, alerta_liquidez: saldo != null && saldo < 100000, sem_caixinha: !caixinha };  // < R$ 1.000
   },
+  // Desconto manual na folha (FALTA / INSS / OUTRO) — não mexe no caixa, só abate no líquido
+  async criarDesconto(d) {
+    if (!USING_SUPABASE) return { ...d, id: uid() };
+    const { data, error } = await sb('descontos_folha').insert({
+      colaborador_id: d.colaborador_id, tipo: d.tipo || 'FALTA', valor: d.valor,
+      observacao: d.observacao || null, abatido_folha: false,
+      data_lancamento: d.data_lancamento || new Date().toISOString().slice(0, 10),
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
   // Apontamento diário com rateio de m² entre a equipe
   async criarApontamento(a) {
     if (!USING_SUPABASE) return { id: uid(), ...a, m2_por_colaborador: 0 };
@@ -1292,17 +1303,21 @@ export const db = {
   // Fechamento de folha no período [desde, ate]
   async fecharFolha(desde, ate) {
     if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
-    const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }] = await Promise.all([
+    const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }, descRes] = await Promise.all([
       sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status'),
       sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
       sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha').eq('abatido_folha', false),
       // Cronograma Diário: alocações do período (fonte principal das diárias)
       sb('cronograma_alocacoes').select('colaborador_id,data,obra_nome,funcao,valor_diaria').gte('data', desde).lte('data', ate),
+      // Descontos manuais (FALTA / INSS / OUTRO) — valores variáveis lançados na folha
+      sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha').eq('abatido_folha', false),
     ]);
+    const descontos = descRes && descRes.data ? descRes.data : [];
     const porColab = {};
-    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, cronDiarias: 0, cronDias: new Set(), detalhe: [] };
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, cronDiarias: 0, cronDias: new Set(), detalhe: [] };
     for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); p.m2 += Number(r.m2_rateado); }
     for (const v of (vales || [])) { const p = porColab[v.colaborador_id]; if (p) p.vales += v.valor; }
+    for (const d of descontos) { const p = porColab[d.colaborador_id]; if (!p) continue; if (d.tipo === 'INSS') p.inss += d.valor; else if (d.tipo === 'FALTA') p.faltas += d.valor; else p.outros_desc += d.valor; }
     for (const a of (alocs || [])) {
       const p = porColab[a.colaborador_id]; if (!p) continue;
       p.cronDiarias += (a.valor_diaria || 0); p.cronDias.add(a.data);
@@ -1316,21 +1331,24 @@ export const db = {
       const comissao = Math.round(p.m2 * (p.comissao_por_m2 || 0));
       const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade)
       const bruto = diarias + comissao + bonus_assiduidade;
-      const total_liquido = bruto - p.vales;
+      const total_liquido = bruto - p.vales - p.faltas - p.inss - p.outros_desc;
       return {
         colaborador_id: p.id, nome: p.nome, cargo: p.cargo,
         dias_trabalhados: dias, m2_processados: Math.round(p.m2 * 100) / 100,
         origem_diaria: temCron ? 'cronograma' : 'apontamento',
-        diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales, total_liquido,
+        diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales,
+        faltas: p.faltas, inss: p.inss, outros_desconto: p.outros_desc, total_liquido,
         detalhe: p.detalhe.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
       };
-    }).filter(l => l.dias_trabalhados || l.vales_abatidos);
+    }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto);
     const totais = {
       a_pagar: linhas.reduce((s, l) => s + l.total_liquido, 0),
       comissoes: linhas.reduce((s, l) => s + l.comissao, 0),
       diarias: linhas.reduce((s, l) => s + l.diarias, 0),
       vales: linhas.reduce((s, l) => s + l.vales_abatidos, 0),
       bonus: linhas.reduce((s, l) => s + l.bonus_assiduidade, 0),
+      faltas: linhas.reduce((s, l) => s + l.faltas, 0),
+      inss: linhas.reduce((s, l) => s + l.inss, 0),
     };
     return { periodo: { desde, ate }, colaboradores: linhas, totais };
   },
@@ -1354,13 +1372,15 @@ export const db = {
     const recibos = resumo.colaboradores.map(l => ({
       tipo: 'FOLHA', colaborador_id: l.colaborador_id, colaborador_nome: l.nome, referencia: ref,
       periodo_desde: desde, periodo_ate: ate, valor: l.total_liquido, folha_fechamento_id: fech.id, data: hoje,
-      detalhe: { dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos },
+      detalhe: { dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos, faltas: l.faltas || 0, inss: l.inss || 0, outros_desconto: l.outros_desconto || 0 },
     }));
     if (recibos.length) { const { error: er } = await sb('recibos').insert(recibos); if (er) throw er; }
-    // abate os vales que entraram nesta folha (todos os pendentes)
+    // abate os vales e descontos que entraram nesta folha (todos os pendentes)
     const { data: abatidos } = await sb('vales_diaria').update({ abatido_folha: true, folha_fechamento_id: fech.id })
       .eq('abatido_folha', false).select('id');
-    return { fechamento: fech, recibos: recibos.length, vales_abatidos: (abatidos || []).length, totais: t };
+    const { data: descAbat } = await sb('descontos_folha').update({ abatido_folha: true, folha_fechamento_id: fech.id })
+      .eq('abatido_folha', false).select('id');
+    return { fechamento: fech, recibos: recibos.length, vales_abatidos: (abatidos || []).length, descontos_abatidos: (descAbat || []).length, totais: t };
   },
   async listRecibos() {
     if (!USING_SUPABASE) return [];
