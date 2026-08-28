@@ -417,7 +417,7 @@ app.post('/api/clientes', async (req, res, next) => {
     const { nome } = req.body;
     if (!nome) return res.status(400).json({ erro: 'nome é obrigatório' });
     res.status(201).json(await db.createCliente({
-      nome, telefone: req.body.telefone || null, endereco: req.body.endereco || null,
+      nome, razao_social: req.body.razao_social || null, telefone: req.body.telefone || null, endereco: req.body.endereco || null,
       origem: req.body.origem || null, responsavel: req.body.responsavel || null,
       observacao: req.body.observacao || null,
     }));
@@ -426,7 +426,7 @@ app.post('/api/clientes', async (req, res, next) => {
 app.patch('/api/clientes/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['nome', 'telefone', 'endereco', 'origem', 'responsavel', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    for (const k of ['nome', 'razao_social', 'telefone', 'endereco', 'origem', 'responsavel', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     const c = await db.updateCliente(req.params.id, patch);
     if (!c) return res.status(404).json({ erro: 'cliente não encontrado' });
     res.json(c);

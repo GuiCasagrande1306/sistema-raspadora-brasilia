@@ -1508,7 +1508,8 @@
     <form id="form-cliente">
       <input type="hidden" name="id" id="cliente-id">
       <div class="body">
-        <div class="field"><label>Nome / Empresa *</label><input name="nome" required placeholder="Nome do cliente"></div>
+        <div class="field"><label>Nome / Empresa *</label><input name="nome" required placeholder="Nome fantasia ou do cliente"></div>
+        <div class="field"><label>Razão social</label><input name="razao_social" placeholder="Razão social (nome no CNPJ)"></div>
         <div class="grid2">
           <div class="field"><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(61) 9____-____"></div>
           <div class="field"><label>Origem</label>
@@ -2653,7 +2654,7 @@
     const resp=c.responsavel?`<span class="tag t-info">👤 ${esc(c.responsavel)}</span>`:'';
     return `<div class="empresa-card" data-cliente="${c.id}" style="cursor:pointer">
       <div class="ec-ic">${ini(c.nome)}</div>
-      <div style="min-width:0"><h4>${esc(c.nome)}</h4><div class="dv">${esc(c.endereco||'—')}</div>
+      <div style="min-width:0"><h4>${esc(c.nome)}</h4><div class="dv">${c.razao_social?esc(c.razao_social)+' · ':''}${esc(c.endereco||'—')}</div>
         <div class="tags" style="margin-top:6px">${org}${resp}${fone}</div></div></div>`;
   }
   function renderClientes(){
@@ -2661,8 +2662,8 @@
     const lista=clientesQ?CLIENTES.filter(c=>(c.nome||'').toLowerCase().includes(clientesQ)||(c.telefone||'').includes(clientesQ)):CLIENTES;
     if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum cliente ainda. Clique em <b>Novo Cliente</b> — ou feche um lead que ele entra aqui sozinho.</div>';return;}
     if(clientesViewMode==='lista'){
-      const rows=lista.map(c=>`<tr data-cliente="${c.id}" style="cursor:pointer"><td><b>${esc(c.nome)}</b></td><td>${esc(c.telefone||'—')}</td><td>${esc(c.endereco||'—')}</td><td>${LEAD_ORIG_LABEL[c.origem]||'—'}</td><td>${esc(c.responsavel||'—')}</td><td>${c.criado_em?dtBR(c.criado_em.slice(0,10)):'—'}</td></tr>`).join('');
-      el.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Origem</th><th>Responsável</th><th>Desde</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      const rows=lista.map(c=>`<tr data-cliente="${c.id}" style="cursor:pointer"><td><b>${esc(c.nome)}</b></td><td>${esc(c.razao_social||'—')}</td><td>${esc(c.telefone||'—')}</td><td>${esc(c.endereco||'—')}</td><td>${LEAD_ORIG_LABEL[c.origem]||'—'}</td><td>${esc(c.responsavel||'—')}</td><td>${c.criado_em?dtBR(c.criado_em.slice(0,10)):'—'}</td></tr>`).join('');
+      el.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Nome</th><th>Razão social</th><th>Telefone</th><th>Endereço</th><th>Origem</th><th>Responsável</th><th>Desde</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }else{
       el.innerHTML='<div class="empresa-grid">'+lista.map(clienteCard).join('')+'</div>';
     }
@@ -2673,7 +2674,7 @@
     const f=document.getElementById('form-cliente');f.reset();
     document.getElementById('cliente-titulo').textContent=c?'Editar Cliente':'Novo Cliente';
     document.getElementById('cliente-id').value=c?c.id:'';
-    if(c){f.nome.value=c.nome||'';f.telefone.value=c.telefone||'';f.origem.value=c.origem||'';f.endereco.value=c.endereco||'';f.responsavel.value=c.responsavel||'';f.observacao.value=c.observacao||'';}
+    if(c){f.nome.value=c.nome||'';f.razao_social.value=c.razao_social||'';f.telefone.value=c.telefone||'';f.origem.value=c.origem||'';f.endereco.value=c.endereco||'';f.responsavel.value=c.responsavel||'';f.observacao.value=c.observacao||'';}
     openModal('ov-cliente');
   }
   document.getElementById('btn-cliente-novo').addEventListener('click',()=>abrirCliente(null));
@@ -2682,7 +2683,7 @@
   document.getElementById('clientes-q').addEventListener('input',e=>{clientesQ=e.target.value.toLowerCase();renderClientes();});
   document.getElementById('form-cliente').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('cliente-id').value;
-    const payload={nome:f.nome.value,telefone:f.telefone.value||null,origem:f.origem.value||null,endereco:f.endereco.value||null,responsavel:f.responsavel.value||null,observacao:f.observacao.value||null};
+    const payload={nome:f.nome.value,razao_social:f.razao_social.value||null,telefone:f.telefone.value||null,origem:f.origem.value||null,endereco:f.endereco.value||null,responsavel:f.responsavel.value||null,observacao:f.observacao.value||null};
     try{
       if(id)await api('/api/clientes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
