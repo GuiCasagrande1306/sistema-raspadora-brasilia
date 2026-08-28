@@ -1003,18 +1003,18 @@ export const db = {
     mock.cronogramaAloc = mock.cronogramaAloc.filter(a => a.id !== id); return { ok: true };
   },
 
-  // Gastos por categoria no mês (boletos por vencimento + lançamentos por data)
-  async gastosPorCategoria(mes) {
+  // Gastos por categoria num intervalo [desde, ate] (boletos por vencimento + lançamentos por data)
+  async gastosPorCategoria(desde, ate) {
     let boletos, lancs;
     if (USING_SUPABASE) {
       const [b, l] = await Promise.all([
-        sb('boletos').select('categoria,valor').gte('vencimento', mes + '-01').lte('vencimento', mes + '-31'),
-        sb('lancamentos_diarios').select('categoria,valor').gte('data', mes + '-01').lte('data', mes + '-31'),
+        sb('boletos').select('categoria,valor').gte('vencimento', desde).lte('vencimento', ate),
+        sb('lancamentos_diarios').select('categoria,valor').gte('data', desde).lte('data', ate),
       ]);
       boletos = b.data || []; lancs = l.data || [];
     } else {
-      boletos = mock.boletos.filter(x => (x.vencimento || '').startsWith(mes));
-      lancs = mock.lancDiarios.filter(x => (x.data || '').startsWith(mes));
+      boletos = mock.boletos.filter(x => x.vencimento >= desde && x.vencimento <= ate);
+      lancs = mock.lancDiarios.filter(x => x.data >= desde && x.data <= ate);
     }
     const acc = {};
     for (const x of [...boletos, ...lancs]) {
@@ -1023,7 +1023,7 @@ export const db = {
     }
     const categorias = Object.entries(acc).map(([categoria, total]) => ({ categoria, total })).sort((a, b) => b.total - a.total);
     const total_geral = categorias.reduce((s, c) => s + c.total, 0);
-    return { mes, total_geral, categorias };
+    return { desde, ate, total_geral, categorias };
   },
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {

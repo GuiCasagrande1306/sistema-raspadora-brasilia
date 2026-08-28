@@ -907,8 +907,11 @@
         <!-- Painel: Gastos (pizza) -->
         <div id="bancos-panel-gastos" class="hidden">
           <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Mês<input type="month" id="gastos-mes" class="dash-sel"></label>
-            <button class="btn-ghost" id="btn-gastos-pdf" style="min-height:40px">🖨️ Relatório do mês (PDF)</button>
+            <div class="seg" id="gastos-periodo"><button data-gp="dia">Dia</button><button data-gp="semana">Semana</button><button data-gp="mes" class="on">Mês</button></div>
+            <label id="gp-mes-wrap" style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Mês<input type="month" id="gastos-mes" class="dash-sel"></label>
+            <label id="gp-dia-wrap" class="hidden" style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="gastos-dia" class="dash-sel"></label>
+            <label id="gp-sem-wrap" class="hidden" style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Semana (qualquer dia dela)<input type="date" id="gastos-sem" class="dash-sel"></label>
+            <button class="btn-ghost" id="btn-gastos-pdf" style="min-height:40px">🖨️ Relatório (PDF)</button>
           </div>
           <div id="gastos-content" style="padding:18px 26px 96px;"></div>
         </div>
@@ -3690,21 +3693,50 @@
   // ---- Gastos (pizza por categoria) ----
   const GASTO_CORES=['#ED7118','#3B82F6','#10B981','#8B5CF6','#EF4444','#F59E0B','#14B8A6','#EC4899','#6366F1','#84CC16'];
   let GASTOS_STATE=null;
-  async function loadGastos(){
+  let gastosPeriodo='mes';
+  function gastosRange(){
+    const p=x=>String(x).padStart(2,'0');
+    if(gastosPeriodo==='dia'){
+      const el=document.getElementById('gastos-dia');if(!el.value)el.value=isoHoje();
+      const d=new Date(el.value+'T00:00:00');
+      return {desde:el.value,ate:el.value,rotulo:'Total do dia',subt:d.toLocaleDateString('pt-BR')};
+    }
+    if(gastosPeriodo==='semana'){
+      const el=document.getElementById('gastos-sem');if(!el.value)el.value=isoHoje();
+      const d=new Date(el.value+'T00:00:00');const dow=(d.getDay()+6)%7; // 0=seg
+      const seg=new Date(d);seg.setDate(d.getDate()-dow);const dom=new Date(seg);dom.setDate(seg.getDate()+6);
+      const iso=x=>`${x.getFullYear()}-${p(x.getMonth()+1)}-${p(x.getDate())}`;
+      return {desde:iso(seg),ate:iso(dom),rotulo:'Total da semana',subt:seg.toLocaleDateString('pt-BR')+' a '+dom.toLocaleDateString('pt-BR')};
+    }
     const mel=document.getElementById('gastos-mes');if(!mel.value)mel.value=new Date().toISOString().slice(0,7);
+    const [y,m]=mel.value.split('-').map(Number);const ult=new Date(y,m,0).getDate();
+    return {desde:mel.value+'-01',ate:mel.value+'-'+p(ult),rotulo:'Total do mês',subt:new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'})};
+  }
+  async function loadGastos(){
     const el=document.getElementById('gastos-content');
-    let r;try{r=await api('/api/gastos/resumo?mes='+mel.value);}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar gastos.</div>';console.error(e);return;}
-    GASTOS_STATE={mes:mel.value,...r};
-    if(!r.total_geral){el.innerHTML='<div class="orc-empty">Nenhum gasto em '+mel.value+'. Cadastre boletos e lançamentos para ver a distribuição por categoria.</div>';return;}
+    const rg=gastosRange();
+    let r;try{r=await api('/api/gastos/resumo?desde='+rg.desde+'&ate='+rg.ate);}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar gastos.</div>';console.error(e);return;}
+    GASTOS_STATE={...rg,...r};
+    if(!r.total_geral){el.innerHTML='<div class="orc-empty">Nenhum gasto em '+rg.subt+'. Cadastre boletos e lançamentos para ver a distribuição por categoria.</div>';return;}
     const C=2*Math.PI*80;let off=0;
     const slices=r.categorias.map((c,i)=>{const len=(c.total/r.total_geral)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('');
     const legenda=r.categorias.map((c,i)=>`<div class="gasto-leg"><span class="gasto-dot" style="background:${GASTO_CORES[i%GASTO_CORES.length]}"></span><span class="gl-nome">${CAT_LABEL[c.categoria]||c.categoria}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`).join('');
     el.innerHTML=`<div class="gastos-wrap">
       <div class="gastos-chart"><svg viewBox="0 0 200 200" aria-label="Gastos por categoria">${slices}</svg>
-        <div class="gastos-center"><span>Total do mês</span><b class="money">${brl(r.total_geral)}</b></div></div>
-      <div class="gastos-leg">${legenda}</div></div>`;
+        <div class="gastos-center"><span>${rg.rotulo}</span><b class="money">${brl(r.total_geral)}</b></div></div>
+      <div class="gastos-leg"><div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(rg.subt)}</div>${legenda}</div></div>`;
   }
+  document.getElementById('gastos-periodo').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    gastosPeriodo=b.dataset.gp;
+    document.getElementById('gastos-periodo').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    document.getElementById('gp-mes-wrap').classList.toggle('hidden',gastosPeriodo!=='mes');
+    document.getElementById('gp-dia-wrap').classList.toggle('hidden',gastosPeriodo!=='dia');
+    document.getElementById('gp-sem-wrap').classList.toggle('hidden',gastosPeriodo!=='semana');
+    loadGastos();
+  }));
   document.getElementById('gastos-mes').addEventListener('change',loadGastos);
+  document.getElementById('gastos-dia').addEventListener('change',loadGastos);
+  document.getElementById('gastos-sem').addEventListener('change',loadGastos);
 
   // ---- Exportar PDF (financeiro) ----
   function finPrint(titulo,corpo){
@@ -3738,15 +3770,15 @@
       <table><thead><tr><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Status</th><th>Valor</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td colspan="4" class="r">Total</td><td class="r">${brl(d.resumo.total)}</td></tr></tfoot></table>`);
   });
-  // Relatório do mês por categoria (com pizza)
+  // Relatório de gastos por categoria (com pizza) — respeita o período (dia/semana/mês)
   document.getElementById('btn-gastos-pdf').addEventListener('click',()=>{
-    if(!GASTOS_STATE||!GASTOS_STATE.total_geral){showToast('Sem gastos no mês para exportar');return;}
-    const g=GASTOS_STATE;const [y,m]=g.mes.split('-');const mesBR=new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    if(!GASTOS_STATE||!GASTOS_STATE.total_geral){showToast('Sem gastos no período para exportar');return;}
+    const g=GASTOS_STATE;const periodoBR=g.subt||'';
     const rows=g.categorias.map((c,i)=>`<tr><td><span class="dot" style="background:${GASTO_CORES[i%GASTO_CORES.length]}"></span>${CAT_LABEL[c.categoria]||c.categoria}</td><td class="r">${brl(c.total)}</td><td class="r">${(c.total/g.total_geral*100).toFixed(1)}%</td></tr>`).join('');
-    finPrint('Relatório de gastos — '+mesBR,`<h1>Relatório de gastos por categoria</h1><p class="sub">${mesBR}</p>
+    finPrint('Relatório de gastos — '+periodoBR,`<h1>Relatório de gastos por categoria</h1><p class="sub">${esc(periodoBR)}</p>
       <div class="row2"><div>${donutSVG(g.categorias,g.total_geral)}</div>
         <table style="flex:1;min-width:280px"><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>${rows}</tbody>
-          <tfoot><tr><td>Total do mês</td><td class="r">${brl(g.total_geral)}</td><td class="r">100%</td></tr></tfoot></table></div>`);
+          <tfoot><tr><td>${g.rotulo||'Total'}</td><td class="r">${brl(g.total_geral)}</td><td class="r">100%</td></tr></tfoot></table></div>`);
   });
   // Contas & Fluxo (saldos + projeção)
   document.getElementById('btn-contas-pdf').addEventListener('click',()=>{

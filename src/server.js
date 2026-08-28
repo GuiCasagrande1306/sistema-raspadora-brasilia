@@ -597,8 +597,12 @@ app.get('/api/pagamento-diario', async (req, res, next) => {
   catch (e) { next(e); }
 });
 app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
-  try { res.json(await db.gastosPorCategoria(req.query.mes || new Date().toISOString().slice(0, 7))); }
-  catch (e) { next(e); }
+  try {
+    let { desde, ate, mes } = req.query;
+    if ((!desde || !ate) && mes) { desde = mes + '-01'; ate = mes + '-31'; }
+    if (!desde || !ate) { const m = new Date().toISOString().slice(0, 7); desde = m + '-01'; ate = m + '-31'; }
+    res.json(await db.gastosPorCategoria(desde, ate));
+  } catch (e) { next(e); }
 });
 
 // ---------- CRONOGRAMA DIÁRIO (funções/diárias editáveis + alocação por obra/dia) ----------
