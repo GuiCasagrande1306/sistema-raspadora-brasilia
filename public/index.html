@@ -144,6 +144,9 @@
   .board{display:grid;grid-auto-flow:column;grid-auto-columns:300px;gap:16px;
     padding:18px 26px 40px;overflow-x:auto;align-items:start;}
   .board.as-list{display:block;}
+  /* Cronograma: obras em GRADE (quebram em vários quadros na tela) — sem scroll horizontal */
+  #cron-board{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));grid-auto-columns:unset;overflow-x:visible;align-items:stretch;}
+  #cron-board .col{min-width:0;}
   .colhead{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;
     background:var(--concreto);border-radius:10px;}
   .colhead .swatch{width:9px;height:9px;border-radius:3px;}
