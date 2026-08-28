@@ -1396,11 +1396,13 @@ export const db = {
     const d0 = base.toISOString().slice(0, 10), d1 = ate.toISOString().slice(0, 10);
     const { data: contas } = await sb('contas_bancarias').select('saldo_atual');
     const saldo_atual = (contas || []).reduce((s, c) => s + c.saldo_atual, 0);
-    const [{ data: prev }, { data: boletos }, { data: lancs }] = await Promise.all([
+    const [{ data: prev }, { data: boletos }, { data: lancs }, { data: medicoes }] = await Promise.all([
       sb('movimentacoes_caixa').select('data_movimento,tipo,valor').eq('status', 'PREVISTO').lte('data_movimento', d1),
       // pendentes: inclui ATRASADOS (venc/data no passado) — ainda são a pagar
       sb('boletos').select('vencimento,valor').eq('pago', false).lte('vencimento', d1),
       sb('lancamentos_diarios').select('data,valor').eq('pago', false).lte('data', d1),
+      // medições/notas ainda NÃO recebidas = ENTRADAS previstas (a receber)
+      sb('medicoes_obra').select('data,valor').eq('recebido', false),
     ]);
     const porDia = {}; let entradas = 0, saidas = 0;
     const add = (data, campo, valor) => { porDia[data] ||= { data, entradas: 0, saidas: 0 }; porDia[data][campo] += valor; };
@@ -1413,6 +1415,12 @@ export const db = {
     // boletos pendentes e lançamentos não pagos entram como SAÍDAS (atrasados caem em hoje)
     for (const b of (boletos || [])) { add(diaDe(b.vencimento), 'saidas', b.valor || 0); saidas += b.valor || 0; }
     for (const l of (lancs || [])) { add(diaDe(l.data), 'saidas', l.valor || 0); saidas += l.valor || 0; }
+    // medições a receber → entradas previstas (sem data ou atrasada cai em hoje; além da janela não entra)
+    for (const med of (medicoes || [])) {
+      const dia = diaDe(med.data || d0);
+      if (dia > d1) continue;
+      add(dia, 'entradas', med.valor || 0); entradas += med.valor || 0;
+    }
     let saldo = saldo_atual;
     const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)).map(d => {
       saldo += d.entradas - d.saidas; return { ...d, saldo_projetado: saldo };
