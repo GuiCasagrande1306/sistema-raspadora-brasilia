@@ -931,7 +931,8 @@
         <div class="folha-periodo">
           <label>De <input type="date" id="folha-desde"></label>
           <label>Até <input type="date" id="folha-ate"></label>
-          <button class="primary" id="btn-folha-calc" style="min-height:40px">Fechar folha</button>
+          <button class="btn-ghost" id="btn-folha-calc" style="min-height:40px">Recalcular</button>
+          <button class="primary" id="btn-folha-fechar" style="min-height:40px;background:var(--ok,#1E9E5A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px"><path d="M20 6L9 17l-5-5"/></svg>Fechar folha</button>
         </div>
         <div style="display:flex;gap:8px">
           <button class="primary" id="btn-apont" style="background:var(--chumbo-800)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Apontar produção</button>
@@ -1101,7 +1102,10 @@
       <div id="clientes-content" style="padding:18px 26px 96px;"></div>
     </section>
     <section id="view-contratos" class="hidden"><div class="modhead"><h1>Contratos</h1><p>Gestão de contratos fechados e assinaturas. (Módulo em construção.)</p></div></section>
-    <section id="view-recibos" class="hidden"><div class="modhead"><h1>Recibos</h1><p>Emissão e gestão de recibos de pagamento/recebimento. (Módulo em construção.)</p></div></section>
+    <section id="view-recibos" class="hidden">
+      <div class="modhead"><h1>Recibos</h1><p>Recibos gerados no fechamento da folha — 1 por colaborador. Clique para imprimir/salvar em PDF.</p></div>
+      <div id="recibos-content" style="padding:18px 26px 96px"></div>
+    </section>
     <section id="view-prestacao" class="hidden"><div class="modhead"><h1>Prestação de Contas</h1><p>Lançamento de despesas operacionais e reembolsos de equipe. (Módulo em construção.)</p></div></section>
     <section id="view-nfrb" class="hidden"><div class="modhead"><h1>NF RB — Raspadora Brasília</h1><p>Notas fiscais em PDF, organizadas por tipo (Mão de Obra / Materiais) e por ano.</p></div><div id="nf-rb" class="nf-wrap"></div></section>
     <section id="view-nfeco" class="hidden"><div class="modhead"><h1>NF Eco Pisos</h1><p>Notas fiscais em PDF, organizadas por tipo (Mão de Obra / Materiais) e por ano.</p></div><div id="nf-eco" class="nf-wrap"></div></section>
@@ -1394,6 +1398,19 @@
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Pagar via PIX</button></footer>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: Confirmar fechamento de folha -->
+<div class="overlay" id="ov-folha-fechar">
+  <div class="modal">
+    <header><h3>Fechar folha do período</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div id="ffz-periodo" class="login-hint" style="text-align:left;margin-bottom:12px"></div>
+      <div id="ffz-lista" style="max-height:44vh;overflow:auto"></div>
+      <div class="login-hint" style="text-align:left;margin-top:12px">Ao confirmar: gera <b>1 recibo por colaborador</b>, marca os vales adiantados como <b>abatidos</b> e trava este período como pago. Não dá pra desfazer pela tela.</div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="ffz-confirmar" style="background:var(--ok,#1E9E5A)">Confirmar fechamento</button></footer>
   </div>
 </div>
 
@@ -1798,6 +1815,7 @@
     if(view==='bancos'){cofreMode=false;bancosUnlocked=true;loadBancos().catch(e=>console.error(e));} // Bancos & Fluxo: acesso livre, só leitura
     if(view==='cofre'){cofreMode=true;loadBancos().catch(e=>console.error(e));} // Cofre: exige senha + ações sensíveis
     if(view==='folha')loadFolha().catch(e=>console.error(e));
+    if(view==='recibos')loadRecibos().catch(e=>console.error(e));
     if(view==='nfrb')loadNF('RB');
     if(view==='nfeco')loadNF('ECO');
     if(view==='docemp')loadDocEmp();
@@ -3892,9 +3910,11 @@
     if(!document.getElementById('folha-desde').value){document.getElementById('folha-desde').value=isoAtras(7);document.getElementById('folha-ate').value=isoHoje();}
     await calcularFolha();
   }
+  let folhaAtual=null;
   async function calcularFolha(){
     const desde=document.getElementById('folha-desde').value,ate=document.getElementById('folha-ate').value;
     const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
+    folhaAtual=r;
     document.getElementById('folha-total').textContent=brl(r.totais.a_pagar||0);
     document.getElementById('folha-diarias').textContent=brl(r.totais.diarias||0);
     document.getElementById('folha-comissoes').textContent=brl(r.totais.comissoes||0);
@@ -3927,6 +3947,65 @@
     }));
   }
   document.getElementById('btn-folha-calc').addEventListener('click',()=>calcularFolha().catch(e=>{showToast('Erro na folha');console.error(e);}));
+  document.getElementById('folha-desde').addEventListener('change',()=>calcularFolha().catch(e=>console.error(e)));
+  document.getElementById('folha-ate').addEventListener('change',()=>calcularFolha().catch(e=>console.error(e)));
+
+  // ---- Fechar folha (efetivo) ----
+  document.getElementById('btn-folha-fechar').addEventListener('click',()=>{
+    if(!folhaAtual||!folhaAtual.colaboradores.length){showToast('Nada a fechar no período');return;}
+    const p=folhaAtual.periodo||{};
+    document.getElementById('ffz-periodo').innerHTML=`Período <b>${p.desde?dtBR(p.desde):''} a ${p.ate?dtBR(p.ate):''}</b> — <b>${folhaAtual.colaboradores.length}</b> colaborador(es), total líquido <b>${brl(folhaAtual.totais.a_pagar||0)}</b>.`;
+    document.getElementById('ffz-lista').innerHTML=`<table style="width:100%;font-size:13px;border-collapse:collapse">
+      <thead><tr style="color:var(--ink-3);text-align:left"><th style="padding:6px 4px">Colaborador</th><th style="padding:6px 4px;text-align:right">Vales</th><th style="padding:6px 4px;text-align:right">Líquido</th></tr></thead>
+      <tbody>${folhaAtual.colaboradores.map(l=>`<tr style="border-top:1px solid var(--line)"><td style="padding:6px 4px">${esc(l.nome)}</td><td style="padding:6px 4px;text-align:right;color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td><td style="padding:6px 4px;text-align:right;font-weight:700">${brl(l.total_liquido)}</td></tr>`).join('')}</tbody></table>`;
+    openModal('ov-folha-fechar');
+  });
+  document.getElementById('ffz-confirmar').addEventListener('click',async()=>{
+    const btn=document.getElementById('ffz-confirmar');btn.disabled=true;btn.textContent='Fechando…';
+    try{
+      const p=folhaAtual.periodo||{};
+      const r=await api('/api/dp/folha-fechar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({desde:p.desde,ate:p.ate,hoje:isoHoje()})});
+      document.getElementById('ov-folha-fechar').classList.remove('open');
+      showToast(`Folha fechada — ${r.recibos} recibo(s), ${r.vales_abatidos} vale(s) abatido(s)`);
+      await calcularFolha();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fechar folha: '+(m||'erro'));console.error(err);}
+    finally{btn.disabled=false;btn.textContent='Confirmar fechamento';}
+  });
+
+  // ---- Recibos ----
+  let recibosCache=[];
+  async function loadRecibos(){
+    const lista=await api('/api/recibos');recibosCache=lista;
+    const c=document.getElementById('recibos-content');
+    if(!lista.length){c.innerHTML='<div style="text-align:center;color:var(--ink-3);padding:48px">Nenhum recibo ainda. Feche uma folha em <b>Folha de Pagamento</b> para gerar.</div>';return;}
+    c.innerHTML=`<div class="vt-wrap"><table class="vt-table"><thead><tr>
+      <th>Colaborador</th><th>Referência</th><th class="num">Valor líquido</th><th>Data</th><th></th>
+    </tr></thead><tbody>${lista.map((r,i)=>`<tr>
+      <td><div class="vt-nome"><div class="ini" style="background:${hue(r.colaborador_nome||'')}">${ini(r.colaborador_nome||'?')}</div>${esc(r.colaborador_nome||'—')}</div></td>
+      <td>${esc(r.referencia||'—')}</td>
+      <td class="num money">${brl(r.valor)}</td>
+      <td>${r.data?dtBR(r.data):(r.criado_em?dtBR(r.criado_em.slice(0,10)):'—')}</td>
+      <td class="num"><button class="btn-ghost" data-recibo="${i}" style="padding:4px 10px;font-size:12px">Imprimir</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+    c.querySelectorAll('[data-recibo]').forEach(b=>b.addEventListener('click',()=>reciboPrint(recibosCache[+b.dataset.recibo])));
+  }
+  function reciboPrint(r){
+    if(!r)return;const d=r.detalhe||{};
+    const linha=(k,v)=>`<tr><td>${k}</td><td class="r">${v}</td></tr>`;
+    finPrint('Recibo — '+(r.colaborador_nome||''),`<h1>Recibo de Pagamento</h1>
+      <p class="sub">${esc(r.referencia||'')}</p>
+      <div class="cards"><div class="card"><div class="k">Colaborador</div><div class="v" style="font-size:14px">${esc(r.colaborador_nome||'—')}</div></div>
+        <div class="card"><div class="k">Valor líquido</div><div class="v">${brl(r.valor)}</div></div></div>
+      <table><thead><tr><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>
+        ${linha('Diárias ('+(d.dias||0)+' dia(s))',brl(d.diarias||0))}
+        ${linha('Comissão por m² ('+(d.m2||0)+' m²)',brl(d.comissao||0))}
+        ${d.bonus?linha('Bônus assiduidade',brl(d.bonus)):''}
+        ${d.vales?linha('(−) Vales adiantados','− '+brl(d.vales)):''}
+      </tbody><tfoot><tr><td class="r">Líquido a receber</td><td class="r">${brl(r.valor)}</td></tr></tfoot></table>
+      <div class="row2" style="margin-top:44px"><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Assinatura do colaborador</div>
+        <div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Raspadora Brasília</div></div>
+      <p class="foot">Recebi a importância de ${brl(r.valor)} referente ao período acima.</p>`);
+  }
 
   // ---- Vale ----
   document.getElementById('btn-novo-vale').addEventListener('click',async()=>{await popularColabSelect('vale-colab');openModal('ov-vale');});

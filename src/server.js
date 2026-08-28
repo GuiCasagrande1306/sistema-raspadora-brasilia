@@ -72,6 +72,8 @@ app.use('/api/perfil', requireAuth);             // cada usuário edita o própr
 app.use('/api/dp/apontamento', requireAuth);     // apontamento de campo (equipe)
 app.use('/api/dp/vale', requireAdmin);           // vale debita caixa — controle admin
 app.use('/api/dp/folha-fechamento', requireAdmin);
+app.use('/api/dp/folha-fechar', requireAdmin);   // fechamento efetivo (gera recibos, abate vales)
+app.use('/api/recibos', requireAdmin);
 app.use('/api/obras', requireAdmin);
 app.use('/api/bancos', requireAdmin);
 app.use('/api/fluxo-caixa', requireAdmin);
@@ -1063,6 +1065,23 @@ app.get('/api/dp/folha-fechamento', async (req, res, next) => {
     const ate = req.query.ate || hoje.toISOString().slice(0, 10);
     res.json(await db.fecharFolha(desde, ate));
   } catch (e) { next(e); }
+});
+
+// Fechamento EFETIVO da folha — trava período, gera recibos, abate vales
+app.post('/api/dp/folha-fechar', async (req, res, next) => {
+  try {
+    const { desde, ate, hoje } = req.body || {};
+    if (!desde || !ate) return res.status(400).json({ erro: 'desde e ate são obrigatórios' });
+    res.json(await db.fecharFolhaEfetivar(desde, ate, hoje));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ erro: e.message });
+    next(e);
+  }
+});
+
+// Recibos gerados (folha e avulsos)
+app.get('/api/recibos', async (req, res, next) => {
+  try { res.json(await db.listRecibos()); } catch (e) { next(e); }
 });
 
 // Obras — cadastro

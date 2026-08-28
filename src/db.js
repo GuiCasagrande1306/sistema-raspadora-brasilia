@@ -1334,6 +1334,39 @@ export const db = {
     };
     return { periodo: { desde, ate }, colaboradores: linhas, totais };
   },
+  // Fechamento EFETIVO: trava o período, gera 1 recibo por colaborador e abate os vales.
+  async fecharFolhaEfetivar(desde, ate, hojeStr) {
+    if (!USING_SUPABASE) return { fechamento: { id: uid(), desde, ate }, recibos: 0, vales_abatidos: 0 };
+    const resumo = await this.fecharFolha(desde, ate);
+    if (!resumo.colaboradores.length) { const e = new Error('Nada a fechar neste período.'); e.status = 422; throw e; }
+    // impede fechar o mesmo período duas vezes
+    const { data: existe } = await sb('folha_fechamentos').select('id').eq('desde', desde).eq('ate', ate).limit(1).maybeSingle();
+    if (existe) { const e = new Error('Este período já foi fechado.'); e.status = 409; throw e; }
+    const hoje = hojeStr || new Date().toISOString().slice(0, 10);
+    const t = resumo.totais;
+    const { data: fech, error: ef } = await sb('folha_fechamentos').insert({
+      desde, ate, data: hoje,
+      total_a_pagar: t.a_pagar || 0, total_diarias: t.diarias || 0, total_comissoes: t.comissoes || 0,
+      total_vales: t.vales || 0, total_bonus: t.bonus || 0, colaboradores: resumo.colaboradores,
+    }).select().single();
+    if (ef) throw ef;
+    const ref = 'Folha ' + desde.split('-').reverse().slice(0, 2).join('/') + ' a ' + ate.split('-').reverse().join('/');
+    const recibos = resumo.colaboradores.map(l => ({
+      tipo: 'FOLHA', colaborador_id: l.colaborador_id, colaborador_nome: l.nome, referencia: ref,
+      periodo_desde: desde, periodo_ate: ate, valor: l.total_liquido, folha_fechamento_id: fech.id, data: hoje,
+      detalhe: { dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos },
+    }));
+    if (recibos.length) { const { error: er } = await sb('recibos').insert(recibos); if (er) throw er; }
+    // abate os vales que entraram nesta folha (todos os pendentes)
+    const { data: abatidos } = await sb('vales_diaria').update({ abatido_folha: true, folha_fechamento_id: fech.id })
+      .eq('abatido_folha', false).select('id');
+    return { fechamento: fech, recibos: recibos.length, vales_abatidos: (abatidos || []).length, totais: t };
+  },
+  async listRecibos() {
+    if (!USING_SUPABASE) return [];
+    const { data } = await sb('recibos').select('*').order('criado_em', { ascending: false });
+    return data || [];
+  },
   // DRE individual da obra
   async dreObra(obraId) {
     if (!USING_SUPABASE) return null;
