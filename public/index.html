@@ -2139,17 +2139,22 @@
   let VT_STATE={ano_mes:null,semana:1,linhas:[],resumo:{}};
   const vtDebounce={};
   function vtSemanasDoMes(ano_mes){
-    // Semanas úteis: considera SOMENTE segunda a sexta. Fim de semana não entra.
+    // Semanas úteis (seg a sex). A última semana COMPLETA até a sexta, mesmo entrando no mês seguinte.
     const [y,m]=ano_mes.split('-').map(Number),ult=new Date(y,m,0).getDate();
     const p=x=>String(x).padStart(2,'0');
-    const out=[];let n=1,ini=null;
+    const iso=dt=>`${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`;
+    const mk=(n,iniDt,fimDt)=>({n,desde:iso(iniDt),ate:iso(fimDt),label:`Semana ${n} (${p(iniDt.getDate())} a ${p(fimDt.getDate())})`});
+    const out=[];let n=1,ini=null; // ini = Date do início da semana
     for(let d=1;d<=ult;d++){
-      const dow=new Date(y,m-1,d).getDay(); // 0=dom .. 6=sáb
-      if(dow===0||dow===6){ if(ini!==null){out.push({n,ini,fim:d-1,label:`Semana ${n} (${p(ini)} a ${p(d-1)})`});n++;ini=null;} continue; }
-      if(ini===null)ini=d;
-      if(dow===5){out.push({n,ini,fim:d,label:`Semana ${n} (${p(ini)} a ${p(d)})`});n++;ini=null;} // sexta fecha a semana
+      const dt=new Date(y,m-1,d),dow=dt.getDay(); // 0=dom .. 6=sáb
+      if(dow===0||dow===6){ if(ini){out.push(mk(n,ini,new Date(y,m-1,d-1)));n++;ini=null;} continue; }
+      if(!ini)ini=dt;
+      if(dow===5){out.push(mk(n,ini,dt));n++;ini=null;} // sexta fecha a semana
     }
-    if(ini!==null)out.push({n,ini,fim:ult,label:`Semana ${n} (${p(ini)} a ${p(ult)})`});
+    if(ini){ // semana aberta no fim do mês → estende até a sexta (pode entrar no mês seguinte)
+      const fim=new Date(ini);fim.setDate(fim.getDate()+(5-ini.getDay()));
+      out.push(mk(n,ini,fim));
+    }
     return out;
   }
   function vtInitFiltros(){
@@ -2275,8 +2280,7 @@
   document.getElementById('vt-cronograma').addEventListener('click',async()=>{
     const ano_mes=document.getElementById('vt-mes').value,semana=parseInt(document.getElementById('vt-semana').value,10)||1;
     const sem=vtSemanasDoMes(ano_mes).find(s=>s.n===semana);if(!sem){showToast('Semana inválida');return;}
-    const p=x=>String(x).padStart(2,'0');
-    const desde=`${ano_mes}-${p(sem.ini)}`,ate=`${ano_mes}-${p(sem.fim)}`;
+    const desde=sem.desde,ate=sem.ate;
     try{
       const r=await api('/api/cronograma/dias-trabalhados?desde='+desde+'&ate='+ate);
       const dd=r.porColaborador||{};let faltaram=0;
