@@ -1477,6 +1477,22 @@
   </div>
 </div>
 
+<!-- MODAL: Alocar doc GEFIP nas obras -->
+<div class="overlay" id="ov-gefip-alocar">
+  <div class="modal">
+    <header><h3>Alocar nas obras</h3><button class="x" data-close>×</button></header>
+    <form id="form-gefip-alocar">
+      <input type="hidden" id="ga-doc">
+      <div class="body">
+        <p class="dv" style="font-size:12.5px;color:var(--ink-3);margin:0 0 10px">Selecione as obras que recebem este documento — ele é copiado para cada pasta selecionada (entra no .zip da obra).</p>
+        <label class="docs-toggle"><input type="checkbox" id="ga-todas" checked> <b>Todas as obras</b></label>
+        <div id="ga-lista" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Alocar</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Cliente -->
 <div class="overlay" id="ov-cliente">
   <div class="modal">
@@ -2386,9 +2402,25 @@
       document.getElementById('g-novo-mes').addEventListener('click',gefipNovoMes);
       wireDelPasta(el);
     }else if(!gState.obra){
-      let obras=[];try{obras=await api('/api/gefip/pastas?ano='+gState.ano+'&mes='+gState.mes);}catch(e){console.error(e);}
+      let obras=[],gerais=[];
+      try{[obras,gerais]=await Promise.all([api('/api/gefip/pastas?ano='+gState.ano+'&mes='+gState.mes),api('/api/gefip/docs?ano='+gState.ano+'&mes='+gState.mes+'&geral=1')]);}catch(e){console.error(e);}
+      const geraisRows=gerais.length?('<div class="doc-list">'+gerais.map(d=>`<div class="doc-row"><div class="pdf-ic">PDF</div>
+        <div class="di"><h4>${esc(d.nome)}</h4><div class="sub">geral do mês · enviado ${d.criado_em?dtBR(d.criado_em.slice(0,10)):''}</div></div>
+        ${d.arquivo_url?`<a class="doc-open" href="${d.arquivo_url}" target="_blank" rel="noopener">Abrir</a>`:''}
+        <button class="btn-ghost" data-alocdoc="${d.id}" style="min-height:34px;font-size:12px">📥 Alocar nas obras</button>
+        <button class="doc-cloud" data-deldoc="${d.id}" title="Excluir">${DE_TRASH}</button></div>`).join('')+'</div>'):'<div class="orc-empty" style="padding:14px">Nenhum documento geral ainda. Suba aqui os docs da empresa que vão para todas as obras.</div>';
+      const geralBlock=`<div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <h3 class="doc-sub" style="margin:0;font-size:13.5px;color:var(--ink-2)">📄 Documentos gerais do mês <span style="color:var(--ink-3);font-weight:500;font-size:12px">— sobem uma vez e você aloca nas obras</span></h3>
+          <button class="primary" id="g-up-geral" style="min-height:38px">+ Enviar doc geral</button></div>${geraisRows}</div>`;
       const cards=obras.length?'<div class="nf-grid">'+obras.map(p=>`<div class="nf-folder" data-obra="${esc(p.obra)}">${folderSvg(true)}<div><h4>${esc(p.obra)}</h4><div class="dv">PDFs da obra</div></div><button class="doc-cloud" data-delpasta="${p.id}" title="Excluir obra">${DE_TRASH}</button></div>`).join('')+'</div>':'<div class="orc-empty">Nenhuma obra em '+mesNome(gState.mes)+'. Crie a obra.</div>';
-      el.innerHTML=crumbHtml+`<div class="nf-bar"><button class="primary" id="g-nova-obra" style="min-height:40px">+ Nova obra</button></div>`+cards;
+      el.innerHTML=crumbHtml+geralBlock+`<h3 class="doc-sub" style="margin:6px 0 10px;font-size:13.5px;color:var(--ink-2)">Obras</h3><div class="nf-bar"><button class="primary" id="g-nova-obra" style="min-height:40px">+ Nova obra</button></div>`+cards;
+      document.getElementById('g-up-geral').addEventListener('click',()=>gefipUpload(true));
+      el.querySelectorAll('[data-alocdoc]').forEach(b=>b.addEventListener('click',()=>gefipAlocar(b.dataset.alocdoc)));
+      el.querySelectorAll('[data-deldoc]').forEach(b=>b.addEventListener('click',async()=>{
+        if(!confirm('Excluir este documento geral?'))return;
+        try{await api('/api/gefip/doc/'+b.dataset.deldoc,{method:'DELETE'});showToast('Excluído');renderGefip();}
+        catch(e){showToast('Erro');console.error(e);}}));
       el.querySelectorAll('[data-obra]').forEach(f=>f.addEventListener('click',e=>{if(e.target.closest('[data-delpasta]'))return;gState.obra=f.dataset.obra;renderGefip();}));
       document.getElementById('g-nova-obra').addEventListener('click',gefipNovaObra);
       wireDelPasta(el);
@@ -2435,16 +2467,35 @@
     try{await api('/api/gefip/pasta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ano:gState.ano,mes:gState.mes,obra:nome.trim()})});showToast('Obra criada');renderGefip();}
     catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Criar obra: '+(m||'erro'));console.error(e);}
   }
-  function gefipUpload(){
+  function gefipUpload(geral){
     const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';inp.multiple=true;
     inp.onchange=async()=>{const fs=[...inp.files];if(!fs.length)return;
       try{showToast('Enviando '+fs.length+' arquivo(s)…');
-        for(const f of fs){const fd=new FormData();fd.append('arquivo',f);fd.append('ano',gState.ano);fd.append('mes',gState.mes);fd.append('obra',gState.obra);fd.append('nome',f.name);
+        for(const f of fs){const fd=new FormData();fd.append('arquivo',f);fd.append('ano',gState.ano);fd.append('mes',gState.mes);fd.append('nome',f.name);
+          if(!geral)fd.append('obra',gState.obra);   // geral = sem obra
           await api('/api/gefip/doc',{method:'POST',body:fd});}
         showToast('Enviado!');renderGefip();
       }catch(e){showToast('Erro ao enviar');console.error(e);}};
     inp.click();
   }
+  async function gefipAlocar(docId){
+    let obras=[];try{obras=(await api('/api/gefip/pastas?ano='+gState.ano+'&mes='+gState.mes)).map(p=>p.obra);}catch{}
+    if(!obras.length){showToast('Crie as obras do mês primeiro');return;}
+    document.getElementById('ga-doc').value=docId;
+    document.getElementById('ga-todas').checked=true;
+    document.getElementById('ga-lista').innerHTML=obras.map(o=>`<label class="docs-toggle"><input type="checkbox" class="ga-obra" value="${esc(o)}" checked> ${esc(o)}</label>`).join('');
+    openModal('ov-gefip-alocar');
+  }
+  document.getElementById('ga-todas').addEventListener('change',e=>{document.querySelectorAll('#ga-lista .ga-obra').forEach(c=>c.checked=e.target.checked);});
+  document.getElementById('form-gefip-alocar').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const doc_id=document.getElementById('ga-doc').value;
+    const obras=[...document.querySelectorAll('#ga-lista .ga-obra:checked')].map(c=>c.value);
+    if(!obras.length){showToast('Selecione ao menos uma obra');return;}
+    try{const r=await api('/api/gefip/alocar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_id,obras})});
+      document.getElementById('ov-gefip-alocar').classList.remove('open');
+      showToast('Alocado em '+(r.criados||0)+' obra(s)');renderGefip();}
+    catch(err){showToast('Erro ao alocar');console.error(err);}});
   async function gefipBaixarZip(){
     try{
       showToast('Gerando .zip…');

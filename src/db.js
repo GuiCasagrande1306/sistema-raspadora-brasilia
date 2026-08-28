@@ -751,19 +751,27 @@ export const db = {
     mock.gefipPastas = mock.gefipPastas.filter(p => p.id !== id);
     return { ok: true };
   },
-  async listGefipDocs({ ano, mes, obra } = {}) {
+  async listGefipDocs({ ano, mes, obra, geral } = {}) {
     if (USING_SUPABASE) {
       let q = sb('gefip_docs').select('*').order('criado_em', { ascending: false });
       if (ano) q = q.eq('ano', Number(ano));
       if (mes) q = q.eq('mes', mes);
-      if (obra) q = q.eq('obra', obra);
+      if (geral) q = q.is('obra', null);       // docs gerais do mês (sem obra)
+      else if (obra) q = q.eq('obra', obra);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
     }
     return mock.gefipDocs
-      .filter(d => (!ano || d.ano === Number(ano)) && (!mes || d.mes === mes) && (!obra || d.obra === obra))
+      .filter(d => (!ano || d.ano === Number(ano)) && (!mes || d.mes === mes) && (geral ? !d.obra : (!obra || d.obra === obra)))
       .sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
+  },
+  async getGefipDoc(id) {
+    if (USING_SUPABASE) {
+      const { data } = await sb('gefip_docs').select('*').eq('id', id).maybeSingle();
+      return data || null;
+    }
+    return mock.gefipDocs.find(d => d.id === id) || null;
   },
   async createGefipDoc(d) {
     if (USING_SUPABASE) {

@@ -459,28 +459,52 @@ app.delete('/api/gefip/pasta/:id', async (req, res, next) => {
   catch (e) { next(e); }
 });
 app.get('/api/gefip/docs', async (req, res, next) => {
-  try { res.json(await db.listGefipDocs({ ano: req.query.ano, mes: req.query.mes, obra: req.query.obra })); }
+  try { res.json(await db.listGefipDocs({ ano: req.query.ano, mes: req.query.mes, obra: req.query.obra, geral: req.query.geral === '1' })); }
   catch (e) { next(e); }
 });
 app.post('/api/gefip/doc', upload.single('arquivo'), async (req, res, next) => {
   try {
-    const { ano, mes, obra } = req.body;
-    if (!Number(ano) || !mes || !obra) return res.status(400).json({ erro: 'ano, mes e obra são obrigatórios' });
+    const { ano, mes } = req.body;
+    const obra = req.body.obra ? String(req.body.obra) : null;   // sem obra = documento GERAL do mês
+    if (!Number(ano) || !mes) return res.status(400).json({ erro: 'ano e mes são obrigatórios' });
     if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
     let arquivo_url = null, arquivo_path = null;
     if (USING_SUPABASE) {
       const safe = (req.file.originalname || 'doc.pdf').replace(/[^\w.\-]+/g, '_');
-      arquivo_path = `gefip/${Number(ano)}/${mes}/${String(obra).replace(/[^\w.\-]+/g, '_')}/${Date.now()}_${safe}`;
+      const pastaObra = obra ? String(obra).replace(/[^\w.\-]+/g, '_') : '_gerais';
+      arquivo_path = `gefip/${Number(ano)}/${mes}/${pastaObra}/${Date.now()}_${safe}`;
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(arquivo_path, req.file.buffer, { contentType: req.file.mimetype });
       if (upErr) throw upErr;
       const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(arquivo_path, 60 * 60 * 24 * 365);
       arquivo_url = signed?.signedUrl || arquivo_path;
     }
     res.status(201).json(await db.createGefipDoc({
-      ano: Number(ano), mes: String(mes), obra: String(obra),
+      ano: Number(ano), mes: String(mes), obra,
       nome: req.body.nome || req.file.originalname || 'Documento', arquivo_path, arquivo_url,
       criado_por: req.user?.email || null,
     }));
+  } catch (e) { next(e); }
+});
+// Aloca um documento GERAL do mês em uma ou mais obras (copia a referência do mesmo arquivo)
+app.post('/api/gefip/alocar', async (req, res, next) => {
+  try {
+    const { doc_id, obras } = req.body;
+    if (!doc_id || !Array.isArray(obras) || !obras.length) return res.status(400).json({ erro: 'doc_id e obras são obrigatórios' });
+    const src = await db.getGefipDoc(doc_id);
+    if (!src) return res.status(404).json({ erro: 'documento não encontrado' });
+    // obras existentes do mês (para não criar em obra inexistente)
+    const validas = new Set((await db.listGefipPastas({ ano: src.ano, mes: src.mes })).filter(p => p.obra).map(p => p.obra));
+    const existentes = await db.listGefipDocs({ ano: src.ano, mes: src.mes });
+    let criados = 0;
+    for (const obra of obras) {
+      const o = String(obra);
+      if (!validas.has(o)) continue;
+      // evita duplicar: mesmo arquivo já nessa obra
+      if (existentes.some(d => d.obra === o && d.arquivo_path === src.arquivo_path)) continue;
+      await db.createGefipDoc({ ano: src.ano, mes: src.mes, obra: o, nome: src.nome, arquivo_path: src.arquivo_path, arquivo_url: src.arquivo_url, criado_por: src.criado_por });
+      criados++;
+    }
+    res.json({ ok: true, criados });
   } catch (e) { next(e); }
 });
 app.delete('/api/gefip/doc/:id', async (req, res, next) => {
