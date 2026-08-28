@@ -1644,8 +1644,20 @@
           <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" type="number" step="0.01" min="0" placeholder="0"></div>
           <div class="field"><label>Valor do contrato (opcional)</label><input name="valor_contrato" type="number" step="0.01" min="0" placeholder="0,00"></div>
         </div>
-        <div class="field"><label>Tipo de piso / serviço</label><input name="tipo_piso" placeholder="Ex.: Fulget, Concreto Polido, Epóxi…"></div>
-        <div class="hint">Se o pagamento é por <b>medição/nota</b>, deixe o valor em branco — depois abra a obra e acrescente cada medição conforme receberem.</div>
+        <div class="grid2">
+          <div class="field"><label>Tipo de piso / serviço</label><input name="tipo_piso" placeholder="Ex.: Fulget, Concreto Polido, Epóxi…"></div>
+          <div class="field"><label>Categoria (setor)</label>
+            <select name="categoria_servico">
+              <option value="">— selecione —</option>
+              <option value="FULGET">Fulget</option>
+              <option value="CONCRETO">Concreto</option>
+              <option value="CIMENTO_QUEIMADO">Cimento queimado</option>
+              <option value="RASPAGEM">Raspagem (piso madeira)</option>
+              <option value="LIMPEZA">Limpeza</option>
+              <option value="OUTRO">Outro</option>
+            </select></div>
+        </div>
+        <div class="hint">A <b>categoria</b> define o setor: Raspagem e Limpeza <b>não</b> aparecem no Cronograma do Adelino (ele só vê Fulget/Concreto/Cimento). Se o pagamento é por <b>medição/nota</b>, deixe o valor em branco.</div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar obra</button></footer>
     </form>
@@ -1667,9 +1679,21 @@
           </div>
           <div class="grid2">
             <div class="field"><label>Tipo de piso / serviço</label><input name="tipo_piso" id="oe-tipo"></div>
-            <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" id="oe-metragem" type="number" step="0.01" min="0"></div>
+            <div class="field"><label>Categoria (setor)</label>
+              <select name="categoria_servico" id="oe-categoria">
+                <option value="">— selecione —</option>
+                <option value="FULGET">Fulget</option>
+                <option value="CONCRETO">Concreto</option>
+                <option value="CIMENTO_QUEIMADO">Cimento queimado</option>
+                <option value="RASPAGEM">Raspagem (piso madeira)</option>
+                <option value="LIMPEZA">Limpeza</option>
+                <option value="OUTRO">Outro</option>
+              </select></div>
           </div>
-          <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" id="oe-valor" type="number" step="0.01" min="0"></div>
+          <div class="grid2">
+            <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" id="oe-metragem" type="number" step="0.01" min="0"></div>
+            <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" id="oe-valor" type="number" step="0.01" min="0"></div>
+          </div>
         </div>
 
         <div class="orc-block" style="margin-top:12px">
@@ -1921,7 +1945,7 @@
     const f=document.getElementById('form-obra-exec');
     document.getElementById('oe-id').value=id;
     document.getElementById('oe-titulo').textContent='Obra — '+(o.cliente||'');
-    f.cliente.value=o.cliente||'';f.endereco.value=o.endereco||'';f.tipo_piso.value=o.tipo_piso||'';
+    f.cliente.value=o.cliente||'';f.endereco.value=o.endereco||'';f.tipo_piso.value=o.tipo_piso||'';f.categoria_servico.value=o.categoria_servico||'';
     f.metragem_m2.value=o.metragem_m2||'';f.valor_contrato.value=o.valor_contrato?(o.valor_contrato/100).toFixed(2):'';
     f.data_inicio.value=o.data_inicio||'';f.data_prevista_termino.value=o.data_prevista_termino||'';
     f.responsavel.value=o.responsavel||'';f.equipe_responsavel.value=o.equipe_responsavel||'';
@@ -1974,7 +1998,7 @@
   document.getElementById('oe-dre').addEventListener('click',()=>{const id=document.getElementById('oe-id').value;document.getElementById('ov-obra-exec').classList.remove('open');abrirDre&&abrirDre(id);});
   document.getElementById('form-obra-exec').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('oe-id').value;
-    const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,
+    const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null,
       metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,
       data_inicio:f.data_inicio.value||null,data_prevista_termino:f.data_prevista_termino.value||null,
       responsavel:f.responsavel.value||null,equipe_responsavel:f.equipe_responsavel.value||null,
@@ -1987,7 +2011,7 @@
     if(!f.cliente.value.trim()){showToast('Informe o cliente');return;}
     try{
       await api('/api/financeiro/obra',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({cliente:f.cliente.value,endereco:f.endereco.value||null,metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,tipo_piso:f.tipo_piso.value||null})});
+        body:JSON.stringify({cliente:f.cliente.value,endereco:f.endereco.value||null,metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null})});
       document.getElementById('ov-obra').classList.remove('open');await loadFin();showToast('Obra cadastrada');
     }catch(err){showToast('Erro ao cadastrar obra');console.error(err);}
   });

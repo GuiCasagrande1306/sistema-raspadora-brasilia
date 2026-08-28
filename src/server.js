@@ -654,7 +654,9 @@ app.get('/api/cronograma', async (req, res, next) => {
     const [obras, colaboradores, alocacoes] = await Promise.all([
       db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }),
     ]);
-    const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado')
+    // Cronograma do Adelino: só obras de campo (Fulget/Concreto/Cimento). Raspagem e Limpeza NÃO aparecem.
+    const FORA_CRONOGRAMA = ['RASPAGEM', 'LIMPEZA'];
+    const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
       .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null }));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
@@ -954,7 +956,7 @@ app.get('/api/financeiro/obra/:id', async (req, res, next) => {
 app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['cliente', 'endereco', 'tipo_piso', 'responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
+    for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
     if (req.body.metragem_m2 !== undefined) patch.metragem_m2 = Number(req.body.metragem_m2) || 0;
@@ -1020,6 +1022,7 @@ app.post('/api/financeiro/obra', async (req, res, next) => {
     if (!cliente) return res.status(400).json({ erro: 'cliente é obrigatório' });
     res.status(201).json(await db.createObra({
       cliente, endereco: endereco || null, tipo_piso: tipo_piso || null,
+      categoria_servico: req.body.categoria_servico || null,
       metragem_m2: Number(metragem_m2) || 0,
       valor_contrato: Math.round((Number(valor_contrato) || 0) * 100),
     }));
