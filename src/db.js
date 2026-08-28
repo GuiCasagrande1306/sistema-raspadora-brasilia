@@ -1027,11 +1027,12 @@ export const db = {
   },
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {
-    const [boletos, lancs] = await Promise.all([
+    const [boletos, lancs, contas] = await Promise.all([
       USING_SUPABASE
         ? sb('boletos').select('*').eq('vencimento', data).then(r => r.data || [])
         : Promise.resolve(mock.boletos.filter(b => b.vencimento === data)),
       this.listLancDiarios({ data }),
+      USING_SUPABASE ? sb('contas_bancarias').select('saldo_atual').then(r => r.data || []) : Promise.resolve([]),
     ]);
     const itens = [
       ...boletos.map(b => ({ ...b, origem: 'BOLETO' })),
@@ -1039,7 +1040,9 @@ export const db = {
     ];
     const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
     const pago = itens.filter(i => i.pago).reduce((s, i) => s + (i.valor || 0), 0);
-    return { data, itens, resumo: { total, pago, pendente: total - pago } };
+    const saldo_caixa = (contas || []).reduce((s, c) => s + (c.saldo_atual || 0), 0); // saldo consolidado das contas
+    const saldo_final = saldo_caixa - pago;                                           // após o que já saiu hoje
+    return { data, itens, resumo: { total, pago, pendente: total - pago, saldo_caixa, saldo_final } };
   },
   // Acha um cliente pelo nome (case-insensitive) ou cria a partir dos dados do lead
   async acharOuCriarCliente({ nome, telefone, endereco, origem, responsavel, observacao }) {

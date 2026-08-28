@@ -890,9 +890,11 @@
             <button class="btn-ghost" id="btn-pd-pdf" style="min-height:40px">🖨️ Exportar PDF</button>
           </div>
           <div class="metrics">
+            <div class="metric"><div class="lbl">Saldo de Caixa</div><div class="val money" id="pd-caixa">—</div><div class="sub">contas no início</div></div>
             <div class="metric"><div class="lbl">Total do dia</div><div class="val money" id="pd-total">—</div><div class="sub">boletos + lançamentos</div></div>
             <div class="metric"><div class="lbl">Pago</div><div class="val money" id="pd-pago">—</div><div class="sub">já quitado</div></div>
             <div class="metric"><div class="lbl">Pendente</div><div class="val money" id="pd-pendente">—</div><div class="sub">a pagar hoje</div></div>
+            <div class="metric"><div class="lbl">Saldo Final</div><div class="val money" id="pd-final">—</div><div class="sub">caixa − pago</div></div>
           </div>
           <div id="pd-content" style="padding:18px 26px 96px;"></div>
         </div>
@@ -3654,9 +3656,12 @@
     const el=document.getElementById('pd-data');if(!el.value)el.value=isoHoje();
     let r;try{r=await api('/api/pagamento-diario?data='+el.value);}catch(e){document.getElementById('pd-content').innerHTML='<div class="orc-empty">Erro ao carregar.</div>';console.error(e);return;}
     PD_STATE={data:el.value,...r};
+    document.getElementById('pd-caixa').textContent=brl(r.resumo.saldo_caixa||0);
     document.getElementById('pd-total').textContent=brl(r.resumo.total);
     document.getElementById('pd-pago').textContent=brl(r.resumo.pago);
     document.getElementById('pd-pendente').textContent=brl(r.resumo.pendente);
+    const fEl=document.getElementById('pd-final');fEl.textContent=brl(r.resumo.saldo_final||0);
+    fEl.style.color=(r.resumo.saldo_final||0)<0?'var(--danger)':'';
     const cont=document.getElementById('pd-content');
     if(!r.itens.length){cont.innerHTML='<div class="orc-empty">Nada lançado nem vencendo neste dia. Boletos com vencimento nesta data aparecem aqui automaticamente.</div>';return;}
     cont.innerHTML='<div class="doc-list">'+r.itens.map(i=>{
@@ -3764,9 +3769,11 @@
     const d=PD_STATE;const dataBR=new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR');
     const rows=(d.itens||[]).map(i=>`<tr><td>${esc(i.descricao)}</td><td>${CAT_LABEL[i.categoria]||i.categoria||''}</td><td class="c">${i.origem==='BOLETO'?'Boleto':esc(i.forma||'Lançamento')}</td><td class="c">${i.pago?'Pago':'Pendente'}</td><td class="r">${brl(i.valor)}</td></tr>`).join('')||'<tr><td colspan="5" class="c">Nada neste dia.</td></tr>';
     finPrint('Pagamento Diário '+dataBR,`<h1>Pagamento Diário</h1><p class="sub">${dataBR}</p>
-      <div class="cards"><div class="card"><div class="k">Total do dia</div><div class="v">${brl(d.resumo.total)}</div></div>
+      <div class="cards"><div class="card"><div class="k">Saldo de Caixa</div><div class="v">${brl(d.resumo.saldo_caixa||0)}</div></div>
+        <div class="card"><div class="k">Total do dia</div><div class="v">${brl(d.resumo.total)}</div></div>
         <div class="card"><div class="k">Pago</div><div class="v">${brl(d.resumo.pago)}</div></div>
-        <div class="card"><div class="k">Pendente</div><div class="v">${brl(d.resumo.pendente)}</div></div></div>
+        <div class="card"><div class="k">Pendente</div><div class="v">${brl(d.resumo.pendente)}</div></div>
+        <div class="card"><div class="k">Saldo Final</div><div class="v">${brl(d.resumo.saldo_final||0)}</div></div></div>
       <table><thead><tr><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Status</th><th>Valor</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td colspan="4" class="r">Total</td><td class="r">${brl(d.resumo.total)}</td></tr></tfoot></table>`);
   });
