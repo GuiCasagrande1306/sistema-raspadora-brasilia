@@ -182,6 +182,27 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').update(patch).eq('id', id).select().single(); if (error) throw error; return data; }
     const o = mock.obras.find(x => x.id === id); if (!o) return null; Object.assign(o, patch); return o;
   },
+  // ---- Medições / Notas recebidas por obra ----
+  async listMedicoesObra(obra_id) {
+    if (USING_SUPABASE) {
+      const { data, error } = await sb('medicoes_obra').select('*').eq('obra_id', obra_id).order('data', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+    return (mock.medicoesObra || []).filter(m => m.obra_id === obra_id);
+  },
+  async createMedicaoObra(m) {
+    if (USING_SUPABASE) { const { data, error } = await sb('medicoes_obra').insert(m).select().single(); if (error) throw error; return data; }
+    (mock.medicoesObra ||= []).push({ id: uid(), criado_em: new Date().toISOString(), ...m }); return mock.medicoesObra[mock.medicoesObra.length - 1];
+  },
+  async updateMedicaoObra(id, patch) {
+    if (USING_SUPABASE) { const { data, error } = await sb('medicoes_obra').update(patch).eq('id', id).select().single(); if (error) throw error; return data; }
+    const m = (mock.medicoesObra || []).find(x => x.id === id); if (!m) return null; Object.assign(m, patch); return m;
+  },
+  async deleteMedicaoObra(id) {
+    if (USING_SUPABASE) { const { error } = await sb('medicoes_obra').delete().eq('id', id); if (error) throw error; return { ok: true }; }
+    mock.medicoesObra = (mock.medicoesObra || []).filter(m => m.id !== id); return { ok: true };
+  },
   async createLancamento(l) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos').insert(l).select().single(); if (error) throw error;

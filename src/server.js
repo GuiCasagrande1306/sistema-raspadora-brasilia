@@ -971,6 +971,39 @@ app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Medições / Notas recebidas de uma obra (valor em REAIS → centavos)
+app.get('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
+  try {
+    const lista = await db.listMedicoesObra(req.params.id);
+    const faturado = lista.reduce((s, m) => s + (m.valor || 0), 0);
+    const recebido = lista.filter(m => m.recebido).reduce((s, m) => s + (m.valor || 0), 0);
+    res.json({ medicoes: lista, resumo: { faturado, recebido, a_receber: faturado - recebido } });
+  } catch (e) { next(e); }
+});
+app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
+  try {
+    res.status(201).json(await db.createMedicaoObra({
+      obra_id: req.params.id, data: req.body.data || null, descricao: req.body.descricao || null,
+      valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['data', 'descricao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
+    if (req.body.recebido !== undefined) patch.recebido = !!req.body.recebido;
+    const m = await db.updateMedicaoObra(req.params.id, patch);
+    if (!m) return res.status(404).json({ erro: 'medição não encontrada' });
+    res.json(m);
+  } catch (e) { next(e); }
+});
+app.delete('/api/financeiro/medicao/:id', async (req, res, next) => {
+  try { res.json(await db.deleteMedicaoObra(req.params.id)); }
+  catch (e) { next(e); }
+});
+
 app.post('/api/financeiro/lancamento', async (req, res, next) => {
   try {
     const { obra_id, tipo, categoria, valor } = req.body;
