@@ -1373,19 +1373,22 @@ export const db = {
     const { data: contas } = await sb('contas_bancarias').select('saldo_atual');
     const saldo_atual = (contas || []).reduce((s, c) => s + c.saldo_atual, 0);
     const [{ data: prev }, { data: boletos }, { data: lancs }] = await Promise.all([
-      sb('movimentacoes_caixa').select('data_movimento,tipo,valor').eq('status', 'PREVISTO').gte('data_movimento', d0).lte('data_movimento', d1),
-      sb('boletos').select('vencimento,valor').eq('pago', false).gte('vencimento', d0).lte('vencimento', d1),
-      sb('lancamentos_diarios').select('data,valor').eq('pago', false).gte('data', d0).lte('data', d1),
+      sb('movimentacoes_caixa').select('data_movimento,tipo,valor').eq('status', 'PREVISTO').lte('data_movimento', d1),
+      // pendentes: inclui ATRASADOS (venc/data no passado) — ainda são a pagar
+      sb('boletos').select('vencimento,valor').eq('pago', false).lte('vencimento', d1),
+      sb('lancamentos_diarios').select('data,valor').eq('pago', false).lte('data', d1),
     ]);
     const porDia = {}; let entradas = 0, saidas = 0;
     const add = (data, campo, valor) => { porDia[data] ||= { data, entradas: 0, saidas: 0 }; porDia[data][campo] += valor; };
+    const diaDe = (dataStr) => (dataStr && dataStr < d0) ? d0 : dataStr; // atrasado cai no dia de hoje
     for (const m of (prev || [])) {
-      if (m.tipo === 'ENTRADA') { add(m.data_movimento, 'entradas', m.valor); entradas += m.valor; }
-      else { add(m.data_movimento, 'saidas', m.valor); saidas += m.valor; }
+      const dia = diaDe(m.data_movimento);
+      if (m.tipo === 'ENTRADA') { add(dia, 'entradas', m.valor); entradas += m.valor; }
+      else { add(dia, 'saidas', m.valor); saidas += m.valor; }
     }
-    // boletos pendentes e lançamentos não pagos entram como SAÍDAS previstas na data do vencimento/dia
-    for (const b of (boletos || [])) { add(b.vencimento, 'saidas', b.valor || 0); saidas += b.valor || 0; }
-    for (const l of (lancs || [])) { add(l.data, 'saidas', l.valor || 0); saidas += l.valor || 0; }
+    // boletos pendentes e lançamentos não pagos entram como SAÍDAS (atrasados caem em hoje)
+    for (const b of (boletos || [])) { add(diaDe(b.vencimento), 'saidas', b.valor || 0); saidas += b.valor || 0; }
+    for (const l of (lancs || [])) { add(diaDe(l.data), 'saidas', l.valor || 0); saidas += l.valor || 0; }
     let saldo = saldo_atual;
     const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)).map(d => {
       saldo += d.entradas - d.saidas; return { ...d, saldo_projetado: saldo };
