@@ -654,18 +654,20 @@ app.get('/api/cronograma/dias-trabalhados', async (req, res, next) => {
 app.get('/api/cronograma', async (req, res, next) => {
   try {
     const data = req.query.data || new Date().toISOString().slice(0, 10);
-    const [obras, colaboradores, alocacoes] = await Promise.all([
-      db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }),
+    const [obras, colaboradores, alocacoes, faltasRaw] = await Promise.all([
+      db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }), db.listFaltas(data),
     ]);
     // Cronograma do Adelino: só obras de campo (Fulget/Concreto/Cimento). Raspagem e Limpeza NÃO aparecem.
     const FORA_CRONOGRAMA = ['RASPAGEM', 'LIMPEZA'];
     const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
       .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null }));
+    const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
       .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo }));
+    const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor }));
     const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
-    res.json({ data, obras: obrasAtivas, colaboradores: colabs, alocacoes, total });
+    res.json({ data, obras: obrasAtivas, colaboradores: colabs, alocacoes, faltas, total });
   } catch (e) { next(e); }
 });
 app.post('/api/cronograma/alocacao', async (req, res, next) => {
@@ -691,6 +693,18 @@ app.patch('/api/cronograma/alocacao/:id', async (req, res, next) => {
 });
 app.delete('/api/cronograma/alocacao/:id', async (req, res, next) => {
   try { res.json(await db.deleteAlocacao(req.params.id)); }
+  catch (e) { next(e); }
+});
+// Coluna FALTA do Cronograma — marca o colaborador como falta no dia (desconto valor 0, a lançar na folha)
+app.post('/api/cronograma/falta', async (req, res, next) => {
+  try {
+    const { data, colaborador_id } = req.body;
+    if (!data || !colaborador_id) return res.status(400).json({ erro: 'data e colaborador são obrigatórios' });
+    res.status(201).json(await db.criarFalta({ data, colaborador_id }));
+  } catch (e) { next(e); }
+});
+app.delete('/api/cronograma/falta/:id', async (req, res, next) => {
+  try { res.json(await db.deleteDesconto(req.params.id)); }
   catch (e) { next(e); }
 });
 
@@ -1067,6 +1081,17 @@ app.post('/api/dp/desconto', async (req, res, next) => {
     if (!(cents > 0)) return res.status(400).json({ erro: 'valor deve ser > 0' });
     const r = await db.criarDesconto({ colaborador_id, tipo: (tipo || 'FALTA'), valor: cents, observacao: req.body.observacao, data_lancamento: req.body.data_lancamento });
     res.status(201).json(r);
+  } catch (e) { next(e); }
+});
+// Lançar/editar o valor de um desconto já existente (ex.: valor da falta vinda do Cronograma)
+app.patch('/api/dp/desconto/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    if (req.body.valor !== undefined) { const c = emCentavos(req.body.valor); if (!(c >= 0)) return res.status(400).json({ erro: 'valor inválido' }); patch.valor = c; }
+    if (req.body.observacao !== undefined) patch.observacao = req.body.observacao || null;
+    const r = await db.updateDesconto(req.params.id, patch);
+    if (!r) return res.status(404).json({ erro: 'desconto não encontrado ou já abatido' });
+    res.json(r);
   } catch (e) { next(e); }
 });
 

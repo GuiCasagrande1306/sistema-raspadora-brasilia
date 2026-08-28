@@ -1281,6 +1281,35 @@ export const db = {
     if (error) throw error;
     return data;
   },
+  // Falta lançada pelo Cronograma (valor 0, a lançar depois pela Bárbara). Idempotente por colaborador+dia.
+  async criarFalta({ data, colaborador_id }) {
+    if (!USING_SUPABASE) return { id: uid(), colaborador_id, tipo: 'FALTA', valor: 0, data_lancamento: data };
+    const { data: existe } = await sb('descontos_folha').select('*')
+      .eq('colaborador_id', colaborador_id).eq('tipo', 'FALTA').eq('data_lancamento', data).eq('abatido_folha', false).limit(1).maybeSingle();
+    if (existe) return existe;
+    const { data: row, error } = await sb('descontos_folha').insert({
+      colaborador_id, tipo: 'FALTA', valor: 0, observacao: 'Falta (cronograma)',
+      data_lancamento: data, abatido_folha: false,
+    }).select().single();
+    if (error) throw error;
+    return row;
+  },
+  async listFaltas(data) {
+    if (!USING_SUPABASE) return [];
+    const { data: rows } = await sb('descontos_folha').select('id,colaborador_id,valor,data_lancamento,observacao')
+      .eq('tipo', 'FALTA').eq('data_lancamento', data).eq('abatido_folha', false);
+    return rows || [];
+  },
+  async updateDesconto(id, patch) {
+    if (!USING_SUPABASE) return { id, ...patch };
+    const { data, error } = await sb('descontos_folha').update(patch).eq('id', id).eq('abatido_folha', false).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async deleteDesconto(id) {
+    if (USING_SUPABASE) { const { error } = await sb('descontos_folha').delete().eq('id', id).eq('abatido_folha', false); if (error) throw error; }
+    return { ok: true };
+  },
   // Apontamento diário com rateio de m² entre a equipe
   async criarApontamento(a) {
     if (!USING_SUPABASE) return { id: uid(), ...a, m2_por_colaborador: 0 };
@@ -1310,14 +1339,19 @@ export const db = {
       // Cronograma Diário: alocações do período (fonte principal das diárias)
       sb('cronograma_alocacoes').select('colaborador_id,data,obra_nome,funcao,valor_diaria').gte('data', desde).lte('data', ate),
       // Descontos manuais (FALTA / INSS / OUTRO) — valores variáveis lançados na folha
-      sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha').eq('abatido_folha', false),
+      sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
     ]);
     const descontos = descRes && descRes.data ? descRes.data : [];
     const porColab = {};
-    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, cronDiarias: 0, cronDias: new Set(), detalhe: [] };
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
     for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); p.m2 += Number(r.m2_rateado); }
     for (const v of (vales || [])) { const p = porColab[v.colaborador_id]; if (p) p.vales += v.valor; }
-    for (const d of descontos) { const p = porColab[d.colaborador_id]; if (!p) continue; if (d.tipo === 'INSS') p.inss += d.valor; else if (d.tipo === 'FALTA') p.faltas += d.valor; else p.outros_desc += d.valor; }
+    for (const d of descontos) {
+      const p = porColab[d.colaborador_id]; if (!p) continue;
+      if (d.tipo === 'INSS') p.inss += d.valor;
+      else if (d.tipo === 'FALTA') { p.faltas += d.valor; p.faltas_itens.push({ id: d.id, data: d.data_lancamento, valor: d.valor }); }
+      else p.outros_desc += d.valor;
+    }
     for (const a of (alocs || [])) {
       const p = porColab[a.colaborador_id]; if (!p) continue;
       p.cronDiarias += (a.valor_diaria || 0); p.cronDias.add(a.data);
@@ -1338,9 +1372,10 @@ export const db = {
         origem_diaria: temCron ? 'cronograma' : 'apontamento',
         diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales,
         faltas: p.faltas, inss: p.inss, outros_desconto: p.outros_desc, total_liquido,
+        faltas_itens: p.faltas_itens.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
         detalhe: p.detalhe.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
       };
-    }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto);
+    }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto || (l.faltas_itens && l.faltas_itens.length));
     const totais = {
       a_pagar: linhas.reduce((s, l) => s + l.total_liquido, 0),
       comissoes: linhas.reduce((s, l) => s + l.comissao, 0),

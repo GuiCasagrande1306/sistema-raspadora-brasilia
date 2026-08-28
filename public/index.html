@@ -1421,6 +1421,22 @@
   </div>
 </div>
 
+<!-- MODAL: Lançar valor da falta (Cronograma -> Folha) -->
+<div class="overlay" id="ov-falta-valor">
+  <div class="modal">
+    <header><h3>Lançar valor da falta</h3><button class="x" data-close>×</button></header>
+    <form id="form-falta-valor">
+      <input type="hidden" id="fv-id">
+      <div class="body">
+        <div id="fv-info" class="login-hint" style="text-align:left;margin-bottom:10px"></div>
+        <div class="field"><label>Valor do desconto (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="70,00"></div>
+        <div class="login-hint" style="text-align:left">Desconto abatido no líquido desta folha. Deixe 0 para não descontar.</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar valor</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Confirmar fechamento de folha -->
 <div class="overlay" id="ov-folha-fechar">
   <div class="modal">
@@ -3020,9 +3036,13 @@
     equipe.innerHTML=(CRON.colaboradores||[]).map(c=>`<span class="apont-chip" draggable="true" data-dragcolab="${c.id}">${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3)">Nenhum colaborador ativo.</span>';
     document.getElementById('cron-total').textContent=brl(CRON.total||0);
     const board=document.getElementById('cron-board');
-    if(!(CRON.obras||[]).length){board.innerHTML='<div class="orc-empty">Nenhuma obra ativa. Cadastre uma obra em <b>Obras &amp; Resultado</b> (ou feche um lead).</div>';}
-    else{
-      board.innerHTML=CRON.obras.map(o=>{
+    // Coluna fixa FALTA: Adelino arrasta quem não veio; vira desconto (valor a lançar pela Bárbara na Folha)
+    const faltaCards=(CRON.faltas||[]).map(f=>`<div class="card" style="border-color:var(--danger)">
+        <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(f.colaborador_nome||'')}</h4><button class="doc-cloud" data-delfalta="${f.id}" title="Tirar falta" style="padding:2px">${DE_TRASH}</button></div>
+        ${f.valor?`<div class="tags" style="margin-top:6px"><span class="tag" style="background:var(--danger);color:#fff">−${brl(f.valor)}</span></div>`:`<div style="margin-top:6px;font-size:11px;color:var(--ink-3)">valor a lançar na folha</div>`}</div>`).join('');
+    const faltaCol=`<div class="col cron-col cron-falta" data-falta="1"><div class="colhead"><span class="swatch" style="background:var(--danger)"></span><div style="flex:1;min-width:0"><h3 style="margin:0">FALTA</h3><div class="cron-resp">quem não veio hoje</div></div><span class="count">${(CRON.faltas||[]).length}</span></div>
+      <div class="cards">${faltaCards}<div class="addcard" style="cursor:default;color:var(--ink-3);border-style:dashed">arraste o nome aqui</div></div></div>`;
+    const obrasHtml=(CRON.obras||[]).map(o=>{
         const alocs=CRON.alocacoes.filter(a=>a.obra_id===o.id);
         const cards=alocs.map(a=>`<div class="card" style="cursor:pointer" data-editaloc="${a.id}">
           <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(a.colaborador_nome||'')}</h4><button class="doc-cloud" data-delaloc="${a.id}" title="Remover" style="padding:2px">${DE_TRASH}</button></div>
@@ -3033,7 +3053,7 @@
           <div class="cards">${cards}<button class="addcard" data-alocobra="${o.id}">+ Alocar</button></div>
           <div style="padding:4px 6px 0;font-size:11.5px;color:var(--ink-3)">Diárias: ${brl(sub)}</div></div>`;
       }).join('');
-    }
+    board.innerHTML=((CRON.obras||[]).length?obrasHtml:'<div class="orc-empty" style="grid-column:1/-1">Nenhuma obra ativa. Cadastre uma obra em <b>Obras &amp; Resultado</b> (ou feche um lead). A coluna FALTA continua disponível abaixo.</div>')+faltaCol;
     // drag da equipe
     equipe.querySelectorAll('[data-dragcolab]').forEach(t=>{
       t.addEventListener('dragstart',()=>{cronDragColab=t.dataset.dragcolab;t.classList.add('dragging');});
@@ -3042,14 +3062,23 @@
     board.querySelectorAll('.cron-col').forEach(col=>{
       col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('dragover');});
       col.addEventListener('dragleave',()=>col.classList.remove('dragover'));
-      col.addEventListener('drop',e=>{e.preventDefault();col.classList.remove('dragover');if(cronDragColab){abrirAlocar(cronDragColab,col.dataset.obra,null);cronDragColab=null;}});
+      col.addEventListener('drop',e=>{e.preventDefault();col.classList.remove('dragover');if(!cronDragColab)return;const c=cronDragColab;cronDragColab=null;if(col.dataset.falta)marcarFalta(c);else abrirAlocar(c,col.dataset.obra,null);});
     });
+    board.querySelectorAll('[data-delfalta]').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();if(!confirm('Tirar esta falta?'))return;
+      try{await api('/api/cronograma/falta/'+b.dataset.delfalta,{method:'DELETE'});showToast('Falta removida');loadCronograma();}
+      catch(err){showToast('Erro');console.error(err);}}));
     board.querySelectorAll('[data-alocobra]').forEach(b=>b.addEventListener('click',()=>abrirAlocar(null,b.dataset.alocobra,null)));
     board.querySelectorAll('[data-editaloc]').forEach(c=>c.addEventListener('click',e=>{if(e.target.closest('[data-delaloc]'))return;const a=CRON.alocacoes.find(x=>x.id===c.dataset.editaloc);abrirAlocar(a.colaborador_id,a.obra_id,a);}));
     board.querySelectorAll('[data-delaloc]').forEach(b=>b.addEventListener('click',async e=>{
       e.stopPropagation();if(!confirm('Remover esta alocação?'))return;
       try{await api('/api/cronograma/alocacao/'+b.dataset.delaloc,{method:'DELETE'});showToast('Removido');loadCronograma();}
       catch(err){showToast('Erro');console.error(err);}}));
+  }
+  async function marcarFalta(colabId){
+    try{await api('/api/cronograma/falta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:CRON.data,colaborador_id:colabId})});
+      showToast('Falta registrada — lance o valor na Folha de Pagamento');loadCronograma();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Falta: '+(m||'erro'));console.error(err);}
   }
   function abrirAlocar(colabId,obraId,aloc){
     const f=document.getElementById('form-alocar');f.reset();
@@ -3941,21 +3970,32 @@
     document.getElementById('folha-vales').textContent=brl(r.totais.vales||0);
     const rows=r.colaboradores.length?r.colaboradores.map((l,idx)=>{
       const temDet=(l.detalhe||[]).length>0;
+      const temFaltas=(l.faltas_itens||[]).length>0;
+      const expand=temDet||temFaltas;
+      const faltaAlerta=(l.faltas_itens||[]).some(fi=>!fi.valor);
       const cronTag=l.origem_diaria==='cronograma'?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">cronograma</span>':'';
-      const seta=temDet?'<span style="color:var(--ink-3);margin-right:4px" data-arrow>▸</span>':'';
-      const linha=`<tr data-folharow="${idx}" style="cursor:${temDet?'pointer':'default'}">
-        <td><div class="vt-nome">${seta}<div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}</div></td>
+      const faltaTag=faltaAlerta?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:var(--danger);color:#fff">falta s/ valor</span>':'';
+      const seta=expand?'<span style="color:var(--ink-3);margin-right:4px" data-arrow>▸</span>':'';
+      const linha=`<tr data-folharow="${idx}" style="cursor:${expand?'pointer':'default'}">
+        <td><div class="vt-nome">${seta}<div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}${faltaTag}</div></td>
         <td class="num">${l.dias_trabalhados}</td><td class="num">${l.m2_processados}</td>
         <td class="num">${brl(l.diarias)}</td><td class="num">${brl(l.comissao)}</td>
         <td class="num">${l.bonus_assiduidade?brl(l.bonus_assiduidade):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td>
-        <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):'—'}</td>
+        <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):(temFaltas?'<span style="color:var(--danger)">a lançar</span>':'—')}</td>
         <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
         <td class="num money">${brl(l.total_liquido)}</td></tr>`;
-      const det=temDet?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="10" style="background:var(--ground);padding:0">
-        <div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
+      const diariasBlock=temDet?`<div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th></tr></thead>
-        <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div></td></tr>`:'';
+        <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div>`:'';
+      const faltasBlock=temFaltas?`<div style="padding:8px 18px 12px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--danger);margin-bottom:4px">Faltas — lançar valor do desconto</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>${l.faltas_itens.map(fi=>`<tr>
+          <td style="padding:4px">${fi.data?dtBR(fi.data):'—'}</td>
+          <td style="padding:4px;text-align:right">${fi.valor?'−'+brl(fi.valor):'<span style="color:var(--ink-3)">sem valor</span>'}</td>
+          <td style="padding:4px;text-align:right"><button class="btn-ghost" data-faltaval="${fi.id}" data-faltanome="${esc(l.nome)}" data-faltadata="${fi.data||''}" data-faltaatual="${fi.valor||0}" style="padding:3px 10px;font-size:11.5px${fi.valor?'':';border-color:var(--danger);color:var(--danger)'}">${fi.valor?'Editar valor':'Lançar valor'}</button></td>
+        </tr>`).join('')}</tbody></table></div>`:'';
+      const det=expand?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="10" style="background:var(--ground);padding:0">${diariasBlock}${faltasBlock}</td></tr>`:'';
       return linha+det;
     }).join('')
       :'<tr><td colspan="10" style="text-align:center;color:var(--ink-3);padding:24px">Sem alocações (cronograma), produção, vales ou descontos no período selecionado.</td></tr>';
@@ -3967,7 +4007,23 @@
       const d=document.querySelector('#folha-content [data-det="'+tr.dataset.folharow+'"]');if(!d)return;
       d.classList.toggle('hidden');const ar=tr.querySelector('[data-arrow]');if(ar)ar.textContent=d.classList.contains('hidden')?'▸':'▾';
     }));
+    document.querySelectorAll('#folha-content [data-faltaval]').forEach(b=>b.addEventListener('click',e=>{
+      e.stopPropagation();abrirFaltaValor(b.dataset.faltaval,b.dataset.faltanome,b.dataset.faltadata,+b.dataset.faltaatual);
+    }));
   }
+  // Bárbara lança o valor da falta vinda do Cronograma
+  function abrirFaltaValor(id,nome,data,atual){
+    document.getElementById('fv-id').value=id;
+    document.getElementById('fv-info').innerHTML=`<b>${esc(nome)}</b> — falta em <b>${data?dtBR(data):'—'}</b>`;
+    const inp=document.querySelector('#form-falta-valor [name=valor]');inp.value=atual?(atual/100).toFixed(2):'';
+    openModal('ov-falta-valor');setTimeout(()=>inp.focus(),50);
+  }
+  document.getElementById('form-falta-valor').addEventListener('submit',async e=>{
+    e.preventDefault();const id=document.getElementById('fv-id').value;const f=new FormData(e.target);
+    try{await api('/api/dp/desconto/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:parseFloat(f.get('valor'))||0})});
+      document.getElementById('ov-falta-valor').classList.remove('open');showToast('Valor da falta lançado');await calcularFolha();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Falta: '+(m||'erro'));console.error(err);}
+  });
   document.getElementById('btn-folha-calc').addEventListener('click',()=>calcularFolha().catch(e=>{showToast('Erro na folha');console.error(e);}));
   document.getElementById('folha-desde').addEventListener('change',()=>calcularFolha().catch(e=>console.error(e)));
   document.getElementById('folha-ate').addEventListener('change',()=>calcularFolha().catch(e=>console.error(e)));
