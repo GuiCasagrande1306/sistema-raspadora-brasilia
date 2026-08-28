@@ -761,7 +761,7 @@
       <div class="nav-group" data-group="fin">Financeiro</div>
       <button data-view="fin" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg><span class="lbl">Obras &amp; Resultado</span></button>
       <button data-view="bancos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="lbl">Bancos &amp; Fluxo de Caixa</span></button>
-      <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Folha de Ponto</span></button>
+      <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Folha de Pagamento</span></button>
       <button data-view="cofre" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
       <button data-view="recibos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 8h8M8 12h6"/></svg><span class="lbl">Recibos</span></button>
       <button data-view="prestacao" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="lbl">Prestação de Contas</span></button>
@@ -3935,10 +3935,10 @@
     try{const r=await api('/api/dp/vale',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseFloat(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
       document.getElementById('ov-vale').classList.remove('open');e.target.reset();
-      showToast(r.alerta_liquidez?'Vale pago — ⚠ Caixinha abaixo de R$ 1.000!':'Vale pago via PIX');
+      showToast(r.sem_caixinha?'Vale registrado (sem Caixinha PIX — abate na próxima folha)':(r.alerta_liquidez?'Vale pago — ⚠ Caixinha abaixo de R$ 1.000!':'Vale pago via PIX'));
       if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
       if(!document.getElementById('view-bancos').classList.contains('hidden'))loadBancos();
-    }catch(err){showToast('Erro ao registrar vale');console.error(err);}
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Vale: '+(m||'erro'));console.error(err);}
   });
 
   // ---- Apontamento ----

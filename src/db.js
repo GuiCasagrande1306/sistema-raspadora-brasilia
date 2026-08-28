@@ -1219,7 +1219,7 @@ export const db = {
     return { id: uid(), ...c };
   },
   async getCaixinha() {
-    const { data } = await sb('contas_bancarias').select('*').eq('is_caixinha', true).limit(1).single();
+    const { data } = await sb('contas_bancarias').select('*').eq('is_caixinha', true).limit(1).maybeSingle();
     return data || null;
   },
   async criarMovimentacao(m) {
@@ -1251,21 +1251,24 @@ export const db = {
   async criarVale(v) {
     if (!USING_SUPABASE) return { vale: { ...v, id: uid() }, saldo_caixinha: 0, alerta_liquidez: false };
     const caixinha = await this.getCaixinha();
-    if (!caixinha) throw new Error('Caixinha PIX Campo não configurada');
-    const mov = await this.criarMovimentacao({
-      conta_bancaria_id: caixinha.id, obra_id: v.obra_id || null, colaborador_id: v.colaborador_id,
-      data_movimento: v.data_lancamento || new Date().toISOString().slice(0, 10),
-      descricao: 'Vale/adiantamento PIX' + (v.observacao ? ' — ' + v.observacao : ''),
-      categoria: 'VALE_CAMPO', tipo: 'SAIDA', valor: v.valor, status: 'REALIZADO', conciliado: true,
-    });
+    // Se houver Caixinha PIX configurada, debita dela; senão, só registra o vale (pendente de abate na folha)
+    let mov = null;
+    if (caixinha) {
+      mov = await this.criarMovimentacao({
+        conta_bancaria_id: caixinha.id, obra_id: v.obra_id || null, colaborador_id: v.colaborador_id,
+        data_movimento: v.data_lancamento || new Date().toISOString().slice(0, 10),
+        descricao: 'Vale/adiantamento PIX' + (v.observacao ? ' — ' + v.observacao : ''),
+        categoria: 'VALE_CAMPO', tipo: 'SAIDA', valor: v.valor, status: 'REALIZADO', conciliado: true,
+      });
+    }
     const { data, error } = await sb('vales_diaria').insert({
       colaborador_id: v.colaborador_id, obra_id: v.obra_id || null, tipo: v.tipo || 'ADIANTAMENTO_VALE',
       valor: v.valor, observacao: v.observacao || null, status_pagamento: 'PAGO', abatido_folha: false,
-      movimentacao_id: mov.id, data_lancamento: v.data_lancamento || new Date().toISOString().slice(0, 10),
+      movimentacao_id: mov ? mov.id : null, data_lancamento: v.data_lancamento || new Date().toISOString().slice(0, 10),
     }).select().single();
     if (error) throw error;
-    const saldo = caixinha.saldo_atual - v.valor;
-    return { vale: data, saldo_caixinha: saldo, alerta_liquidez: saldo < 100000 };  // < R$ 1.000
+    const saldo = caixinha ? (caixinha.saldo_atual - v.valor) : null;
+    return { vale: data, saldo_caixinha: saldo, alerta_liquidez: saldo != null && saldo < 100000, sem_caixinha: !caixinha };  // < R$ 1.000
   },
   // Apontamento diário com rateio de m² entre a equipe
   async criarApontamento(a) {
