@@ -956,7 +956,8 @@
         <nav class="docs-crumb" id="docs-crumb"></nav>
         <div class="docs-actions">
           <button class="btn-ghost" id="docs-export">Exportar</button>
-          <button class="primary" id="docs-relatorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg> Relatório de pendências</button>
+          <button class="btn-ghost" id="docs-relatorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg> Relatório de pendências</button>
+          <button class="primary" id="docs-novo-colab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo colaborador</button>
         </div>
       </div>
       <div class="docs-filtros">
@@ -3409,8 +3410,11 @@
       telefone:g('telefone'),email:g('email')};
     try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       e.target.reset();document.getElementById('ov-colab').classList.remove('open');
-      await loadDP();showToast('Colaborador cadastrado em Aguardando Preenchimento');
-    }catch(err){showToast('Erro ao cadastrar');console.error(err);}
+      // atualiza a tela que estiver aberta (Colaboradores/Documentos ou o Kanban antigo)
+      if(!document.getElementById('view-docs').classList.contains('hidden'))await loadDocs();
+      else await loadDP();
+      showToast('Colaborador cadastrado ✓');
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Cadastrar: '+(m||'erro'));console.error(err);}
   });
 
   // Submit: Novo Lançamento
@@ -3621,6 +3625,12 @@
     try{const r=await api('/api/documentos/relatorio-pendencias'+(docsState.empresa?'?empresa='+docsState.empresa:''));
       showToast(r.total_pendentes+' colaborador(es) com pendências');}catch(err){showToast('Erro no relatório');}});
   document.getElementById('docs-export').addEventListener('click',()=>showToast('Exportação CSV/PDF — em breve'));
+  document.getElementById('docs-novo-colab').addEventListener('click',()=>{
+    const f=document.getElementById('form-colab');f.reset();
+    // se estiver dentro de uma empresa, já pré-seleciona ela
+    if(docsState&&docsState.empresa){try{f.empresa.value=docsState.empresa;}catch(_){}}
+    openModal('ov-colab');
+  });
 
   // ================= DASHBOARD FINANCEIRO =================
   const DASH_CORES=['#F37021','#2563EB','#16A34A','#D97706','#8B5CF6','#0EA5E9','#EF5B25','#64748B'];
