@@ -158,6 +158,25 @@ app.post('/api/dp/colaborador', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.patch('/api/dp/colaborador/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    const campos = ['nome', 'apelido', 'cpf', 'rg', 'orgao_emissor_rg', 'pis', 'ctps', 'data_nascimento', 'nacionalidade',
+      'pcd', 'primeiro_emprego', 'numero_registro', 'escolaridade', 'data_admissao', 'data_demissao',
+      'cargo', 'telefone', 'email', 'empresa', 'status_colaborador'];
+    for (const k of campos) if (req.body[k] !== undefined) patch[k] = req.body[k] === '' ? null : req.body[k];
+    if (!Object.keys(patch).length) return res.status(400).json({ erro: 'nada para atualizar' });
+    const c = await db.updateColaborador(req.params.id, patch);
+    if (!c) return res.status(404).json({ erro: 'colaborador não encontrado' });
+    res.json(c);
+  } catch (e) { next(e); }
+});
+app.post('/api/dp/colaborador/:id/foto', upload.single('foto'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
+    res.status(201).json(await db.uploadFotoColaborador(req.params.id, req.file));
+  } catch (e) { next(e); }
+});
 app.get('/api/dp/colaborador/:id', async (req, res, next) => {
   try {
     const c = await db.getColaboradorDetalhe(req.params.id);
@@ -541,7 +560,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
-const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'INSUMO', 'OUTRO'];
+const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'INSUMO', 'DESPESA_FUNCIONARIO', 'OUTRO'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
   const safe = (file.originalname || 'comprovante').replace(/[^\w.\-]+/g, '_');
@@ -565,6 +584,7 @@ app.post('/api/boletos', async (req, res, next) => {
     res.status(201).json(await db.createBoleto({
       descricao, fornecedor: req.body.fornecedor || null, vencimento,
       valor: cents(req.body.valor), categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
+      categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
       pago: false,
     }));
   } catch (e) { next(e); }
@@ -1229,23 +1249,28 @@ app.get('/api/dp/colaborador/:id/resumo-docs', async (req, res, next) => {
     res.json(r);
   } catch (e) { next(e); }
 });
-app.post('/api/documentos/:colaboradorId/upload', upload.single('arquivo'), async (req, res, next) => {
+app.post('/api/documentos/:colaboradorId/upload', upload.array('arquivo', 12), async (req, res, next) => {
   try {
     const { codigo } = req.body;
     if (!codigo) return res.status(400).json({ erro: 'codigo é obrigatório' });
-    let arquivo_url = null;
-    if (req.file && USING_SUPABASE) {
-      const safe = (req.file.originalname || 'doc').replace(/[^\w.\-]+/g, '_');
-      const path = `docs/${req.params.colaboradorId}/${codigo}_${Date.now()}_${safe}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, req.file.buffer, { contentType: req.file.mimetype });
-      if (upErr) throw upErr;
-      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
-      arquivo_url = signed?.signedUrl || path;
+    const arquivos = req.files || [];
+    let arquivo_url = null; const anexos = [];
+    if (arquivos.length && USING_SUPABASE) {
+      for (let i = 0; i < arquivos.length; i++) {
+        const fl = arquivos[i];
+        const safe = (fl.originalname || 'doc').replace(/[^\w.\-]+/g, '_');
+        const path = `docs/${req.params.colaboradorId}/${codigo}_${Date.now()}_${i}_${safe}`;
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, fl.buffer, { contentType: fl.mimetype });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
+        const url = signed?.signedUrl || path;
+        if (i === 0) arquivo_url = url; else anexos.push({ url, nome: fl.originalname || ('arquivo ' + (i + 1)) });
+      }
     }
     const tem_vencimento = req.body.tem_vencimento === 'true' || req.body.tem_vencimento === '1' || req.body.tem_vencimento === true;
     res.status(201).json(await db.upsertDocColaborador(req.params.colaboradorId, {
       codigo, data_emissao: req.body.data_emissao || null, tem_vencimento,
-      data_vencimento: req.body.data_vencimento || null, arquivo_url,
+      data_vencimento: req.body.data_vencimento || null, arquivo_url, anexos,
     }));
   } catch (e) { next(e); }
 });

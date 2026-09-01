@@ -1129,8 +1129,9 @@
 <!-- MODAL: Novo Colaborador -->
 <div class="overlay" id="ov-colab">
   <div class="modal">
-    <header><h3>Novo Colaborador</h3><button class="x" data-close>×</button></header>
+    <header><h3 id="colab-titulo">Novo Colaborador</h3><button class="x" data-close>×</button></header>
     <form id="form-colab">
+      <input type="hidden" id="colab-id">
       <div class="body">
         <h5 style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Dados pessoais</h5>
         <div class="field"><label>Nome completo *</label><input name="nome" required placeholder="Ex: João da Silva"></div>
@@ -1144,16 +1145,13 @@
         </div>
         <div class="grid2">
           <div class="field"><label>PIS</label><input name="pis" placeholder="000.00000.00-0"></div>
-          <div class="field"><label>Título de eleitor</label><input name="titulo_eleitor"></div>
+          <div class="field"><label>CTPS</label><input name="ctps" placeholder="Nº / série"></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Data de nascimento</label><input name="data_nascimento" type="date"></div>
-          <div class="field"><label>Nacionalidade</label><input name="nacionalidade" value="Brasileira"></div>
+          <div class="field"><label>Nacionalidade</label><input name="nacionalidade" value="Brasileiro"></div>
         </div>
-        <div class="grid2">
-          <div class="field"><label>Estado (UF)</label><input name="estado_residencia" maxlength="2" placeholder="DF"></div>
-          <div class="field"><label>Cidade</label><input name="cidade_residencia" placeholder="Brasília"></div>
-        </div>
+        <div class="field"><label>Foto 3x4</label><input name="foto" type="file" accept="image/*"><span class="hint">JPG ou PNG. Aparece no cartão do colaborador.</span></div>
         <label class="docs-toggle"><input type="checkbox" name="pcd"> PCD (Pessoa com Deficiência)</label>
 
         <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Contratação</h5>
@@ -1172,12 +1170,11 @@
           <div class="field"><label>Data de demissão</label><input name="data_demissao" type="date"></div>
         </div>
         <label class="docs-toggle"><input type="checkbox" name="primeiro_emprego"> Primeiro emprego</label>
-        <div class="field"><label>Qualificação profissional</label><input name="qualificacao_profissional"></div>
 
         <h5 style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Acesso à obra</h5>
         <div class="grid2">
           <div class="field"><label>Cargo / Serviço *</label>
-            <select name="cargo" required><option value="">Selecione…</option><option>Servente</option><option>Pedreiro</option></select>
+            <select name="cargo" required><option value="">Selecione…</option><option value="PEDREIRO">PEDREIRO</option><option value="SERVENTE">SERVENTE</option><option value="ADMINISTRATIVO">ADMINISTRATIVO</option><option value="MOTORISTA">MOTORISTA</option></select>
           </div>
           <div class="field"><label>Telefone / Celular</label><input name="telefone" placeholder="(61) 9…"></div>
         </div>
@@ -1318,6 +1315,7 @@
           <div class="field"><label>Vencimento *</label><input name="vencimento" type="date" required></div>
           <div class="field"><label>Categoria</label><select name="categoria" id="boleto-cat"></select></div>
         </div>
+        <div class="field" id="boleto-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="boleto-outro" placeholder="Ex.: reforma do galpão"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar boleto</button></footer>
     </form>
@@ -1484,8 +1482,9 @@
     <form id="form-docup">
       <input type="hidden" name="codigo" id="docup-codigo">
       <div class="body">
-        <div class="field"><label>Arquivo (PDF, PNG ou JPG)</label><input name="arquivo" type="file" accept="application/pdf,image/png,image/jpeg" required></div>
-        <div class="field"><label>Data de emissão / elaboração</label><input name="data_emissao" type="date" required></div>
+        <div class="field"><label>Arquivo(s) — PDF, PNG ou JPG</label><input name="arquivo" type="file" accept="application/pdf,image/png,image/jpeg" multiple required><span class="hint">Pode selecionar vários de uma vez.</span></div>
+        <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" id="docup-temelab" name="tem_elaboracao"> Este documento tem data de elaboração</label>
+        <div class="field" id="docup-elab-wrap" style="display:none"><label>Data de emissão / elaboração</label><input name="data_emissao" type="date"></div>
         <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" id="docup-temvenc" name="tem_vencimento"> Este documento tem data de vencimento</label>
         <div class="field" id="docup-venc-wrap" style="display:none"><label>Data de vencimento</label><input name="data_vencimento" type="date"><span class="hint">Ativa lembretes e alertas automáticos.</span></div>
       </div>
@@ -3233,7 +3232,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));});
 
   // Botões primários de topo (Novo Colaborador / Novo Lançamento)
-  document.querySelectorAll('#view-dp .primary').forEach(b=>b.addEventListener('click',()=>openModal('ov-colab')));
+  document.querySelectorAll('#view-dp .primary').forEach(b=>b.addEventListener('click',()=>{document.getElementById('colab-id').value='';document.getElementById('colab-titulo').textContent='Novo Colaborador';openModal('ov-colab');}));
   document.getElementById('btn-novo-lanc').addEventListener('click',()=>openModal('ov-lanc'));
 
   // Categorias do lançamento dependem do tipo
@@ -3397,25 +3396,40 @@
 
   // Submit: Novo Colaborador
   document.getElementById('form-colab').addEventListener('submit',async e=>{
-    e.preventDefault();const f=new FormData(e.target);
+    e.preventDefault();const f=new FormData(e.target);const id=document.getElementById('colab-id').value;
     const g=k=>f.get(k)||null;
     const payload={nome:f.get('nome'),cargo:f.get('cargo'),empresa:f.get('empresa')||'RB_PISOS',
       status_colaborador:f.get('status_colaborador')||'ATIVO',
-      cpf:g('cpf'),rg:g('rg'),orgao_emissor_rg:g('orgao_emissor_rg'),pis:g('pis'),titulo_eleitor:g('titulo_eleitor'),
+      cpf:g('cpf'),rg:g('rg'),orgao_emissor_rg:g('orgao_emissor_rg'),pis:g('pis'),ctps:g('ctps'),
       apelido:g('apelido'),data_nascimento:g('data_nascimento'),nacionalidade:g('nacionalidade'),
-      estado_residencia:g('estado_residencia'),cidade_residencia:g('cidade_residencia'),
       pcd:f.get('pcd')==='on',primeiro_emprego:f.get('primeiro_emprego')==='on',
       numero_registro:g('numero_registro'),data_admissao:g('data_admissao'),data_demissao:g('data_demissao'),
-      escolaridade:g('escolaridade'),qualificacao_profissional:g('qualificacao_profissional'),
-      telefone:g('telefone'),email:g('email')};
-    try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      e.target.reset();document.getElementById('ov-colab').classList.remove('open');
-      // atualiza a tela que estiver aberta (Colaboradores/Documentos ou o Kanban antigo)
+      escolaridade:g('escolaridade'),telefone:g('telefone'),email:g('email')};
+    try{
+      let colab;
+      if(id) colab=await api('/api/dp/colaborador/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      else   colab=await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      // Foto (opcional): envia só se um arquivo foi escolhido
+      const foto=f.get('foto');
+      if(foto&&foto.size&&colab&&colab.id){const fd=new FormData();fd.append('foto',foto);
+        try{await api('/api/dp/colaborador/'+colab.id+'/foto',{method:'POST',body:fd});}catch(err){showToast('Colaborador salvo, mas a foto falhou');console.error(err);}}
+      e.target.reset();document.getElementById('colab-id').value='';document.getElementById('ov-colab').classList.remove('open');
       if(!document.getElementById('view-docs').classList.contains('hidden'))await loadDocs();
       else await loadDP();
-      showToast('Colaborador cadastrado ✓');
-    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Cadastrar: '+(m||'erro'));console.error(err);}
+      showToast(id?'Colaborador atualizado ✓':'Colaborador cadastrado ✓');
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Salvar: '+(m||'erro'));console.error(err);}
   });
+  // Abrir o formulário em modo EDIÇÃO com os dados do colaborador
+  function abrirEditarColab(c){
+    const f=document.getElementById('form-colab');f.reset();
+    document.getElementById('colab-id').value=c.id;
+    document.getElementById('colab-titulo').textContent='Editar Colaborador';
+    const set=(n,v)=>{const el=f.elements[n];if(el)el.value=v??'';};
+    ['nome','apelido','cpf','rg','orgao_emissor_rg','pis','ctps','data_nascimento','nacionalidade','numero_registro','escolaridade','data_admissao','data_demissao','cargo','telefone','email','status_colaborador','empresa'].forEach(k=>set(k,c[k]));
+    if(f.elements['pcd'])f.elements['pcd'].checked=!!c.pcd;
+    if(f.elements['primeiro_emprego'])f.elements['primeiro_emprego'].checked=!!c.primeiro_emprego;
+    openModal('ov-colab');
+  }
 
   // Submit: Novo Lançamento
   document.getElementById('form-lanc').addEventListener('submit',async e=>{
@@ -3439,8 +3453,12 @@
   const stTag=c=>{const[s,l]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;return `<span class="an ${s}">${l}</span>`;};
   const farolTag=c=>{const[,l,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;return `<span class="an ${fan}">${l}</span>`;};
   const empresaTag=emp=>{const map={RB_PISOS:['R.B PISOS','emp-rb'],ECO_PISOS:['ECO PISOS','emp-eco']};const[l,cls]=map[emp]||[emp||'—','emp-nd'];return `<span class="emp-tag ${cls}">${esc(l)}</span>`;};
+  // Mini-foto (3x4) redonda; cai nas iniciais se não houver foto
+  function miniFoto(c,size){const s=size||28;return c&&c.foto_url
+    ?`<img src="${c.foto_url}" alt="" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+    :`<div class="ini" style="width:${s}px;height:${s}px;background:${hue(c.nome||'')};flex-shrink:0">${ini(c.nome||'?')}</div>`;}
   const COLS_DEF=[
-    {k:'nome',label:'Nome',get:c=>`<b>${esc(c.nome)}</b>`},
+    {k:'nome',label:'Nome',get:c=>`<div style="display:flex;align-items:center;gap:8px">${miniFoto(c)}<b>${esc(c.nome)}</b></div>`},
     {k:'cpf',label:'CPF',get:c=>esc(c.cpf||'—')},
     {k:'cargo',label:'Função',get:c=>esc(c.cargo||'—')},
     {k:'data_admissao',label:'Data Admissional',get:c=>c.data_admissao?dtBR(c.data_admissao):'—'},
@@ -3458,7 +3476,14 @@
   function saveCols(s){localStorage.setItem('rb_docs_cols_v3',JSON.stringify(s));}
   function abrirColab(id,nome){docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=id;docsState.colabNome=nome;renderDocs();}
   let docsListaCache=[];
+  const EMP_ORDEM={RB_PISOS:0,ECO_PISOS:1};
   function renderColabView(lista){
+    // ordena por empresa (RB primeiro, depois ECO) e, dentro de cada, alfabética
+    lista=(lista||[]).slice().sort((a,b)=>{
+      const ea=EMP_ORDEM[a.empresa]??9,eb=EMP_ORDEM[b.empresa]??9;
+      if(ea!==eb)return ea-eb;
+      return (a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'});
+    });
     docsListaCache=lista;const el=document.getElementById('colab-view');if(!el)return;
     if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum colaborador encontrado.</div>';return;}
     if(docsViewMode==='quadro')renderColabQuadro(el,lista);else renderColabLista(el,lista);
@@ -3497,7 +3522,7 @@
     el.innerHTML='<div class="qboard">'+groups.map(([k,label,color])=>{
       const items=lista.filter(c=>keyOf(c)===k);
       const cards=items.map(c=>`<div class="qcard" data-colab="${c.id}" data-nome="${esc(c.nome)}">
-        <div class="qtop"><div class="ini" style="background:${hue(c.nome)}">${ini(c.nome)}</div>
+        <div class="qtop">${miniFoto(c,38)}
           <div><h4>${esc(c.nome)}</h4><div class="qsub">${esc(c.cargo||'—')}${c.cpf?' · '+esc(c.cpf):''}</div></div></div>
         <div class="qbadges">${stTag(c)}${farolTag(c)}</div></div>`).join('')||'<div class="dv" style="padding:8px 4px">Nenhum</div>';
       return `<div class="qcol"><div class="qhead"><span class="sw" style="background:${color}"></span><h4>${label}</h4><span class="cnt">${items.length}</span></div>${cards}</div>`;
@@ -3557,10 +3582,10 @@
     }else if(docsState.nivel==='docs'){
       const [resumo,docs]=await Promise.all([api('/api/dp/colaborador/'+docsState.colabId+'/resumo-docs'),api('/api/dp/colaborador/'+docsState.colabId+'/documentos')]);
       const c=resumo.colaborador,ct=resumo.contadores,[fcls,flbl,fan]=FAROL[resumo.farol.status]||FAROL.BLOQUEADO;
-      const foto=c.avatar_url?`<img src="${c.avatar_url}" alt="">`:ini(c.nome);
+      const fu=c.foto_url||c.avatar_url;const foto=fu?`<img src="${fu}" alt="">`:ini(c.nome);
       const banner=`<div class="ficha-banner"><div class="fb-foto">${foto}</div>
         <div><h3>${esc(c.nome)}</h3><div class="fb-meta"><span>CPF ${esc(c.cpf||'—')}</span><span>RG ${esc(c.rg||'—')}</span><span>${esc(c.cargo||'—')}</span><span>Admissão ${c.data_admissao?dtBR(c.data_admissao):'—'}</span><span>${esc(c.empresa||'')}</span></div></div>
-        <div class="fb-right"><div style="display:flex;gap:6px"><span class="an ${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[0]}">${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[1]}</span><span class="an ${fan}">${flbl}</span></div><div class="fb-actions"><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button></div></div></div>`;
+        <div class="fb-right"><div style="display:flex;gap:6px"><span class="an ${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[0]}">${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[1]}</span><span class="an ${fan}">${flbl}</span></div><div class="fb-actions"><button data-editcolab>✏️ Editar</button><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button></div></div></div>`;
       // Certificados = NRs (docs cujo nome contém "NR"); à vencer = presentes vencendo em ≤30 dias
       const certs=docs.filter(d=>/NR\s?\d/i.test(d.nome));
       const certPresentes=certs.filter(d=>d.presente).length;
@@ -3584,13 +3609,16 @@
               <option value="VALIDADO" ${d.status_analise==='VALIDADO'?'selected':''}>Aprovado</option>
               <option value="REPROVADO" ${d.status_analise==='REPROVADO'?'selected':''}>Reprovado</option></select>`
             :'<span class="an an-nao">Pendente</span>';
-          const abrir=d.presente&&d.arquivo_url?`<a class="doc-open" href="${d.arquivo_url}" target="_blank" rel="noopener" title="Abrir / acessar o documento">Abrir</a>`:'';
+          const anexosLinks=(d.anexos||[]).map((ax,i)=>`<a class="doc-open" href="${ax.url}" target="_blank" rel="noopener" title="${esc(ax.nome||'')}">Abrir ${i+2}</a>`).join('');
+          const abrir=d.presente&&d.arquivo_url?`<a class="doc-open" href="${d.arquivo_url}" target="_blank" rel="noopener" title="Abrir / acessar o documento">Abrir${(d.anexos||[]).length?' 1':''}</a>`+anexosLinks:'';
           return `<div class="doc-row"><div class="pdf-ic">PDF</div>
             <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}</div></div>${ctl}${abrir}
             <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
       }else tabela='<div class="orc-empty">Nenhum documento nesta aba.</div>';
       el.innerHTML=banner+counts+tabs+tabela;
       el.querySelectorAll('[data-doctab]').forEach(b=>b.addEventListener('click',()=>{docTabAtiva=b.dataset.doctab;renderDocs();}));
+      el.querySelector('[data-editcolab]')?.addEventListener('click',async()=>{
+        try{const full=await api('/api/dp/colaborador/'+docsState.colabId);abrirEditarColab(full);}catch(err){showToast('Erro ao abrir edição');console.error(err);}});
       el.querySelector('[data-backup]')?.addEventListener('click',()=>showToast('Backup do dossiê — em breve'));
       el.querySelector('[data-pdf]')?.addEventListener('click',()=>showToast('Exportar PDF — em breve'));
       el.querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click',()=>abrirDocUp(b.dataset.up,b.dataset.nome)));
@@ -3604,15 +3632,18 @@
     document.getElementById('docup-titulo').textContent='Atualizar: '+codigo+' · '+nome;
     document.getElementById('docup-codigo').value=codigo;
     const f=document.getElementById('form-docup');f.reset();
+    document.getElementById('docup-elab-wrap').style.display='none';
     document.getElementById('docup-venc-wrap').style.display='none';
-    document.querySelector('#form-docup [name=data_emissao]').value=hoje();
     openModal('ov-docup');
   }
+  document.getElementById('docup-temelab').addEventListener('change',e=>{document.getElementById('docup-elab-wrap').style.display=e.target.checked?'':'none';});
   document.getElementById('docup-temvenc').addEventListener('change',e=>{document.getElementById('docup-venc-wrap').style.display=e.target.checked?'':'none';});
   document.getElementById('form-docup').addEventListener('submit',async e=>{
     e.preventDefault();const fd=new FormData(e.target);
     fd.set('tem_vencimento',document.getElementById('docup-temvenc').checked?'true':'false');
     if(!document.getElementById('docup-temvenc').checked)fd.delete('data_vencimento');
+    // data de elaboração só vai se marcada
+    if(!document.getElementById('docup-temelab').checked)fd.delete('data_emissao');
     try{const r=await fetch('/api/documentos/'+docsState.colabId+'/upload',{method:'POST',body:fd,headers:authHeaders()});
       if(!r.ok)throw new Error(await r.text());
       document.getElementById('ov-docup').classList.remove('open');renderDocs();showToast('Documento salvo');
@@ -3627,6 +3658,7 @@
   document.getElementById('docs-export').addEventListener('click',()=>showToast('Exportação CSV/PDF — em breve'));
   document.getElementById('docs-novo-colab').addEventListener('click',()=>{
     const f=document.getElementById('form-colab');f.reset();
+    document.getElementById('colab-id').value='';document.getElementById('colab-titulo').textContent='Novo Colaborador';
     // se estiver dentro de uma empresa, já pré-seleciona ela
     if(docsState&&docsState.empresa){try{f.empresa.value=docsState.empresa;}catch(_){}}
     openModal('ov-colab');
@@ -3747,7 +3779,7 @@
   });
 
   // ---------- BANCOS: abas (Contas & Fluxo · Pagamento Diário · Boletos) ----------
-  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['INSUMO','Insumo'],['OUTRO','Outro']];
+  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['INSUMO','Insumo'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['OUTRO','Outro']];
   const CAT_LABEL=Object.fromEntries(CAT_GASTO_OPTS);
   document.getElementById('boleto-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   document.getElementById('lancdia-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
@@ -3770,7 +3802,7 @@
     const st=b.pago?'<span class="tag t-ok">Pago</span>':(atrasado?'<span class="tag t-danger">Vencido</span>':'<span class="tag t-wait">A vencer</span>');
     const comp=b.comprovante_url?`<a class="doc-open" href="${b.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
     return `<div class="fin-item">
-      <div class="fi-main"><h4>${esc(b.descricao)}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${CAT_LABEL[b.categoria]||b.categoria||''}</div></div>
+      <div class="fi-main"><h4>${esc(b.descricao)}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
       <div class="fi-val">${brl(b.valor)}</div>${st}
       <div class="fi-act">${comp}
         ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
@@ -3794,10 +3826,12 @@
   document.getElementById('boletos-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     document.getElementById('boletos-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');boletoFiltro=b.dataset.bf;loadBoletos();}));
-  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();openModal('ov-boleto');});
+  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();boletoOutroToggle();openModal('ov-boleto');});
+  const boletoOutroToggle=()=>{document.getElementById('boleto-outro-wrap').style.display=document.getElementById('boleto-cat').value==='OUTRO'?'':'none';};
+  document.getElementById('boleto-cat').addEventListener('change',boletoOutroToggle);
   document.getElementById('form-boleto').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
-    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value};
+    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('boleto-outro').value||null):null};
     try{await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-boleto').classList.remove('open');showToast('Boleto salvo');loadBoletos();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Boleto: '+(m||'erro'));console.error(err);}});
@@ -4267,7 +4301,9 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','cronograma','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','prestacao','nfrb','nfeco']:['orc','vt'];
+    // Perfis de acesso restrito: VISITA (só Visita Técnica) e CAMPO (Visita Técnica + Cronograma)
+    const ROLE_VIEWS={ VISITA:['orc'], CAMPO:['orc','cronograma'] };
+    const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','cronograma','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','prestacao','nfrb','nfeco']:(ROLE_VIEWS[role]||['orc','vt']);
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     if(admin)atualizarBadges();
     // esconde cabeçalhos de grupo sem itens visíveis

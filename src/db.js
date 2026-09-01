@@ -158,6 +158,37 @@ export function docStatus(dataVenc) {
 //  API unificada
 // ============================================================
 const sb = (table) => supabase.from(table);
+// Detecta "coluna não existe" no erro do PostgREST (migração ainda não rodada) e devolve o nome da coluna
+function _missingCol(error) {
+  if (!error) return null;
+  const msg = (error.message || '') + ' ' + (error.details || '') + ' ' + (error.hint || '');
+  const m = msg.match(/'([a-z_]+)' column/i) || msg.match(/column "?([a-z_]+)"? .*does not exist/i);
+  return m ? m[1] : null;
+}
+// INSERT tolerante: se uma coluna nova ainda não existe no banco, remove-a e tenta de novo (não quebra pré-migração)
+async function insertSafe(table, obj) {
+  let o = { ...obj };
+  for (let i = 0; i < 6; i++) {
+    const { data, error } = await sb(table).insert(o).select().single();
+    if (!error) return data;
+    const col = _missingCol(error);
+    if (col && col in o) { delete o[col]; continue; }
+    throw error;
+  }
+  throw new Error('insertSafe: colunas demais faltando em ' + table);
+}
+// UPDATE tolerante por id
+async function updateSafeById(table, id, obj) {
+  let o = { ...obj };
+  for (let i = 0; i < 6; i++) {
+    const { data, error } = await sb(table).update(o).eq('id', id).select().single();
+    if (!error) return data;
+    const col = _missingCol(error);
+    if (col && col in o) { delete o[col]; continue; }
+    throw error;
+  }
+  throw new Error('updateSafeById: colunas demais faltando em ' + table);
+}
 
 export const db = {
   // ---- OBRAS ----
@@ -268,9 +299,24 @@ export const db = {
     return doc ? doc.url_arquivo : null;
   },
   async createColaborador(c) {
-    if (USING_SUPABASE) { const { data, error } = await sb('colaboradores').insert(c).select().single(); if (error) throw error; return data; }
+    if (USING_SUPABASE) { return insertSafe('colaboradores', c); }
     const novo = { id: uid(), status: 'admissao', meta_m2: 0, feito_m2: 0, saldo_ferias_dias: 0, ...c };
     mock.colaboradores.push(novo); return novo;
+  },
+  async updateColaborador(id, patch) {
+    if (USING_SUPABASE) { return updateSafeById('colaboradores', id, patch); }
+    const c = mock.colaboradores.find(x => x.id === id); if (!c) return null; Object.assign(c, patch); return c;
+  },
+  async uploadFotoColaborador(id, file) {
+    if (!USING_SUPABASE) return { foto_url: `mock://foto/${id}` };
+    const ext = (file.originalname || 'foto').split('.').pop().replace(/[^\w]/g, '') || 'jpg';
+    const path = `fotos/${id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+    if (upErr) throw upErr;
+    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+    const foto_url = signed?.signedUrl || path;
+    await sb('colaboradores').update({ foto_url }).eq('id', id);
+    return { foto_url };
   },
   async moverColaborador(id, status) {
     if (USING_SUPABASE) { const { data, error } = await sb('colaboradores').update({ status }).eq('id', id).select().single(); if (error) throw error; return data; }
@@ -314,7 +360,7 @@ export const db = {
     return CATALOGO_DOCS.map(cat => {
       const d = porCodigo[cat.codigo];
       if (!d) return { ...cat, presente: false, versao: null, status_analise: 'NAO_VALIDADO', arquivo_url: null, data_vencimento: null, atualizado_em: null, venc: { status: 'PENDENTE' } };
-      return { ...cat, presente: true, id: d.id, versao: d.versao, data_emissao: d.data_emissao, tem_vencimento: d.tem_vencimento, data_vencimento: d.data_vencimento, status_analise: d.status_analise, arquivo_url: d.arquivo_url, atualizado_em: d.atualizado_em, venc: d.tem_vencimento && d.data_vencimento ? sstStatus(d.data_vencimento) : { status: 'SEM_VENCIMENTO' } };
+      return { ...cat, presente: true, id: d.id, versao: d.versao, data_emissao: d.data_emissao, tem_vencimento: d.tem_vencimento, data_vencimento: d.data_vencimento, status_analise: d.status_analise, arquivo_url: d.arquivo_url, anexos: d.anexos || [], atualizado_em: d.atualizado_em, venc: d.tem_vencimento && d.data_vencimento ? sstStatus(d.data_vencimento) : { status: 'SEM_VENCIMENTO' } };
     });
   },
   _pastaStatus(docs) {
@@ -332,7 +378,7 @@ export const db = {
   },
   async listColaboradoresDocs(filtros = {}) {
     if (!USING_SUPABASE) return [];
-    let q = sb('colaboradores').select('id,nome,cpf,cargo,empresa,status,status_colaborador,obras_vinculadas,data_admissao,data_nascimento');
+    let q = sb('colaboradores').select('*');
     if (filtros.empresa && filtros.empresa !== 'TODAS') q = q.eq('empresa', filtros.empresa);
     if (filtros.status_colaborador) q = q.eq('status_colaborador', filtros.status_colaborador);
     const { data: colabs } = await q;
@@ -346,7 +392,7 @@ export const db = {
       });
       const pasta = this._pastaStatus(catMerged);
       const versaoMax = Math.max(0, ...catMerged.filter(x => x.versao).map(x => x.versao));
-      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', obras_vinculadas: c.obras_vinculadas || [], data_admissao: c.data_admissao || null, data_nascimento: c.data_nascimento || null, pasta, versao_atual: versaoMax || null };
+      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', obras_vinculadas: c.obras_vinculadas || [], data_admissao: c.data_admissao || null, data_nascimento: c.data_nascimento || null, foto_url: c.foto_url || null, pasta, versao_atual: versaoMax || null };
     });
     let filtered = out;
     if (filtros.pendencias) filtered = filtered.filter(c => c.pasta.status === 'PENDENTE');
@@ -377,11 +423,17 @@ export const db = {
       colaborador_id: colaboradorId, codigo: doc.codigo, versao,
       data_emissao: doc.data_emissao || null, tem_vencimento: !!doc.tem_vencimento,
       data_vencimento: doc.tem_vencimento ? (doc.data_vencimento || null) : null,
-      arquivo_url: doc.arquivo_url || null, status_analise: 'NAO_VALIDADO', atualizado_em: new Date().toISOString(),
+      arquivo_url: doc.arquivo_url || null, anexos: doc.anexos || [], status_analise: 'NAO_VALIDADO', atualizado_em: new Date().toISOString(),
     };
-    const { data, error } = await sb('documentos_colaborador').upsert(row, { onConflict: 'colaborador_id,codigo' }).select().single();
-    if (error) throw error;
-    return data;
+    let o = { ...row };
+    for (let i = 0; i < 3; i++) {
+      const { data, error } = await sb('documentos_colaborador').upsert(o, { onConflict: 'colaborador_id,codigo' }).select().single();
+      if (!error) return data;
+      const col = _missingCol(error);
+      if (col && col in o) { delete o[col]; continue; }  // ex.: coluna anexos ainda não migrada
+      throw error;
+    }
+    throw new Error('upsertDocColaborador: colunas faltando');
   },
   async setStatusDoc(docId, status) {
     if (!USING_SUPABASE) return { id: docId, status_analise: status };
@@ -830,11 +882,7 @@ export const db = {
       .sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
   },
   async createBoleto(b) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('boletos').insert(b).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return insertSafe('boletos', b); }
     const novo = { id: uid(), pago: false, criado_em: new Date().toISOString(), ...b };
     mock.boletos.push(novo);
     return novo;
