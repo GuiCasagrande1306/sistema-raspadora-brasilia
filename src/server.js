@@ -1114,6 +1114,14 @@ app.patch('/api/dp/desconto/:id', async (req, res, next) => {
     res.json(r);
   } catch (e) { next(e); }
 });
+// Excluir lançamentos direto da folha (falta/INSS/outro desconto e vale)
+app.delete('/api/dp/desconto/:id', async (req, res, next) => {
+  try { res.json(await db.deleteDesconto(req.params.id)); } catch (e) { next(e); }
+});
+app.delete('/api/dp/vale/:id', async (req, res, next) => {
+  try { res.json(await db.deleteVale(req.params.id)); }
+  catch (e) { if (e.status) return res.status(e.status).json({ erro: e.message }); next(e); }
+});
 
 // DP — Fechamento de folha (semana/mês)
 app.get('/api/dp/folha-fechamento', async (req, res, next) => {

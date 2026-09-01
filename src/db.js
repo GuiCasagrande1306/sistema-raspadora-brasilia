@@ -1358,6 +1358,17 @@ export const db = {
     if (USING_SUPABASE) { const { error } = await sb('descontos_folha').delete().eq('id', id).eq('abatido_folha', false); if (error) throw error; }
     return { ok: true };
   },
+  // Excluir um vale (só se ainda não abatido na folha); reverte o débito no caixa se houver
+  async deleteVale(id) {
+    if (!USING_SUPABASE) return { ok: true };
+    const { data: v } = await sb('vales_diaria').select('id,movimentacao_id,abatido_folha').eq('id', id).maybeSingle();
+    if (!v) return { ok: true };
+    if (v.abatido_folha) { const e = new Error('Vale já abatido na folha — não pode ser excluído.'); e.status = 409; throw e; }
+    if (v.movimentacao_id) { await sb('movimentacoes_caixa').delete().eq('id', v.movimentacao_id); }
+    const { error } = await sb('vales_diaria').delete().eq('id', id).eq('abatido_folha', false);
+    if (error) throw error;
+    return { ok: true };
+  },
   // Apontamento diário com rateio de m² entre a equipe
   async criarApontamento(a) {
     if (!USING_SUPABASE) return { id: uid(), ...a, m2_por_colaborador: 0 };
@@ -1383,7 +1394,7 @@ export const db = {
     const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }, descRes] = await Promise.all([
       sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status'),
       sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
-      sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha').eq('abatido_folha', false),
+      sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
       // Cronograma Diário: alocações do período (fonte principal das diárias)
       sb('cronograma_alocacoes').select('colaborador_id,data,obra_nome,funcao,valor_diaria').gte('data', desde).lte('data', ate),
       // Descontos manuais (FALTA / INSS / OUTRO) — valores variáveis lançados na folha
@@ -1391,14 +1402,19 @@ export const db = {
     ]);
     const descontos = descRes && descRes.data ? descRes.data : [];
     const porColab = {};
-    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
     for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); p.m2 += Number(r.m2_rateado); }
-    for (const v of (vales || [])) { const p = porColab[v.colaborador_id]; if (p) p.vales += v.valor; }
+    for (const v of (vales || [])) {
+      const p = porColab[v.colaborador_id]; if (!p) continue;
+      p.vales += v.valor;
+      p.lancamentos.push({ id: v.id, origem: 'vale', tipo: 'VALE', data: v.data_lancamento, valor: v.valor });
+    }
     for (const d of descontos) {
       const p = porColab[d.colaborador_id]; if (!p) continue;
       if (d.tipo === 'INSS') p.inss += d.valor;
       else if (d.tipo === 'FALTA') { p.faltas += d.valor; p.faltas_itens.push({ id: d.id, data: d.data_lancamento, valor: d.valor }); }
       else p.outros_desc += d.valor;
+      p.lancamentos.push({ id: d.id, origem: 'desconto', tipo: d.tipo, data: d.data_lancamento, valor: d.valor });
     }
     for (const a of (alocs || [])) {
       const p = porColab[a.colaborador_id]; if (!p) continue;
@@ -1421,6 +1437,7 @@ export const db = {
         diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales,
         faltas: p.faltas, inss: p.inss, outros_desconto: p.outros_desc, total_liquido,
         faltas_itens: p.faltas_itens.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
+        lancamentos: p.lancamentos.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
         detalhe: p.detalhe.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
       };
     }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto || (l.faltas_itens && l.faltas_itens.length));

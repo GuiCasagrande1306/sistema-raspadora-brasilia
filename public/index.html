@@ -4018,7 +4018,8 @@
     const rows=r.colaboradores.length?r.colaboradores.map((l,idx)=>{
       const temDet=(l.detalhe||[]).length>0;
       const temFaltas=(l.faltas_itens||[]).length>0;
-      const expand=temDet||temFaltas;
+      const temLanc=(l.lancamentos||[]).length>0;
+      const expand=temDet||temLanc;
       const faltaAlerta=(l.faltas_itens||[]).some(fi=>!fi.valor);
       const cronTag=l.origem_diaria==='cronograma'?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">cronograma</span>':'';
       const faltaTag=faltaAlerta?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:var(--danger);color:#fff">falta s/ valor</span>':'';
@@ -4035,14 +4036,19 @@
       const diariasBlock=temDet?`<div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th></tr></thead>
         <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div>`:'';
-      const faltasBlock=temFaltas?`<div style="padding:8px 18px 12px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--danger);margin-bottom:4px">Faltas — lançar valor do desconto</div>
-        <table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>${l.faltas_itens.map(fi=>`<tr>
-          <td style="padding:4px">${fi.data?dtBR(fi.data):'—'}</td>
-          <td style="padding:4px;text-align:right">${fi.valor?'−'+brl(fi.valor):'<span style="color:var(--ink-3)">sem valor</span>'}</td>
-          <td style="padding:4px;text-align:right"><button class="btn-ghost" data-faltaval="${fi.id}" data-faltanome="${esc(l.nome)}" data-faltadata="${fi.data||''}" data-faltaatual="${fi.valor||0}" style="padding:3px 10px;font-size:11.5px${fi.valor?'':';border-color:var(--danger);color:var(--danger)'}">${fi.valor?'Editar valor':'Lançar valor'}</button></td>
-        </tr>`).join('')}</tbody></table></div>`:'';
-      const det=expand?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="10" style="background:var(--ground);padding:0">${diariasBlock}${faltasBlock}</td></tr>`:'';
+      const TIPO_LBL={VALE:'Vale',ADIANTAMENTO_VALE:'Vale',REEMBOLSO_COMBUSTIVEL:'Reembolso',BONUS_METRAGEM:'Bônus',FALTA:'Falta',INSS:'INSS',OUTRO:'Outro desconto'};
+      const lancBlock=temLanc?`<div style="padding:8px 18px 12px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:4px">Lançamentos do período — vales e descontos</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>${l.lancamentos.map(x=>{
+          const isFalta=x.origem==='desconto'&&x.tipo==='FALTA';const semValor=isFalta&&!x.valor;
+          const setVal=isFalta?`<button class="btn-ghost" data-faltaval="${x.id}" data-faltanome="${esc(l.nome)}" data-faltadata="${x.data||''}" data-faltaatual="${x.valor||0}" style="padding:2px 8px;font-size:11px;margin-right:6px${x.valor?'':';border-color:var(--danger);color:var(--danger)'}">${x.valor?'Editar valor':'Lançar valor'}</button>`:'';
+          return `<tr>
+            <td style="padding:4px">${x.data?dtBR(x.data):'—'}</td>
+            <td style="padding:4px">${TIPO_LBL[x.tipo]||x.tipo}</td>
+            <td style="padding:4px;text-align:right;color:var(--danger)">${x.valor?'−'+brl(x.valor):(semValor?'<span style="color:var(--ink-3)">sem valor</span>':'—')}</td>
+            <td style="padding:4px;text-align:right;white-space:nowrap">${setVal}<button class="doc-cloud" data-lancdel="${x.id}" data-lancorigem="${x.origem}" title="Excluir lançamento" style="padding:2px">${DE_TRASH}</button></td>
+          </tr>`;}).join('')}</tbody></table></div>`:'';
+      const det=expand?`<tr class="folha-det hidden" data-det="${idx}"><td colspan="10" style="background:var(--ground);padding:0">${diariasBlock}${lancBlock}</td></tr>`:'';
       return linha+det;
     }).join('')
       :'<tr><td colspan="10" style="text-align:center;color:var(--ink-3);padding:24px">Sem alocações (cronograma), produção, vales ou descontos no período selecionado.</td></tr>';
@@ -4056,6 +4062,12 @@
     }));
     document.querySelectorAll('#folha-content [data-faltaval]').forEach(b=>b.addEventListener('click',e=>{
       e.stopPropagation();abrirFaltaValor(b.dataset.faltaval,b.dataset.faltanome,b.dataset.faltadata,+b.dataset.faltaatual);
+    }));
+    document.querySelectorAll('#folha-content [data-lancdel]').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();if(!confirm('Excluir este lançamento? Não dá pra desfazer.'))return;
+      const url=b.dataset.lancorigem==='vale'?'/api/dp/vale/':'/api/dp/desconto/';
+      try{await api(url+b.dataset.lancdel,{method:'DELETE'});showToast('Lançamento excluído');await calcularFolha();}
+      catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(err);}
     }));
   }
   // Bárbara lança o valor da falta vinda do Cronograma
