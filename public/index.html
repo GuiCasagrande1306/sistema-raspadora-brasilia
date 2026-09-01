@@ -514,6 +514,9 @@
     background:var(--surface-2);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;}
   .apont-chip.on{background:var(--laranja);color:#fff;border-color:transparent;}
   .apont-chip[draggable]{cursor:grab;} .apont-chip.dragging{opacity:.5;}
+  /* chip do Cronograma: bolinha laranja com iniciais p/ destaque */
+  .cron-ini{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--laranja);color:#fff;font-size:10.5px;font-weight:800;flex-shrink:0;letter-spacing:.3px;}
+  .apont-chip.cron-chip{border-color:var(--laranja);background:var(--laranja-50);padding:5px 12px 5px 5px;}
   .cron-col.dragover .cards{outline:2px dashed var(--laranja);outline-offset:4px;border-radius:12px;background:var(--laranja-50);}
   .cron-resp{font-size:12px;font-weight:700;color:var(--laranja-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .dre-hero{background:var(--chumbo-900);color:#fff;padding:18px 20px;}
@@ -3033,7 +3036,7 @@
   }
   function renderCron(){
     const equipe=document.getElementById('cron-equipe');
-    equipe.innerHTML=(CRON.colaboradores||[]).map(c=>`<span class="apont-chip" draggable="true" data-dragcolab="${c.id}">${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3)">Nenhum colaborador ativo.</span>';
+    equipe.innerHTML=(CRON.colaboradores||[]).map(c=>`<span class="apont-chip cron-chip" draggable="true" data-dragcolab="${c.id}"><span class="cron-ini">${ini(c.nome)}</span>${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3)">Nenhum colaborador ativo.</span>';
     document.getElementById('cron-total').textContent=brl(CRON.total||0);
     const board=document.getElementById('cron-board');
     // Coluna fixa FALTA: Adelino arrasta quem não veio; vira desconto (valor a lançar pela Bárbara na Folha)
