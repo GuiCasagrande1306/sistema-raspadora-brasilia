@@ -614,6 +614,46 @@ app.delete('/api/boletos/:id', async (req, res, next) => {
   catch (e) { next(e); }
 });
 
+// ---- PAGAMENTOS FIXOS MENSAIS ----
+app.use('/api/fixos', requireAdmin);
+const diaMes = d => { const n = parseInt(d, 10); return Number.isFinite(n) ? Math.min(Math.max(1, n), 31) : 5; };
+app.get('/api/fixos', async (_req, res, next) => {
+  try { res.json(await db.listFixos()); } catch (e) { next(e); }
+});
+app.post('/api/fixos', async (req, res, next) => {
+  try {
+    const { descricao } = req.body;
+    if (!descricao) return res.status(400).json({ erro: 'descrição é obrigatória' });
+    res.status(201).json(await db.createFixo({
+      descricao, fornecedor: req.body.fornecedor || null,
+      valor: cents(req.body.valor), dia_vencimento: diaMes(req.body.dia_vencimento),
+      categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
+      categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
+      observacao: req.body.observacao || null, ativo: req.body.ativo === undefined ? true : !!req.body.ativo,
+    }));
+  } catch (e) { next(e); }
+});
+app.patch('/api/fixos/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['descricao', 'fornecedor', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
+    if (req.body.dia_vencimento !== undefined) patch.dia_vencimento = diaMes(req.body.dia_vencimento);
+    if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
+    if (req.body.ativo !== undefined) patch.ativo = !!req.body.ativo;
+    res.json(await db.updateFixo(req.params.id, patch));
+  } catch (e) { next(e); }
+});
+app.delete('/api/fixos/:id', async (req, res, next) => {
+  try { res.json(await db.deleteFixo(req.params.id)); } catch (e) { next(e); }
+});
+app.post('/api/fixos/gerar', async (req, res, next) => {
+  try {
+    const comp = (req.body.competencia || req.body.hoje || new Date().toISOString().slice(0, 10)).slice(0, 7);
+    res.json(await db.gerarFixosDoMes(comp));
+  } catch (e) { next(e); }
+});
+
 app.use('/api/pagamento-diario', requireAdmin);
 app.get('/api/pagamento-diario', async (req, res, next) => {
   try { res.json(await db.pagamentoDiario(req.query.data || new Date().toISOString().slice(0, 10))); }

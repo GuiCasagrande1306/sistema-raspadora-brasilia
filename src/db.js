@@ -907,6 +907,49 @@ export const db = {
     mock.boletos = mock.boletos.filter(b => b.id !== id);
     return { ok: true };
   },
+  // ---- PAGAMENTOS FIXOS MENSAIS ----
+  async listFixos() {
+    if (!USING_SUPABASE) return [];
+    const { data } = await sb('pagamentos_fixos').select('*').order('descricao');
+    return data || [];
+  },
+  async createFixo(f) {
+    if (!USING_SUPABASE) return { id: uid(), ...f };
+    return insertSafe('pagamentos_fixos', f);
+  },
+  async updateFixo(id, patch) {
+    if (!USING_SUPABASE) return { id, ...patch };
+    const { data, error } = await sb('pagamentos_fixos').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async deleteFixo(id) {
+    if (USING_SUPABASE) { const { error } = await sb('pagamentos_fixos').delete().eq('id', id); if (error) throw error; }
+    return { ok: true };
+  },
+  // Materializa os fixos ativos como boletos da competência (YYYY-MM), sem duplicar.
+  async gerarFixosDoMes(competencia) {
+    if (!USING_SUPABASE) return { gerados: 0 };
+    const { data: fixos } = await sb('pagamentos_fixos').select('*').eq('ativo', true);
+    if (!fixos || !fixos.length) return { gerados: 0 };
+    const { data: ja } = await sb('boletos').select('fixo_id').eq('competencia', competencia).not('fixo_id', 'is', null);
+    const feitos = new Set((ja || []).map(b => b.fixo_id));
+    const [y, m] = competencia.split('-').map(Number);
+    const ultimoDia = new Date(y, m, 0).getDate();   // último dia do mês da competência
+    const novos = [];
+    for (const f of fixos) {
+      if (feitos.has(f.id)) continue;
+      const dia = Math.min(Math.max(1, f.dia_vencimento || 5), ultimoDia);
+      novos.push({
+        descricao: f.descricao, fornecedor: f.fornecedor || null, valor: f.valor,
+        categoria: f.categoria || 'OUTRO', categoria_custom: f.categoria_custom || null,
+        vencimento: competencia + '-' + String(dia).padStart(2, '0'),
+        pago: false, fixo_id: f.id, competencia,
+      });
+    }
+    if (novos.length) { const { error } = await sb('boletos').insert(novos); if (error) throw error; }
+    return { gerados: novos.length };
+  },
 
   // ---- LANÇAMENTOS DIÁRIOS (gastos do dia: pix, vale, dinheiro…) ----
   async listLancDiarios({ data } = {}) {

@@ -909,7 +909,10 @@
         <div id="bancos-panel-boletos" class="hidden">
           <div class="tabsrow">
             <div class="tabs" id="boletos-filtros"><button class="on" data-bf="PENDENTE">Pendentes</button><button data-bf="PAGO">Pagos</button><button data-bf="">Todos</button></div>
-            <button class="primary" id="btn-novo-boleto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Boleto</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn-ghost" id="btn-fixos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 8v8M8 12h8"/><circle cx="12" cy="12" r="9"/></svg> Pagamentos fixos</button>
+              <button class="primary" id="btn-novo-boleto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Boleto</button>
+            </div>
           </div>
           <div id="boletos-content" style="padding:18px 26px 96px;"></div>
         </div>
@@ -1322,6 +1325,31 @@
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar boleto</button></footer>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: Pagamentos fixos mensais -->
+<div class="overlay" id="ov-fixos">
+  <div class="modal" style="max-width:600px">
+    <header><h3>Pagamentos fixos mensais</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div class="login-hint" style="text-align:left">Cadastre uma vez (aluguel, contador, internet, salários fixos…). Todo mês, ao abrir os <b>Boletos</b>, eles entram sozinhos como conta a pagar — no dia que você escolher e <b>sem duplicar</b>.</div>
+      <div id="fixos-lista" style="margin:12px 0"></div>
+      <h5 style="margin:6px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Adicionar pagamento fixo</h5>
+      <form id="form-fixo">
+        <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Aluguel do galpão"></div>
+        <div class="grid2">
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+          <div class="field"><label>Dia do vencimento *</label><input name="dia_vencimento" type="number" min="1" max="31" value="5" required></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Categoria</label><select name="categoria" id="fixo-cat"></select></div>
+          <div class="field"><label>Fornecedor</label><input name="fornecedor" placeholder="Opcional"></div>
+        </div>
+        <div class="field" id="fixo-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="fixo-outro" placeholder="Ex.: mensalidade do sistema"></div>
+        <footer style="padding:0;margin-top:4px"><button type="submit" class="primary">Adicionar fixo</button></footer>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -3804,16 +3832,20 @@
     const atrasado=!b.pago&&b.vencimento&&b.vencimento<isoHoje();
     const st=b.pago?'<span class="tag t-ok">Pago</span>':(atrasado?'<span class="tag t-danger">Vencido</span>':'<span class="tag t-wait">A vencer</span>');
     const comp=b.comprovante_url?`<a class="doc-open" href="${b.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
+    const fixoTag=b.fixo_id?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">fixo</span>':'';
     return `<div class="fin-item">
-      <div class="fi-main"><h4>${esc(b.descricao)}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
+      <div class="fi-main"><h4>${esc(b.descricao)}${fixoTag}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
       <div class="fi-val">${brl(b.valor)}</div>${st}
       <div class="fi-act">${comp}
         ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
         <button class="doc-cloud" data-compb="${b.id}" title="Anexar comprovante">${UP_SVG}</button>
         <button class="doc-cloud" data-delb="${b.id}" title="Excluir">${DE_TRASH}</button></div></div>`;
   }
+  let fixosGerados=false;
   async function loadBoletos(){
     const el=document.getElementById('boletos-content');
+    // materializa os pagamentos fixos do mês (1x por carregamento de sessão)
+    if(!fixosGerados){fixosGerados=true;try{const g=await api('/api/fixos/gerar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hoje:isoHoje()})});if(g&&g.gerados>0)showToast(g.gerados+' conta(s) fixa(s) do mês lançada(s)');}catch(_){}}
     let lista=[];try{lista=await api('/api/boletos'+(boletoFiltro?'?status='+boletoFiltro:''));}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar boletos.</div>';console.error(e);return;}
     if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum boleto '+(boletoFiltro==='PENDENTE'?'pendente':(boletoFiltro==='PAGO'?'pago':''))+'. Clique em <b>Novo Boleto</b>.</div>';return;}
     el.innerHTML='<div class="doc-list">'+lista.map(boletoRow).join('')+'</div>';
@@ -3838,6 +3870,44 @@
     try{await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-boleto').classList.remove('open');showToast('Boleto salvo');loadBoletos();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Boleto: '+(m||'erro'));console.error(err);}});
+
+  // ---- Pagamentos fixos mensais ----
+  const fixoOutroToggle=()=>{document.getElementById('fixo-outro-wrap').style.display=document.getElementById('fixo-cat').value==='OUTRO'?'':'none';};
+  document.getElementById('btn-fixos').addEventListener('click',()=>{
+    document.getElementById('fixo-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    document.getElementById('form-fixo').reset();document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();
+    loadFixos();openModal('ov-fixos');
+  });
+  document.getElementById('fixo-cat').addEventListener('change',fixoOutroToggle);
+  async function loadFixos(){
+    const el=document.getElementById('fixos-lista');let lista=[];
+    try{lista=await api('/api/fixos');}catch(e){el.innerHTML='<div class="dv" style="color:var(--danger)">Erro ao carregar. Rode a migration de pagamentos_fixos.</div>';return;}
+    if(!lista.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12.5px">Nenhum pagamento fixo ainda. Adicione abaixo.</div>';return;}
+    el.innerHTML='<div class="doc-list">'+lista.map(f=>{
+      const cat=f.categoria==='OUTRO'&&f.categoria_custom?esc(f.categoria_custom):(CAT_LABEL[f.categoria]||f.categoria||'');
+      return `<div class="fin-item" style="${f.ativo?'':'opacity:.5'}">
+        <div class="fi-main"><h4>${esc(f.descricao)}${f.ativo?'':' <span class="tag" style="font-size:9.5px">inativo</span>'}</h4><div class="fi-sub">Todo dia ${f.dia_vencimento}${f.fornecedor?' · '+esc(f.fornecedor):''} · ${cat}</div></div>
+        <div class="fi-val">${brl(f.valor)}</div>
+        <div class="fi-act">
+          <button class="btn-ghost" data-fixotoggle="${f.id}" data-ativo="${f.ativo?1:0}" style="padding:3px 9px;font-size:11.5px">${f.ativo?'Pausar':'Ativar'}</button>
+          <button class="doc-cloud" data-fixodel="${f.id}" title="Excluir">${DE_TRASH}</button></div></div>`;
+    }).join('')+'</div>';
+    el.querySelectorAll('[data-fixotoggle]').forEach(b=>b.addEventListener('click',async()=>{
+      try{await api('/api/fixos/'+b.dataset.fixotoggle,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ativo:b.dataset.ativo!=='1'})});loadFixos();}
+      catch(e){showToast('Erro');console.error(e);}}));
+    el.querySelectorAll('[data-fixodel]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este pagamento fixo? Os boletos já lançados continuam.'))return;
+      try{await api('/api/fixos/'+b.dataset.fixodel,{method:'DELETE'});showToast('Fixo excluído');loadFixos();}
+      catch(e){showToast('Erro');console.error(e);}}));
+  }
+  document.getElementById('form-fixo').addEventListener('submit',async e=>{
+    e.preventDefault();const f=e.target;
+    const payload={descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,dia_vencimento:parseInt(f.dia_vencimento.value,10)||5,categoria:f.categoria.value,fornecedor:f.fornecedor.value||null,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('fixo-outro').value||null):null};
+    try{await api('/api/fixos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      f.reset();document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();showToast('Pagamento fixo cadastrado');
+      // gera já o boleto do mês atual e atualiza a lista de boletos por trás do modal
+      fixosGerados=false;loadFixos();loadBoletos();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixo: '+(m||'erro'));console.error(err);}});
 
   // ---- Pagamento Diário ----
   function anexarComprovante(url,reload){
