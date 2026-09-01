@@ -908,7 +908,11 @@
         <!-- Painel: Boletos -->
         <div id="bancos-panel-boletos" class="hidden">
           <div class="tabsrow">
-            <div class="tabs" id="boletos-filtros"><button class="on" data-bf="PENDENTE">Pendentes</button><button data-bf="PAGO">Pagos</button><button data-bf="">Todos</button></div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <div class="tabs" id="boletos-filtros"><button class="on" data-bf="PENDENTE">Pendentes</button><button data-bf="PAGO">Pagos</button><button data-bf="">Todos</button></div>
+              <input type="month" id="boletos-mes" class="dash-sel" style="min-height:34px">
+              <label class="docs-toggle" style="font-size:12.5px"><input type="checkbox" id="boletos-todos-meses"> Todos os meses</label>
+            </div>
             <div style="display:flex;gap:8px">
               <button class="btn-ghost" id="btn-fixos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 8v8M8 12h8"/><circle cx="12" cy="12" r="9"/></svg> Pagamentos fixos</button>
               <button class="primary" id="btn-novo-boleto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Boleto</button>
@@ -3846,8 +3850,14 @@
     const el=document.getElementById('boletos-content');
     // materializa os pagamentos fixos do mês (1x por carregamento de sessão)
     if(!fixosGerados){fixosGerados=true;try{const g=await api('/api/fixos/gerar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hoje:isoHoje()})});if(g&&g.gerados>0)showToast(g.gerados+' conta(s) fixa(s) do mês lançada(s)');}catch(_){}}
-    let lista=[];try{lista=await api('/api/boletos'+(boletoFiltro?'?status='+boletoFiltro:''));}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar boletos.</div>';console.error(e);return;}
-    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum boleto '+(boletoFiltro==='PENDENTE'?'pendente':(boletoFiltro==='PAGO'?'pago':''))+'. Clique em <b>Novo Boleto</b>.</div>';return;}
+    const mesInp=document.getElementById('boletos-mes');if(mesInp&&!mesInp.value)mesInp.value=isoHoje().slice(0,7);
+    const todosMeses=document.getElementById('boletos-todos-meses').checked;
+    mesInp.disabled=todosMeses;
+    const mes=todosMeses?'':mesInp.value;
+    const qs=[];if(boletoFiltro)qs.push('status='+boletoFiltro);if(mes)qs.push('mes='+mes);
+    let lista=[];try{lista=await api('/api/boletos'+(qs.length?'?'+qs.join('&'):''));}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar boletos.</div>';console.error(e);return;}
+    const mesLbl=mes?new Date(mes+'-01T00:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'todos os meses';
+    if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum boleto '+(boletoFiltro==='PENDENTE'?'pendente':(boletoFiltro==='PAGO'?'pago':''))+' em <b>'+mesLbl+'</b>. Clique em <b>Novo Boleto</b> ou cadastre um <b>Pagamento fixo</b>.</div>';return;}
     el.innerHTML='<div class="doc-list">'+lista.map(boletoRow).join('')+'</div>';
     el.querySelectorAll('[data-pagar]').forEach(b=>b.addEventListener('click',async()=>{
       try{await api('/api/boletos/'+b.dataset.pagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Boleto pago');loadBoletos();}
@@ -3861,6 +3871,8 @@
   document.getElementById('boletos-filtros').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     document.getElementById('boletos-filtros').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');boletoFiltro=b.dataset.bf;loadBoletos();}));
+  document.getElementById('boletos-mes').addEventListener('change',loadBoletos);
+  document.getElementById('boletos-todos-meses').addEventListener('change',loadBoletos);
   document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();boletoOutroToggle();openModal('ov-boleto');});
   const boletoOutroToggle=()=>{document.getElementById('boleto-outro-wrap').style.display=document.getElementById('boleto-cat').value==='OUTRO'?'':'none';};
   document.getElementById('boleto-cat').addEventListener('change',boletoOutroToggle);
