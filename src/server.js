@@ -48,6 +48,13 @@ function requireAdmin(req, res, next) {
     next();
   });
 }
+// Cronograma Diário: ADMIN e CAMPO (Adelino). VISITA (Victor/tablet) não entra.
+function requireCronograma(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user.role === 'ADMIN' || req.user.role === 'CAMPO') return next();
+    return res.status(403).json({ erro: 'acesso restrito ao cronograma' });
+  });
+}
 
 // Config pública para o frontend (a anon key é pública por design)
 app.get('/api/config', (_req, res) => res.json({
@@ -669,7 +676,7 @@ app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
 });
 
 // ---------- CRONOGRAMA DIÁRIO (funções/diárias editáveis + alocação por obra/dia) ----------
-app.use('/api/cronograma', requireAdmin);
+app.use('/api/cronograma', requireCronograma);
 app.get('/api/cronograma/funcoes', async (_req, res, next) => {
   try { res.json(await db.listFuncoes()); }
   catch (e) { next(e); }

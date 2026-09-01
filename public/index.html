@@ -4351,13 +4351,22 @@
     return true;
   }
   async function carregarPerfilUsuario(){
-    const r=await fetch(CFG.supabaseUrl+'/rest/v1/profiles?id=eq.'+SESSAO.user.id+'&select=nome,email,role',
-      {headers:{apikey:CFG.supabaseAnonKey,Authorization:'Bearer '+SESSAO.access_token}});
-    const arr=await r.json().catch(()=>[]);
-    const p=Array.isArray(arr)?arr[0]:null;
-    ROLE=(p&&p.role)||'OPERACIONAL';
-    if(p&&p.nome)SESSAO.nome=p.nome;
-    return p;
+    // Role autoritativo vem do backend (/api/perfil usa service role — imune a RLS).
+    try{
+      const p=await api('/api/perfil');
+      ROLE=(p&&p.role)||'OPERACIONAL';
+      if(p&&p.nome)SESSAO.nome=p.nome;
+      PERFIL=p;
+      return p;
+    }catch(_){
+      // fallback: leitura direta (anon) caso o backend não responda
+      try{
+        const r=await fetch(CFG.supabaseUrl+'/rest/v1/profiles?id=eq.'+SESSAO.user.id+'&select=nome,email,role',
+          {headers:{apikey:CFG.supabaseAnonKey,Authorization:'Bearer '+SESSAO.access_token}});
+        const arr=await r.json().catch(()=>[]);const p=Array.isArray(arr)?arr[0]:null;
+        ROLE=(p&&p.role)||'OPERACIONAL';if(p&&p.nome)SESSAO.nome=p.nome;return p;
+      }catch{ROLE='OPERACIONAL';return null;}
+    }
   }
   let PERFIL=null;
   function renderAvatarEl(el,url,nome){if(!el)return;el.innerHTML=url?`<img src="${url}" alt="">`:`<span>${ini(nome||'US')}</span>`;}
