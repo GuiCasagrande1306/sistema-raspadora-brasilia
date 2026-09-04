@@ -429,6 +429,11 @@
   .ltable td{padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap;}
   .ltable tbody tr:last-child td{border-bottom:0;}
   .ltable tbody tr{cursor:pointer;} .ltable tbody tr:hover{background:var(--surface-2);}
+  /* aniversariante do mês: faixa laranja clarinho + bolo */
+  .ltable tbody tr.aniversariante{background:rgba(243,112,33,.13);box-shadow:inset 3px 0 0 var(--laranja);}
+  .ltable tbody tr.aniversariante:hover{background:rgba(243,112,33,.22);}
+  .ltable tbody tr.aniversariante td:first-child::after{content:"🎂";margin-left:8px;}
+  .qcard.aniversariante{background:rgba(243,112,33,.12);border:1px solid var(--laranja);}
   .qboard{display:grid;grid-auto-flow:column;grid-auto-columns:280px;gap:14px;overflow-x:auto;padding-bottom:10px;}
   .qcol .qhead{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--concreto);border-radius:10px;margin-bottom:10px;}
   .qcol .qhead .sw{width:9px;height:9px;border-radius:3px;} .qcol .qhead h4{margin:0;font-size:12.5px;font-weight:800;flex:1;text-transform:uppercase;}
@@ -3543,7 +3548,11 @@
     const s=colsState();
     const cols=s.order.map(k=>COLS_DEF.find(c=>c.k===k)).filter(c=>c&&!s.hidden.includes(c.k));
     const ths=cols.map(c=>`<th draggable="true" data-col="${c.k}">${c.label}</th>`).join('');
-    const rows=lista.map(c=>`<tr data-colab="${c.id}" data-nome="${esc(c.nome)}">${cols.map(col=>`<td>${col.get(c)}</td>`).join('')}</tr>`).join('');
+    const mesAtual=isoHoje().slice(5,7);   // aniversariantes do mês corrente
+    const rows=lista.map(c=>{
+      const aniv=c.data_nascimento&&c.data_nascimento.slice(5,7)===mesAtual;
+      return `<tr class="${aniv?'aniversariante':''}" data-colab="${c.id}" data-nome="${esc(c.nome)}"${aniv?' title="🎂 Aniversariante do mês"':''}>${cols.map(col=>`<td>${col.get(c)}</td>`).join('')}</tr>`;
+    }).join('');
     el.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table></div>`;
     el.querySelectorAll('tbody tr').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
     let dragCol=null;
@@ -3570,12 +3579,13 @@
       ?[['OK','Em dia','var(--ok)'],['A_VENCER','A vencer','var(--laranja)'],['BLOQUEADO','Bloqueado','var(--danger)']]
       :[['ATIVO','Ativo','var(--ok)'],['DIARIA','Diária','var(--laranja)'],['FERIAS','Férias','var(--info)'],['INSS','INSS','#8B5CF6'],['DESLIGADO','Desligado','var(--danger)']];
     const keyOf=c=>docsGroupBy==='farol'?c.pasta.status:(c.status_colaborador||'ATIVO');
+    const mesAtual=isoHoje().slice(5,7);
     el.innerHTML='<div class="qboard">'+groups.map(([k,label,color])=>{
       const items=lista.filter(c=>keyOf(c)===k);
-      const cards=items.map(c=>`<div class="qcard" data-colab="${c.id}" data-nome="${esc(c.nome)}">
+      const cards=items.map(c=>{const aniv=c.data_nascimento&&c.data_nascimento.slice(5,7)===mesAtual;return `<div class="qcard${aniv?' aniversariante':''}" data-colab="${c.id}" data-nome="${esc(c.nome)}"${aniv?' title="🎂 Aniversariante do mês"':''}>
         <div class="qtop">${miniFoto(c,38)}
-          <div><h4>${esc(c.nome)}</h4><div class="qsub">${esc(c.cargo||'—')}${c.cpf?' · '+esc(c.cpf):''}</div></div></div>
-        <div class="qbadges">${stTag(c)}${farolTag(c)}</div></div>`).join('')||'<div class="dv" style="padding:8px 4px">Nenhum</div>';
+          <div><h4>${esc(c.nome)}${aniv?' 🎂':''}</h4><div class="qsub">${esc(c.cargo||'—')}${c.cpf?' · '+esc(c.cpf):''}</div></div></div>
+        <div class="qbadges">${stTag(c)}${farolTag(c)}</div></div>`;}).join('')||'<div class="dv" style="padding:8px 4px">Nenhum</div>';
       return `<div class="qcol"><div class="qhead"><span class="sw" style="background:${color}"></span><h4>${label}</h4><span class="cnt">${items.length}</span></div>${cards}</div>`;
     }).join('')+'</div>';
     el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
