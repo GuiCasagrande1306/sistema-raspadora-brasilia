@@ -3400,7 +3400,7 @@
 
   // Categorias do lançamento dependem do tipo
   const CATS={entrada:[['sinal','Sinal / Entrada'],['saldo','Saldo final']],
-    saida:[['insumo','Insumo (resina/agregado/lixa)'],['prestador','Prestador de serviço'],['insumo_prestador','Insumo + Prestador (valor total)'],['diaria','Diária de equipe'],['combustivel','Combustível'],['vale','Vale / Adiantamento']]};
+    saida:[['insumo','Insumo (materiais / ferramentas)'],['insumo_prestador','Insumo + Mão de obra (valor total)'],['diaria','Mão de obra'],['combustivel','Combustível'],['vale','Vale / Adiantamento']]};
   function fillCats(){const t=document.getElementById('lanc-tipo').value;
     document.getElementById('lanc-cat').innerHTML=CATS[t].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');}
   document.getElementById('lanc-tipo').addEventListener('change',fillCats);fillCats();
