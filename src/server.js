@@ -306,6 +306,10 @@ app.patch('/api/orcamentos/:id', async (req, res, next) => {
     res.json(o);
   } catch (e) { next(e); }
 });
+app.delete('/api/orcamentos/:id', async (req, res, next) => {
+  try { res.json(await db.deleteOrcamento(req.params.id)); }
+  catch (e) { next(e); }
+});
 
 // ---------- NOTAS FISCAIS (arquivo PDF: empresa > tipo > ano) ----------
 const NF_EMPRESAS = ['RB', 'ECO'];

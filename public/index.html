@@ -2265,7 +2265,7 @@
       <h4 style="margin:6px 0 2px">${esc(o.cliente_nome)}</h4>
       <div class="role">${esc(o.servico_tipo||'—')}${o.endereco_obra?' · '+esc(o.endereco_obra):''}</div>
       <div class="tags" style="margin-top:8px">${resp}${fone}${maps}<span class="tag">${nitens} ${nitens===1?'item':'itens'}</span></div>
-      <div class="cardfoot"><button class="miniact" data-orc="${o.id}">Abrir medição</button></div></div>`;
+      <div class="cardfoot" style="display:flex;gap:6px;align-items:center"><button class="miniact" data-orc="${o.id}" style="flex:1">Abrir medição</button><button class="doc-cloud" data-orcdel="${o.id}" data-orcnum="${o.numero_orcamento}" title="Excluir O.S">${DE_TRASH}</button></div></div>`;
   }
   function renderOrcBoard(){
     const board=document.getElementById('board-orc');
@@ -2281,6 +2281,12 @@
     renderOrcBoard();atualizarBadges();
   }
   document.getElementById('board-orc').addEventListener('click',async e=>{
+    const del=e.target.closest('[data-orcdel]');
+    if(del){e.stopPropagation();
+      if(!confirm('Excluir a O.S Nº '+del.dataset.orcnum+'? Não dá pra desfazer.'))return;
+      try{await api('/api/orcamentos/'+del.dataset.orcdel,{method:'DELETE'});showToast('O.S excluída');loadOrc();}
+      catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(err);}
+      return;}
     const b=e.target.closest('[data-orc]');if(!b)return;
     try{abrirOrc(await api('/api/orcamentos/'+b.dataset.orc));}catch(err){showToast('Erro ao abrir');console.error(err);}
   });

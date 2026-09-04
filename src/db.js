@@ -664,6 +664,10 @@ export const db = {
     Object.assign(o, patch);
     return o;
   },
+  async deleteOrcamento(id) {
+    if (USING_SUPABASE) { const { error } = await sb('orcamentos').delete().eq('id', id); if (error) throw error; return { ok: true }; }
+    mock.orcamentos = (mock.orcamentos || []).filter(o => o.id !== id); return { ok: true };
+  },
 
   // ---- NOTAS FISCAIS (arquivo PDF: empresa > tipo > ano) ----
   async listNotas({ empresa, tipo, ano } = {}) {
