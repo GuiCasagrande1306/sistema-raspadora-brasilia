@@ -1839,12 +1839,21 @@
             <div class="fb-count"><b class="money" id="oe-areceber">—</b><span>A receber</span></div>
           </div>
           <div id="oe-medicoes-lista" style="display:flex;flex-direction:column;gap:6px"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
-            <div class="field" style="flex:0 0 130px"><label>Data</label><input type="date" id="med-data"></div>
-            <div class="field" style="flex:1;min-width:120px"><label>Descrição / Nº nota</label><input id="med-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
-            <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
-            <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
-            <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
+          <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+              <div class="field" style="flex:0 0 auto">
+                <label>Datas da nota <span style="color:var(--ink-3);font-weight:400">(adicione todos os dias)</span></label>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="date" id="med-data" style="max-width:160px">
+                  <button type="button" class="btn-ghost" id="med-add-dia" style="min-height:38px;padding:0 12px;white-space:nowrap">+ dia</button>
+                </div>
+              </div>
+              <div class="field" style="flex:1;min-width:120px"><label>Descrição / Nº nota</label><input id="med-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
+              <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
+              <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
+              <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
+            </div>
+            <div id="med-datas-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
           </div>
         </div>
 
@@ -2093,6 +2102,7 @@
     document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));
     carregarMedicoes(id);
     document.getElementById('med-data').value=isoHoje();document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    medDatas=[];renderMedChips();
     openModal('ov-obra-exec');
   }
   async function carregarMedicoes(obraId){
@@ -2102,11 +2112,15 @@
     document.getElementById('oe-recebido').textContent=brl(r.resumo.recebido||0);
     document.getElementById('oe-areceber').textContent=brl(r.resumo.a_receber||0);
     if(!r.medicoes.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';return;}
-    el.innerHTML=r.medicoes.map(m=>`<div style="display:flex;align-items:center;gap:10px;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 10px">
-      <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)">${m.data?dtBR(m.data):''}</span></div>
+    el.innerHTML=r.medicoes.map(m=>{
+      const ds=((m.datas&&m.datas.length)?m.datas:(m.data?[m.data]:[])).slice().sort();
+      const dLabel=ds.length>1?`${dtBR(ds[0])} → ${dtBR(ds[ds.length-1])} · ${ds.length} dias`:(ds.length?dtBR(ds[0]):'');
+      const dTitle=ds.map(dtBR).join(', ');
+      return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 10px">
+      <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span></div>
       <b class="money">${brl(m.valor)}</b>
       <button type="button" class="btn-ghost med-receb" data-med="${m.id}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?'✓ Recebido':'Marcar recebido'}</button>
-      <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button></div>`).join('');
+      <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button></div>`;}).join('');
     el.querySelectorAll('.med-receb').forEach(b=>b.addEventListener('click',async()=>{
       const cur=b.textContent.includes('✓');
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido:!cur})});carregarMedicoes(obraId);}
@@ -2116,14 +2130,33 @@
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'DELETE'});carregarMedicoes(obraId);}
       catch(e){showToast('Erro');console.error(e);}}));
   }
+  // datas que a nota cobre (a maioria das notas agrupa vários dias)
+  let medDatas=[];
+  function renderMedChips(){
+    const el=document.getElementById('med-datas-chips');
+    el.innerHTML=medDatas.length?medDatas.map(d=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px">${dtBR(d)}<button type="button" data-medrm="${d}" style="border:0;background:none;cursor:pointer;color:var(--danger);font-weight:800;margin-left:4px">×</button></span>`).join(''):'<span class="dv" style="color:var(--ink-3);font-size:11.5px">Nenhum dia adicionado — use "+ dia" pra listar todos os dias da nota (ou deixe 1 data só).</span>';
+    el.querySelectorAll('[data-medrm]').forEach(b=>b.addEventListener('click',()=>{medDatas=medDatas.filter(x=>x!==b.dataset.medrm);renderMedChips();}));
+  }
+  document.getElementById('med-add-dia').addEventListener('click',()=>{
+    const inp=document.getElementById('med-data');const d=inp.value;if(!d){showToast('Escolha uma data');return;}
+    if(!medDatas.includes(d)){medDatas.push(d);medDatas.sort();renderMedChips();}
+    // avança 1 dia pra facilitar adicionar sequência
+    const nx=new Date(d+'T00:00:00');nx.setDate(nx.getDate()+1);inp.value=nx.toISOString().slice(0,10);
+  });
   document.getElementById('btn-add-medicao').addEventListener('click',async()=>{
     const id=document.getElementById('oe-id').value;if(!id)return;
     const valor=parseFloat(document.getElementById('med-valor').value)||0;
     if(valor<=0){showToast('Informe o valor da medição');return;}
-    const payload={data:document.getElementById('med-data').value||null,descricao:document.getElementById('med-desc').value||null,valor,recebido:document.getElementById('med-recebido').checked};
+    // usa os dias adicionados; se nenhum, cai na data única do campo
+    let datas=medDatas.slice();
+    const unica=document.getElementById('med-data').value;
+    if(!datas.length&&unica)datas=[unica];
+    if(!datas.length){showToast('Adicione ao menos 1 data');return;}
+    const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:document.getElementById('med-recebido').checked};
     try{await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
-      carregarMedicoes(id);showToast('Medição adicionada');}
+      medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
+      carregarMedicoes(id);showToast(datas.length>1?`Nota adicionada (${datas.length} dias)`:'Medição adicionada');}
     catch(e){showToast('Erro ao adicionar');console.error(e);}
   });
   document.getElementById('oe-progresso').addEventListener('input',e=>{document.getElementById('oe-prog-lbl').textContent=e.target.value+'%';});

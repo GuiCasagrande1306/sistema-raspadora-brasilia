@@ -1078,9 +1078,10 @@ app.get('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
 });
 app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
   try {
+    const datas = Array.isArray(req.body.datas) ? [...new Set(req.body.datas.filter(Boolean))].sort() : [];
     res.status(201).json(await db.createMedicaoObra({
-      obra_id: req.params.id, data: req.body.data || null, descricao: req.body.descricao || null,
-      valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
+      obra_id: req.params.id, data: req.body.data || datas[0] || null, descricao: req.body.descricao || null,
+      datas, valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
     }));
   } catch (e) { next(e); }
 });

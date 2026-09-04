@@ -223,7 +223,7 @@ export const db = {
     return (mock.medicoesObra || []).filter(m => m.obra_id === obra_id);
   },
   async createMedicaoObra(m) {
-    if (USING_SUPABASE) { const { data, error } = await sb('medicoes_obra').insert(m).select().single(); if (error) throw error; return data; }
+    if (USING_SUPABASE) { return insertSafe('medicoes_obra', m); }   // insertSafe: se a coluna `datas` ainda não existir, salva sem ela
     (mock.medicoesObra ||= []).push({ id: uid(), criado_em: new Date().toISOString(), ...m }); return mock.medicoesObra[mock.medicoesObra.length - 1];
   },
   async updateMedicaoObra(id, patch) {
