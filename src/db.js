@@ -872,7 +872,11 @@ export const db = {
       let q = sb('boletos').select('*').order('vencimento');
       if (status === 'PENDENTE') q = q.eq('pago', false);
       if (status === 'PAGO') q = q.eq('pago', true);
-      if (mes) q = q.gte('vencimento', mes + '-01').lte('vencimento', mes + '-31');
+      if (mes) {
+        const [y, m] = mes.split('-').map(Number);
+        const prox = m >= 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;   // 1º dia do mês seguinte (evita data inválida tipo -31)
+        q = q.gte('vencimento', mes + '-01').lt('vencimento', prox + '-01');
+      }
       const { data, error } = await q;
       if (error) throw error;
       return data || [];

@@ -674,8 +674,9 @@ app.get('/api/pagamento-diario', async (req, res, next) => {
 app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
   try {
     let { desde, ate, mes } = req.query;
-    if ((!desde || !ate) && mes) { desde = mes + '-01'; ate = mes + '-31'; }
-    if (!desde || !ate) { const m = new Date().toISOString().slice(0, 7); desde = m + '-01'; ate = m + '-31'; }
+    const ultimoDiaMes = ym => { const [y, mm] = ym.split('-').map(Number); return ym + '-' + String(new Date(y, mm, 0).getDate()).padStart(2, '0'); };
+    if ((!desde || !ate) && mes) { desde = mes + '-01'; ate = ultimoDiaMes(mes); }
+    if (!desde || !ate) { const m = new Date().toISOString().slice(0, 7); desde = m + '-01'; ate = ultimoDiaMes(m); }
     res.json(await db.gastosPorCategoria(desde, ate));
   } catch (e) { next(e); }
 });
