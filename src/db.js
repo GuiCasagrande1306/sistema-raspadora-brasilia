@@ -403,7 +403,7 @@ export const db = {
       });
       const pasta = this._pastaStatus(catMerged);
       const versaoMax = Math.max(0, ...catMerged.filter(x => x.versao).map(x => x.versao));
-      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', obras_vinculadas: c.obras_vinculadas || [], data_admissao: c.data_admissao || null, data_nascimento: c.data_nascimento || null, foto_url: c.foto_url || null, pasta, versao_atual: versaoMax || null };
+      return { id: c.id, nome: c.nome, cpf: c.cpf, cargo: c.cargo, empresa: c.empresa, status: c.status, status_colaborador: c.status_colaborador || 'ATIVO', is_diarista: c.is_diarista || false, obras_vinculadas: c.obras_vinculadas || [], data_admissao: c.data_admissao || null, data_nascimento: c.data_nascimento || null, foto_url: c.foto_url || null, pasta, versao_atual: versaoMax || null };
     });
     let filtered = out;
     if (filtros.pendencias) filtered = filtered.filter(c => c.pasta.status === 'PENDENTE');

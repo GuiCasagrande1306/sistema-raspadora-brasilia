@@ -972,6 +972,7 @@
         <div class="docs-actions">
           <button class="btn-ghost" id="docs-export">Exportar</button>
           <button class="btn-ghost" id="docs-relatorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg> Relatório de pendências</button>
+          <button class="btn-ghost" id="docs-novo-diarista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Diarista</button>
           <button class="primary" id="docs-novo-colab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo colaborador</button>
         </div>
       </div>
@@ -1196,6 +1197,32 @@
         <div class="field"><label>E-mail</label><input name="email" type="email"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar</button></footer>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Novo Diarista (colaborador não fichado) -->
+<div class="overlay" id="ov-diarista">
+  <div class="modal">
+    <header><h3>Novo Diarista</h3><button class="x" data-close>×</button></header>
+    <form id="form-diarista">
+      <div class="body">
+        <div class="login-hint" style="text-align:left">Diarista não fichado — cadastro rápido. Ele já aparece no <b>Cronograma Diário</b> para ser alocado nas obras.</div>
+        <div class="field"><label>Nome completo *</label><input name="nome" required placeholder="Ex: José da Silva"></div>
+        <div class="grid2">
+          <div class="field"><label>CPF</label><input name="cpf" placeholder="000.000.000-00"></div>
+          <div class="field"><label>Telefone / Celular</label><input name="telefone" placeholder="(61) 9…"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Empresa *</label><select name="empresa" required><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
+          <div class="field"><label>Função *</label><select name="cargo" required><option value="SERVENTE">SERVENTE</option><option value="PEDREIRO">PEDREIRO</option></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Status *</label><select name="status_colaborador" required><option value="DIARIA">🟡 Diária</option><option value="ATIVO">🟢 Ativo</option><option value="DESLIGADO">🔴 Desligado</option></select></div>
+          <div class="field"><label>Data de início *</label><input name="data_admissao" type="date" required></div>
+        </div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Cadastrar diarista</button></footer>
     </form>
   </div>
 </div>
@@ -3514,7 +3541,7 @@
     ?`<img src="${c.foto_url}" alt="" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;flex-shrink:0">`
     :`<div class="ini" style="width:${s}px;height:${s}px;background:${hue(c.nome||'')};flex-shrink:0">${ini(c.nome||'?')}</div>`;}
   const COLS_DEF=[
-    {k:'nome',label:'Nome',get:c=>`<div style="display:flex;align-items:center;gap:8px">${miniFoto(c)}<b>${esc(c.nome)}</b></div>`},
+    {k:'nome',label:'Nome',get:c=>`<div style="display:flex;align-items:center;gap:8px">${miniFoto(c)}<b>${esc(c.nome)}</b>${c.is_diarista?'<span class="tag t-lar" style="font-size:9px">diarista</span>':''}</div>`},
     {k:'cpf',label:'CPF',get:c=>esc(c.cpf||'—')},
     {k:'cargo',label:'Função',get:c=>esc(c.cargo||'—')},
     {k:'data_admissao',label:'Data Admissional',get:c=>c.data_admissao?dtBR(c.data_admissao):'—'},
@@ -3728,6 +3755,23 @@
     // se estiver dentro de uma empresa, já pré-seleciona ela
     if(docsState&&docsState.empresa){try{f.empresa.value=docsState.empresa;}catch(_){}}
     openModal('ov-colab');
+  });
+  document.getElementById('docs-novo-diarista').addEventListener('click',()=>{
+    const f=document.getElementById('form-diarista');f.reset();
+    f.querySelector('[name=data_admissao]').value=isoHoje();
+    if(docsState&&docsState.empresa){try{f.empresa.value=docsState.empresa;}catch(_){}}
+    openModal('ov-diarista');
+  });
+  document.getElementById('form-diarista').addEventListener('submit',async e=>{
+    e.preventDefault();const f=new FormData(e.target);
+    const payload={nome:f.get('nome'),cpf:f.get('cpf')||null,telefone:f.get('telefone')||null,
+      empresa:f.get('empresa')||'RB_PISOS',cargo:f.get('cargo'),status_colaborador:f.get('status_colaborador')||'DIARIA',
+      data_admissao:f.get('data_admissao')||null,is_diarista:true};
+    try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      e.target.reset();document.getElementById('ov-diarista').classList.remove('open');
+      if(!document.getElementById('view-docs').classList.contains('hidden'))await loadDocs();
+      showToast('Diarista cadastrado — já aparece no Cronograma ✓');
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Diarista: '+(m||'erro'));console.error(err);}
   });
 
   // ================= DASHBOARD FINANCEIRO =================
