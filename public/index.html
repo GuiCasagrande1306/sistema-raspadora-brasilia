@@ -1867,7 +1867,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
               <div class="field" style="flex:0 0 150px"><label>Valor retido (R$) <span style="color:var(--ink-3);font-weight:400">opcional</span></label><input type="number" step="0.01" min="0" id="med-retido" placeholder="0,00"></div>
               <div class="field" style="flex:0 0 170px"><label>Data de resgate (lembrete)</label><input type="date" id="med-resgate"></div>
-              <div class="dv" style="flex:1;min-width:160px;font-size:11.5px;color:var(--ink-3);padding-bottom:10px">Retenção que a construtora só libera depois (ex.: 6 meses após a obra). A data de resgate vira lembrete em <b>Valores Retidos</b>.</div>
+              <div class="dv" style="flex:1;min-width:160px;font-size:11.5px;color:var(--ink-3);padding-bottom:10px">Retenção que a construtora só libera depois. Ao digitar o valor retido, a <b>data de resgate</b> é sugerida em <b>+6 meses</b> (dá pra ajustar). Ela vira lembrete em <b>Valores Retidos</b>.</div>
             </div>
             <div id="med-datas-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
           </div>
@@ -2173,7 +2173,16 @@
     if(!medDatas.includes(d)){medDatas.push(d);medDatas.sort();renderMedChips();}
     // avança 1 dia pra facilitar adicionar sequência
     const nx=new Date(d+'T00:00:00');nx.setDate(nx.getDate()+1);inp.value=nx.toISOString().slice(0,10);
+    sugerirResgate();
   });
+  // sugere a data de resgate = último dia da nota + 6 meses (só se ainda estiver vazia)
+  function add6meses(ds){if(!ds)return '';const [y,m,day]=ds.split('-').map(Number);let ny=y,nm=m+6;if(nm>12){ny+=Math.floor((nm-1)/12);nm=((nm-1)%12)+1;}const ult=new Date(ny,nm,0).getDate();return `${ny}-${String(nm).padStart(2,'0')}-${String(Math.min(day,ult)).padStart(2,'0')}`;}
+  function sugerirResgate(){
+    const ret=parseFloat(document.getElementById('med-retido').value)||0;
+    const rg=document.getElementById('med-resgate');
+    if(ret>0&&!rg.value){const base=medDatas.length?medDatas[medDatas.length-1]:(document.getElementById('med-data').value||isoHoje());rg.value=add6meses(base);}
+  }
+  document.getElementById('med-retido').addEventListener('input',sugerirResgate);
   document.getElementById('btn-add-medicao').addEventListener('click',async()=>{
     const id=document.getElementById('oe-id').value;if(!id)return;
     const valor=parseFloat(document.getElementById('med-valor').value)||0;
