@@ -234,6 +234,29 @@ export const db = {
     if (USING_SUPABASE) { const { error } = await sb('medicoes_obra').delete().eq('id', id); if (error) throw error; return { ok: true }; }
     mock.medicoesObra = (mock.medicoesObra || []).filter(m => m.id !== id); return { ok: true };
   },
+  // Valores retidos ainda não resgatados — lembrete de cobrança (a construtora não avisa)
+  async listRetencoes(hojeStr) {
+    if (!USING_SUPABASE) return { retencoes: [], resumo: { total: 0, vencidos: 0, vencidos_valor: 0, proximos: 0 } };
+    const hoje = hojeStr || new Date().toISOString().slice(0, 10);
+    const { data: meds } = await sb('medicoes_obra').select('*').gt('valor_retido', 0).eq('retido_resgatado', false);
+    const lista = meds || [];
+    const ids = [...new Set(lista.map(m => m.obra_id))];
+    let mapa = {};
+    if (ids.length) { const { data: obras } = await sb('obras_financeiro').select('id,cliente').in('id', ids); mapa = Object.fromEntries((obras || []).map(o => [o.id, o.cliente])); }
+    const d30 = new Date(hoje + 'T00:00:00'); d30.setDate(d30.getDate() + 30); const ate30 = d30.toISOString().slice(0, 10);
+    const retencoes = lista.map(m => {
+      const venc = m.data_resgate && m.data_resgate <= hoje;
+      const prox = !venc && m.data_resgate && m.data_resgate <= ate30;
+      return { id: m.id, obra_id: m.obra_id, obra_cliente: mapa[m.obra_id] || '—', descricao: m.descricao || null, valor_retido: m.valor_retido, data_resgate: m.data_resgate || null, data: m.data || null, status: venc ? 'VENCIDO' : (prox ? 'PROXIMO' : (m.data_resgate ? 'FUTURO' : 'SEM_DATA')) };
+    }).sort((a, b) => (a.data_resgate || '9999-99').localeCompare(b.data_resgate || '9999-99'));
+    const resumo = {
+      total: retencoes.reduce((s, r) => s + r.valor_retido, 0),
+      vencidos: retencoes.filter(r => r.status === 'VENCIDO').length,
+      vencidos_valor: retencoes.filter(r => r.status === 'VENCIDO').reduce((s, r) => s + r.valor_retido, 0),
+      proximos: retencoes.filter(r => r.status === 'PROXIMO').length,
+    };
+    return { retencoes, resumo };
+  },
   async createLancamento(l) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos').insert(l).select().single(); if (error) throw error;

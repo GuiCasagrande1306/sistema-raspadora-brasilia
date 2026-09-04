@@ -772,6 +772,7 @@
       <button data-view="folha" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Folha de Pagamento</span></button>
       <button data-view="cofre" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="lbl">Cofre Bancário 🔐</span></button>
       <button data-view="recibos" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 8h8M8 12h6"/></svg><span class="lbl">Recibos</span></button>
+      <button data-view="retencoes" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V8a5 5 0 0 1 9.9-1"/></svg><span class="lbl">Valores Retidos</span><span class="navbadge" id="badge-retencoes" style="display:none"></span></button>
       <button data-view="prestacao" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="lbl">Prestação de Contas</span></button>
       <button data-view="nfrb" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF RB</span></button>
       <button data-view="nfeco" data-g="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg><span class="lbl">NF Eco Pisos</span></button>
@@ -1123,6 +1124,15 @@
     <section id="view-recibos" class="hidden">
       <div class="modhead"><h1>Recibos</h1><p>Recibos gerados no fechamento da folha — 1 por colaborador. Clique para imprimir/salvar em PDF.</p></div>
       <div id="recibos-content" style="padding:18px 26px 96px"></div>
+    </section>
+    <section id="view-retencoes" class="hidden">
+      <div class="modhead"><h1>Valores Retidos</h1><p>Retenções das construtoras a resgatar (liberadas depois da obra). Aqui está o lembrete pra não perder esse dinheiro.</p></div>
+      <div class="metrics">
+        <div class="metric"><div class="lbl">Total retido a resgatar</div><div class="val money" id="ret-total">—</div><div class="sub">tudo que ainda não voltou</div></div>
+        <div class="metric"><div class="lbl">⚠ Vencidos (resgatar já)</div><div class="val money" id="ret-vencidos" style="color:var(--danger)">—</div><div class="sub">data de resgate passou</div></div>
+        <div class="metric"><div class="lbl">Próximos 30 dias</div><div class="val" id="ret-proximos" style="color:var(--laranja-2)">—</div><div class="sub">chega a hora de cobrar</div></div>
+      </div>
+      <div id="retencoes-content" style="padding:18px 26px 96px"></div>
     </section>
     <section id="view-prestacao" class="hidden"><div class="modhead"><h1>Prestação de Contas</h1><p>Lançamento de despesas operacionais e reembolsos de equipe. (Módulo em construção.)</p></div></section>
     <section id="view-nfrb" class="hidden"><div class="modhead"><h1>NF RB — Raspadora Brasília</h1><p>Notas fiscais em PDF, organizadas por tipo (Mão de Obra / Materiais) e por ano.</p></div><div id="nf-rb" class="nf-wrap"></div></section>
@@ -1833,10 +1843,11 @@
         <div class="orc-block" style="margin-top:12px">
           <div class="orc-block-head"><span class="orc-marca">FATURAMENTO — MEDIÇÕES / NOTAS RECEBIDAS</span></div>
           <div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">Sem contrato fechado? Acrescente cada medição/nota conforme recebem — o sistema soma o faturado e o recebido.</div>
-          <div class="fb-counts" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px">
+          <div class="fb-counts" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
             <div class="fb-count"><b class="money" id="oe-faturado">—</b><span>Faturado</span></div>
             <div class="fb-count"><b class="money" id="oe-recebido">—</b><span>Recebido</span></div>
             <div class="fb-count"><b class="money" id="oe-areceber">—</b><span>A receber</span></div>
+            <div class="fb-count"><b class="money" id="oe-retido" style="color:var(--laranja-2)">—</b><span>Retido a resgatar</span></div>
           </div>
           <div id="oe-medicoes-lista" style="display:flex;flex-direction:column;gap:6px"></div>
           <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
@@ -1852,6 +1863,11 @@
               <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
+              <div class="field" style="flex:0 0 150px"><label>Valor retido (R$) <span style="color:var(--ink-3);font-weight:400">opcional</span></label><input type="number" step="0.01" min="0" id="med-retido" placeholder="0,00"></div>
+              <div class="field" style="flex:0 0 170px"><label>Data de resgate (lembrete)</label><input type="date" id="med-resgate"></div>
+              <div class="dv" style="flex:1;min-width:160px;font-size:11.5px;color:var(--ink-3);padding-bottom:10px">Retenção que a construtora só libera depois (ex.: 6 meses após a obra). A data de resgate vira lembrete em <b>Valores Retidos</b>.</div>
             </div>
             <div id="med-datas-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
           </div>
@@ -1944,6 +1960,7 @@
     if(view==='cofre'){cofreMode=true;loadBancos().catch(e=>console.error(e));} // Cofre: exige senha + ações sensíveis
     if(view==='folha')loadFolha().catch(e=>console.error(e));
     if(view==='recibos')loadRecibos().catch(e=>console.error(e));
+    if(view==='retencoes')loadRetencoes().catch(e=>console.error(e));
     if(view==='nfrb')loadNF('RB');
     if(view==='nfeco')loadNF('ECO');
     if(view==='docemp')loadDocEmp();
@@ -2102,6 +2119,7 @@
     document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));
     carregarMedicoes(id);
     document.getElementById('med-data').value=isoHoje();document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
     medDatas=[];renderMedChips();
     openModal('ov-obra-exec');
   }
@@ -2111,19 +2129,32 @@
     document.getElementById('oe-faturado').textContent=brl(r.resumo.faturado||0);
     document.getElementById('oe-recebido').textContent=brl(r.resumo.recebido||0);
     document.getElementById('oe-areceber').textContent=brl(r.resumo.a_receber||0);
+    document.getElementById('oe-retido').textContent=brl(r.resumo.retido||0);
     if(!r.medicoes.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';return;}
     el.innerHTML=r.medicoes.map(m=>{
       const ds=((m.datas&&m.datas.length)?m.datas:(m.data?[m.data]:[])).slice().sort();
       const dLabel=ds.length>1?`${dtBR(ds[0])} → ${dtBR(ds[ds.length-1])} · ${ds.length} dias`:(ds.length?dtBR(ds[0]):'');
       const dTitle=ds.map(dtBR).join(', ');
-      return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 10px">
-      <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span></div>
-      <b class="money">${brl(m.valor)}</b>
-      <button type="button" class="btn-ghost med-receb" data-med="${m.id}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?'✓ Recebido':'Marcar recebido'}</button>
-      <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button></div>`;}).join('');
+      const retidoLinha=m.valor_retido?`<div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:12px">
+        <span style="color:var(--laranja-2);font-weight:700">🔒 Retido ${brl(m.valor_retido)}</span>
+        <span style="color:${(!m.retido_resgatado&&m.data_resgate&&m.data_resgate<=isoHoje())?'var(--danger)':'var(--ink-3)'}">${m.retido_resgatado?('✓ resgatado'+(m.data_retido_resgatado?' em '+dtBR(m.data_retido_resgatado):'')):(m.data_resgate?((m.data_resgate<=isoHoje()?'⚠ resgatar (venceu) ':'resgatar em ')+dtBR(m.data_resgate)):'sem data de resgate')}</span>
+        <span style="flex:1"></span>
+        ${m.retido_resgatado?'':`<button type="button" class="btn-ghost med-resg" data-med="${m.id}" style="min-height:28px;font-size:11px;border-color:var(--laranja);color:var(--laranja-2)">Marcar resgatado</button>`}
+      </div>`:'';
+      return `<div style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span></div>
+        <b class="money">${brl(m.valor)}</b>
+        <button type="button" class="btn-ghost med-receb" data-med="${m.id}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?'✓ Recebido':'Marcar recebido'}</button>
+        <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
+      </div>${retidoLinha}</div>`;}).join('');
     el.querySelectorAll('.med-receb').forEach(b=>b.addEventListener('click',async()=>{
       const cur=b.textContent.includes('✓');
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido:!cur})});carregarMedicoes(obraId);}
+      catch(e){showToast('Erro');console.error(e);}}));
+    el.querySelectorAll('.med-resg').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Marcar este valor retido como resgatado (recebido)?'))return;
+      try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({retido_resgatado:true,hoje:isoHoje()})});showToast('Retido resgatado ✓');carregarMedicoes(obraId);if(typeof atualizarBadges==='function')atualizarBadges();}
       catch(e){showToast('Erro');console.error(e);}}));
     el.querySelectorAll('.med-del').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Excluir esta medição?'))return;
@@ -2152,9 +2183,11 @@
     const unica=document.getElementById('med-data').value;
     if(!datas.length&&unica)datas=[unica];
     if(!datas.length){showToast('Adicione ao menos 1 data');return;}
-    const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:document.getElementById('med-recebido').checked};
+    const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:document.getElementById('med-recebido').checked,
+      valor_retido:parseFloat(document.getElementById('med-retido').value)||0,data_resgate:document.getElementById('med-resgate').value||null};
     try{await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+      document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
       medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
       carregarMedicoes(id);showToast(datas.length>1?`Nota adicionada (${datas.length} dias)`:'Medição adicionada');}
     catch(e){showToast('Erro ao adicionar');console.error(e);}
@@ -2252,6 +2285,11 @@
       const ag=(orcamentos||[]).filter(o=>o.status==='AGUARDANDO_PROPOSTA');
       setBadge('badge-prop',ag.length);
       NOTIFS=ag.map(o=>({txt:`Orçamento Nº ${o.numero_orcamento} — ${esc(o.cliente_nome||'')}`,sub:'medição concluída · aguardando proposta',goto:'prop'}));
+      // valores retidos vencidos (a resgatar) — não perder esse dinheiro
+      try{const ret=await api('/api/financeiro/retencoes?hoje='+isoHoje());
+        setBadge('badge-retencoes',ret.resumo.vencidos||0);
+        (ret.retencoes||[]).filter(x=>x.status==='VENCIDO').forEach(x=>NOTIFS.push({txt:`Valor retido a resgatar — ${esc(x.obra_cliente)}`,sub:brl(x.valor_retido)+' · resgate '+(x.data_resgate?dtBR(x.data_resgate):'—'),goto:'retencoes'}));
+      }catch(_){/* silencioso */}
       const dot=document.getElementById('sino-dot');if(dot)dot.style.display=NOTIFS.length?'':'none';
     }catch(e){/* silencioso */}
   }
@@ -4371,6 +4409,24 @@
 
   // ---- Recibos ----
   let recibosCache=[];
+  async function loadRetencoes(){
+    const c=document.getElementById('retencoes-content');c.innerHTML='<div class="orc-empty">Carregando…</div>';
+    let r;try{r=await api('/api/financeiro/retencoes?hoje='+isoHoje());}catch(e){c.innerHTML='<div class="orc-empty">Erro ao carregar.</div>';console.error(e);return;}
+    document.getElementById('ret-total').textContent=brl(r.resumo.total||0);
+    document.getElementById('ret-vencidos').textContent=brl(r.resumo.vencidos_valor||0);
+    document.getElementById('ret-proximos').textContent=String(r.resumo.proximos||0);
+    if(!r.retencoes.length){c.innerHTML='<div class="orc-empty">Nenhum valor retido pendente. 👍<br>Ao lançar uma nota com <b>Valor retido</b> e uma <b>data de resgate</b>, ela aparece aqui como lembrete.</div>';return;}
+    const stTag={VENCIDO:'<span class="tag t-danger">⚠ Resgatar já</span>',PROXIMO:'<span class="tag t-lar">Chegando</span>',FUTURO:'<span class="tag t-wait">No prazo</span>',SEM_DATA:'<span class="tag">Sem data</span>'};
+    c.innerHTML='<div class="doc-list">'+r.retencoes.map(x=>`<div class="fin-item">
+      <div class="fi-main"><h4>${esc(x.obra_cliente)}</h4><div class="fi-sub">${esc(x.descricao||'Nota')} · ${x.data_resgate?('resgatar '+dtBR(x.data_resgate)):'sem data de resgate'}</div></div>
+      <div class="fi-val">${brl(x.valor_retido)}</div>${stTag[x.status]||''}
+      <div class="fi-act"><button class="btn-ghost" data-retobra="${x.obra_id}">Abrir obra</button><button class="btn-ghost ret-resg" data-med="${x.id}" style="border-color:var(--laranja);color:var(--laranja-2)">Marcar resgatado</button></div></div>`).join('')+'</div>';
+    c.querySelectorAll('.ret-resg').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Marcar este valor retido como resgatado (recebido)?'))return;
+      try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({retido_resgatado:true,hoje:isoHoje()})});showToast('Resgatado ✓');loadRetencoes();if(typeof atualizarBadges==='function')atualizarBadges();}
+      catch(e){showToast('Erro');console.error(e);}}));
+    c.querySelectorAll('[data-retobra]').forEach(b=>b.addEventListener('click',()=>abrirObraExec(b.dataset.retobra)));
+  }
   async function loadRecibos(){
     const lista=await api('/api/recibos');recibosCache=lista;
     const c=document.getElementById('recibos-content');
@@ -4550,7 +4606,7 @@
     const admin=role==='ADMIN';
     // Perfis de acesso restrito: VISITA (só Visita Técnica) e CAMPO (Visita Técnica + Cronograma)
     const ROLE_VIEWS={ VISITA:['orc'], CAMPO:['orc','cronograma'] };
-    const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','cronograma','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','prestacao','nfrb','nfeco']:(ROLE_VIEWS[role]||['orc','vt']);
+    const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','cronograma','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','retencoes','prestacao','nfrb','nfeco']:(ROLE_VIEWS[role]||['orc','vt']);
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
     if(admin)atualizarBadges();
     // esconde cabeçalhos de grupo sem itens visíveis

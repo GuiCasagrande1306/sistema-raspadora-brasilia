@@ -1073,7 +1073,8 @@ app.get('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
     const lista = await db.listMedicoesObra(req.params.id);
     const faturado = lista.reduce((s, m) => s + (m.valor || 0), 0);
     const recebido = lista.filter(m => m.recebido).reduce((s, m) => s + (m.valor || 0), 0);
-    res.json({ medicoes: lista, resumo: { faturado, recebido, a_receber: faturado - recebido } });
+    const retido = lista.filter(m => !m.retido_resgatado).reduce((s, m) => s + (m.valor_retido || 0), 0);
+    res.json({ medicoes: lista, resumo: { faturado, recebido, a_receber: faturado - recebido, retido } });
   } catch (e) { next(e); }
 });
 app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
@@ -1082,19 +1083,30 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
     res.status(201).json(await db.createMedicaoObra({
       obra_id: req.params.id, data: req.body.data || datas[0] || null, descricao: req.body.descricao || null,
       datas, valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
+      valor_retido: Math.round((Number(req.body.valor_retido) || 0) * 100), data_resgate: req.body.data_resgate || null,
     }));
   } catch (e) { next(e); }
 });
 app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['data', 'descricao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    for (const k of ['data', 'descricao', 'data_resgate']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
+    if (req.body.valor_retido !== undefined) patch.valor_retido = Math.round((Number(req.body.valor_retido) || 0) * 100);
     if (req.body.recebido !== undefined) patch.recebido = !!req.body.recebido;
+    if (req.body.retido_resgatado !== undefined) {
+      patch.retido_resgatado = !!req.body.retido_resgatado;
+      patch.data_retido_resgatado = patch.retido_resgatado ? (req.body.hoje || new Date().toISOString().slice(0, 10)) : null;
+    }
     const m = await db.updateMedicaoObra(req.params.id, patch);
     if (!m) return res.status(404).json({ erro: 'medição não encontrada' });
     res.json(m);
   } catch (e) { next(e); }
+});
+// Retenções: todas as notas com valor retido a resgatar (lembrete de cobrança)
+app.get('/api/financeiro/retencoes', async (req, res, next) => {
+  try { res.json(await db.listRetencoes(req.query.hoje || null)); }
+  catch (e) { next(e); }
 });
 app.delete('/api/financeiro/medicao/:id', async (req, res, next) => {
   try { res.json(await db.deleteMedicaoObra(req.params.id)); }
