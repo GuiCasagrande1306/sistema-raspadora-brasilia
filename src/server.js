@@ -1271,6 +1271,21 @@ app.post('/api/bancos/conta', async (req, res, next) => {
     }));
   } catch (e) { next(e); }
 });
+// Ajustar/editar conta (concilia o saldo com o extrato do banco)
+app.patch('/api/bancos/conta/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['nome_instituicao', 'tipo_conta', 'agencia', 'conta']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.saldo_atual !== undefined) patch.saldo_atual = Math.round((Number(req.body.saldo_atual) || 0) * 100);
+    if (req.body.is_caixinha !== undefined) patch.is_caixinha = req.body.is_caixinha === true || req.body.is_caixinha === 'true';
+    const c = await db.updateConta(req.params.id, patch);
+    res.json(c);
+  } catch (e) { next(e); }
+});
+app.delete('/api/bancos/conta/:id', async (req, res, next) => {
+  try { res.json(await db.deleteConta(req.params.id)); }
+  catch (e) { next(e); }
+});
 
 // Bancos — transferência interna
 app.post('/api/bancos/transferencia-interna', async (req, res, next) => {

@@ -1858,6 +1858,22 @@
   </div>
 </div>
 
+<!-- MODAL: Ajustar saldo da conta (conciliar com o banco) -->
+<div class="overlay" id="ov-ajuste-saldo">
+  <div class="modal">
+    <header><h3>Ajustar saldo da conta</h3><button class="x" data-close>×</button></header>
+    <form id="form-ajuste-saldo">
+      <input type="hidden" id="as-id">
+      <div class="body">
+        <div id="as-info" class="login-hint" style="text-align:left;margin-bottom:10px"></div>
+        <div class="field"><label>Saldo atual conforme o banco (R$)</label><input name="saldo_atual" type="number" step="0.01" required></div>
+        <div class="login-hint" style="text-align:left">Digite o saldo que aparece no app/extrato do banco agora. O <b>Saldo Consolidado</b> passa a refletir esse valor.</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar saldo</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Ficha do Colaborador -->
 <div class="overlay" id="ov-ficha">
   <div class="modal wide">
@@ -3778,7 +3794,10 @@
         <div class="cc-nome">${esc(c.nome_instituicao)}</div>
         <div class="cc-tipo">${esc(c.tipo_conta)}${c.agencia?' · Ag '+esc(c.agencia):''}${c.conta?' · '+esc(c.conta):''}</div>
         <div class="cc-saldo ${baixo?'baixo':''}">${brl(c.saldo_atual)}</div>
-        ${baixo?'<div style="color:var(--danger);font-size:11.5px;font-weight:700;margin-top:6px">⚠ Abaixo de R$ 1.000 — recarregar do Itaú</div>':''}</div>`;}).join('');
+        ${baixo?'<div style="color:var(--danger);font-size:11.5px;font-weight:700;margin-top:6px">⚠ Abaixo de R$ 1.000 — recarregar do Itaú</div>':''}
+        ${cofreMode?`<div style="display:flex;gap:6px;margin-top:10px">
+          <button class="btn-ghost" data-conta-ajuste="${c.id}" data-nome="${esc(c.nome_instituicao)}" data-saldo="${c.saldo_atual}" style="padding:3px 10px;font-size:11.5px">Ajustar saldo</button>
+          <button class="doc-cloud" data-conta-del="${c.id}" title="Excluir conta" style="padding:2px">${DE_TRASH}</button></div>`:''}</div>`;}).join('');
     const rows=(fluxo.dias&&fluxo.dias.length)?fluxo.dias.map(d=>`<div class="fluxo-row">
         <span>${new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
         <span class="ent">${d.entradas?'+'+brl(d.entradas):'—'}</span>
@@ -3792,7 +3811,26 @@
     const opt=saldos.contas.map(c=>`<option value="${c.id}">${esc(c.nome_instituicao)} — ${brl(c.saldo_atual)}</option>`).join('');
     document.getElementById('transfer-origem').innerHTML=opt;
     document.getElementById('transfer-destino').innerHTML=opt;
+    document.querySelectorAll('#bancos-content [data-conta-ajuste]').forEach(b=>b.addEventListener('click',()=>abrirAjusteSaldo(b.dataset.contaAjuste,b.dataset.nome,+b.dataset.saldo)));
+    document.querySelectorAll('#bancos-content [data-conta-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir esta conta? O saldo dela sai do consolidado.'))return;
+      try{await api('/api/bancos/conta/'+b.dataset.contaDel,{method:'DELETE'});showToast('Conta excluída');loadBancos();}
+      catch(e){showToast('Erro ao excluir');console.error(e);}}));
   }
+  function abrirAjusteSaldo(id,nome,saldoCents){
+    document.getElementById('as-id').value=id;
+    document.getElementById('as-info').innerHTML=`<b>${esc(nome)}</b> — coloque o saldo que está no banco agora.`;
+    const inp=document.querySelector('#form-ajuste-saldo [name=saldo_atual]');inp.value=(saldoCents/100).toFixed(2);
+    openModal('ov-ajuste-saldo');setTimeout(()=>inp.select(),60);
+  }
+  document.getElementById('form-ajuste-saldo').addEventListener('submit',async e=>{
+    e.preventDefault();const id=document.getElementById('as-id').value;
+    const v=parseFloat(document.querySelector('#form-ajuste-saldo [name=saldo_atual]').value);
+    if(isNaN(v)){showToast('Informe o saldo');return;}
+    try{await api('/api/bancos/conta/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({saldo_atual:v})});
+      document.getElementById('ov-ajuste-saldo').classList.remove('open');showToast('Saldo atualizado ✓');loadBancos();
+    }catch(err){showToast('Erro ao ajustar saldo');console.error(err);}
+  });
   document.getElementById('btn-transfer').addEventListener('click',()=>openModal('ov-transfer'));
   document.getElementById('btn-nova-conta').addEventListener('click',()=>{document.getElementById('form-conta').reset();openModal('ov-conta');});
   document.getElementById('form-conta').addEventListener('submit',async e=>{

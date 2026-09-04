@@ -1330,6 +1330,16 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('contas_bancarias').insert(c).select().single(); if (error) throw error; return data; }
     return { id: uid(), ...c };
   },
+  async updateConta(id, patch) {
+    if (!USING_SUPABASE) return { id, ...patch };
+    const { data, error } = await sb('contas_bancarias').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async deleteConta(id) {
+    if (USING_SUPABASE) { const { error } = await sb('contas_bancarias').delete().eq('id', id); if (error) throw error; }
+    return { ok: true };
+  },
   async getCaixinha() {
     const { data } = await sb('contas_bancarias').select('*').eq('is_caixinha', true).limit(1).maybeSingle();
     return data || null;
