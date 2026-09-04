@@ -1452,6 +1452,7 @@
           <div class="field"><label>Categoria</label><select name="categoria" id="lancdia-cat"></select></div>
           <div class="field"><label>Forma</label><select name="forma"><option>PIX</option><option>DINHEIRO</option><option>BOLETO</option><option>CARTÃO</option><option>TRANSFERÊNCIA</option></select></div>
         </div>
+        <div class="field" id="lancdia-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="lancdia-outro" placeholder="Ex.: material de escritório"></div>
         <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" name="pago" id="lancdia-pago" checked> Já foi pago</label>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Lançar</button></footer>
@@ -3997,7 +3998,7 @@
   });
 
   // ---------- BANCOS: abas (Contas & Fluxo · Pagamento Diário · Boletos) ----------
-  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['INSUMO','Insumo'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['OUTRO','Outro']];
+  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['INSUMO','Insumo'],['DIARIA','Diária'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['OUTRO','Outro']];
   const CAT_LABEL=Object.fromEntries(CAT_GASTO_OPTS);
   document.getElementById('boleto-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   document.getElementById('lancdia-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
@@ -4026,9 +4027,11 @@
       <div class="fi-act">${comp}
         ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
         ${b.fixo_id?'':`<button class="btn-ghost" data-fixarb="${b.id}" title="Transformar em pagamento fixo mensal">★ Fixar</button>`}
+        <button class="btn-ghost" data-editb="${b.id}" title="Editar (data, valor/juros…)" style="padding:4px 10px;font-size:12px">✏️ Editar</button>
         <button class="doc-cloud" data-compb="${b.id}" title="Anexar comprovante">${UP_SVG}</button>
         <button class="doc-cloud" data-delb="${b.id}" title="Excluir">${DE_TRASH}</button></div></div>`;
   }
+  let boletosCache=[];
   let fixosGerados=false;
   async function loadBoletos(){
     const el=document.getElementById('boletos-content');
@@ -4042,7 +4045,16 @@
     let lista=[];try{lista=await api('/api/boletos'+(qs.length?'?'+qs.join('&'):''));}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar boletos.</div>';console.error(e);return;}
     const mesLbl=mes?new Date(mes+'-01T00:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'todos os meses';
     if(!lista.length){el.innerHTML='<div class="orc-empty">Nenhum boleto '+(boletoFiltro==='PENDENTE'?'pendente':(boletoFiltro==='PAGO'?'pago':''))+' em <b>'+mesLbl+'</b>. Clique em <b>Novo Boleto</b> ou cadastre um <b>Pagamento fixo</b>.</div>';return;}
+    boletosCache=lista;
     el.innerHTML='<div class="doc-list">'+lista.map(boletoRow).join('')+'</div>';
+    el.querySelectorAll('[data-editb]').forEach(b=>b.addEventListener('click',()=>{
+      const bo=boletosCache.find(x=>x.id===b.dataset.editb);if(!bo)return;
+      const f=document.getElementById('form-boleto');f.reset();
+      document.getElementById('boleto-id').value=bo.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
+      f.descricao.value=bo.descricao||'';f.fornecedor.value=bo.fornecedor||'';f.valor.value=bo.valor?(bo.valor/100).toFixed(2):'';f.vencimento.value=bo.vencimento||'';
+      f.categoria.value=bo.categoria||'OUTRO';document.getElementById('boleto-outro').value=bo.categoria_custom||'';boletoOutroToggle();
+      openModal('ov-boleto');
+    }));
     el.querySelectorAll('[data-pagar]').forEach(b=>b.addEventListener('click',async()=>{
       try{await api('/api/boletos/'+b.dataset.pagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Boleto pago');loadBoletos();}
       catch(e){showToast('Erro');console.error(e);}}));
@@ -4061,14 +4073,17 @@
     b.classList.add('on');boletoFiltro=b.dataset.bf;loadBoletos();}));
   document.getElementById('boletos-mes').addEventListener('change',loadBoletos);
   document.getElementById('boletos-todos-meses').addEventListener('change',loadBoletos);
-  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();boletoOutroToggle();openModal('ov-boleto');});
+  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.getElementById('boleto-titulo').textContent='Novo Boleto';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();boletoOutroToggle();openModal('ov-boleto');});
   const boletoOutroToggle=()=>{document.getElementById('boleto-outro-wrap').style.display=document.getElementById('boleto-cat').value==='OUTRO'?'':'none';};
   document.getElementById('boleto-cat').addEventListener('change',boletoOutroToggle);
   document.getElementById('form-boleto').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
+    const id=document.getElementById('boleto-id').value;
     const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('boleto-outro').value||null):null};
-    try{await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-boleto').classList.remove('open');showToast('Boleto salvo');loadBoletos();
+    try{
+      if(id)await api('/api/boletos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      else await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-boleto').classList.remove('open');showToast(id?'Boleto atualizado':'Boleto salvo');loadBoletos();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Boleto: '+(m||'erro'));console.error(err);}});
 
   // ---- Pagamentos fixos mensais ----
@@ -4136,7 +4151,7 @@
       const comp=i.comprovante_url?`<a class="doc-open" href="${i.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
       const base=i.origem==='BOLETO'?'/api/boletos/'+i.id:'/api/lancamentos-diarios/'+i.id;
       return `<div class="fin-item">
-        <div class="fi-main"><h4>${esc(i.descricao)}</h4><div class="fi-sub">${CAT_LABEL[i.categoria]||i.categoria||''}</div></div>
+        <div class="fi-main"><h4>${esc(i.descricao)}</h4><div class="fi-sub">${i.categoria==='OUTRO'&&i.categoria_custom?esc(i.categoria_custom):(CAT_LABEL[i.categoria]||i.categoria||'')}${i.atrasado?' · <span style="color:var(--danger);font-weight:700">⚠ atrasado (venc. '+dtBR(i.vencimento)+')</span>':''}</div></div>
         <div class="fi-val">${brl(i.valor)}</div>${tag}${st}
         <div class="fi-act">${comp}
           ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
@@ -4159,10 +4174,12 @@
       catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixar: '+(m||'erro'));console.error(e);}}));
   }
   document.getElementById('pd-data').addEventListener('change',loadPagDiario);
-  document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;openModal('ov-lancdia');});
+  const lancdiaOutroToggle=()=>{document.getElementById('lancdia-outro-wrap').style.display=document.getElementById('lancdia-cat').value==='OUTRO'?'':'none';};
+  document.getElementById('lancdia-cat').addEventListener('change',lancdiaOutroToggle);
+  document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;lancdiaOutroToggle();openModal('ov-lancdia');});
   document.getElementById('form-lancdia').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
-    const payload={data:f.data.value,descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,categoria:f.categoria.value,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
+    const payload={data:f.data.value,descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('lancdia-outro').value||null):null,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
     try{await api('/api/lancamentos-diarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-lancdia').classList.remove('open');showToast('Lançamento salvo');loadPagDiario();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Lançamento: '+(m||'erro'));console.error(err);}});

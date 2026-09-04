@@ -1022,11 +1022,7 @@ export const db = {
     return mock.lancDiarios.filter(l => !data || l.data === data);
   },
   async createLancDiario(l) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('lancamentos_diarios').insert(l).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return insertSafe('lancamentos_diarios', l); }   // tolerante: ignora categoria_custom se a coluna não existir
     const novo = { id: uid(), criado_em: new Date().toISOString(), ...l };
     mock.lancDiarios.push(novo);
     return novo;
@@ -1199,14 +1195,15 @@ export const db = {
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {
     const [boletos, lancs, contas] = await Promise.all([
+      // vence hoje OU está atrasado e ainda não pago (carrega pro dia até ser quitado)
       USING_SUPABASE
-        ? sb('boletos').select('*').eq('vencimento', data).then(r => r.data || [])
-        : Promise.resolve(mock.boletos.filter(b => b.vencimento === data)),
+        ? sb('boletos').select('*').or(`vencimento.eq.${data},and(vencimento.lt.${data},pago.eq.false)`).then(r => r.data || [])
+        : Promise.resolve(mock.boletos.filter(b => b.vencimento === data || (b.vencimento < data && !b.pago))),
       this.listLancDiarios({ data }),
       USING_SUPABASE ? sb('contas_bancarias').select('saldo_atual').then(r => r.data || []) : Promise.resolve([]),
     ]);
     const itens = [
-      ...boletos.map(b => ({ ...b, origem: 'BOLETO' })),
+      ...boletos.map(b => ({ ...b, origem: 'BOLETO', atrasado: (b.vencimento < data && !b.pago) })),
       ...lancs.map(l => ({ ...l, origem: 'LANCAMENTO' })),
     ];
     const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
