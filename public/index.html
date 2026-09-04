@@ -3842,6 +3842,7 @@
       <div class="fi-val">${brl(b.valor)}</div>${st}
       <div class="fi-act">${comp}
         ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
+        ${b.fixo_id?'':`<button class="btn-ghost" data-fixarb="${b.id}" title="Transformar em pagamento fixo mensal">★ Fixar</button>`}
         <button class="doc-cloud" data-compb="${b.id}" title="Anexar comprovante">${UP_SVG}</button>
         <button class="doc-cloud" data-delb="${b.id}" title="Excluir">${DE_TRASH}</button></div></div>`;
   }
@@ -3863,6 +3864,10 @@
       try{await api('/api/boletos/'+b.dataset.pagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Boleto pago');loadBoletos();}
       catch(e){showToast('Erro');console.error(e);}}));
     el.querySelectorAll('[data-compb]').forEach(b=>b.addEventListener('click',()=>anexarComprovante('/api/boletos/'+b.dataset.compb+'/comprovante',loadBoletos)));
+    el.querySelectorAll('[data-fixarb]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Transformar em pagamento fixo mensal? A partir do próximo mês ele entra sozinho.'))return;
+      try{const r=await api('/api/boletos/'+b.dataset.fixarb+'/fixar',{method:'POST'});showToast(r.ja?'Este boleto já era fixo':'Virou pagamento fixo ✓');loadBoletos();}
+      catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixar: '+(m||'erro'));console.error(e);}}));
     el.querySelectorAll('[data-delb]').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Excluir este boleto?'))return;
       try{await api('/api/boletos/'+b.dataset.delb,{method:'DELETE'});showToast('Boleto excluído');loadBoletos();}
@@ -3952,17 +3957,23 @@
         <div class="fi-val">${brl(i.valor)}</div>${tag}${st}
         <div class="fi-act">${comp}
           ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
+          ${i.origem==='BOLETO'&&!i.fixo_id?`<button class="btn-ghost" data-pd-fixar="${i.id}" title="Transformar em pagamento fixo mensal">★ Fixar</button>`:''}
+          ${i.origem==='BOLETO'&&i.fixo_id?'<span class="tag t-lar" title="Já é pagamento fixo">★ fixo</span>':''}
           <button class="doc-cloud" data-pd-comp="${base}/comprovante" title="Anexar comprovante">${UP_SVG}</button>
-          ${i.origem==='LANCAMENTO'?`<button class="doc-cloud" data-pd-del="${i.id}" title="Excluir">${DE_TRASH}</button>`:''}</div></div>`;
+          <button class="doc-cloud" data-pd-delu="${base}" title="Excluir">${DE_TRASH}</button></div></div>`;
     }).join('')+'</div>';
     cont.querySelectorAll('[data-pd-pagar]').forEach(b=>b.addEventListener('click',async()=>{
       try{await api(b.dataset.pdPagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Marcado como pago');loadPagDiario();}
       catch(e){showToast('Erro');console.error(e);}}));
     cont.querySelectorAll('[data-pd-comp]').forEach(b=>b.addEventListener('click',()=>anexarComprovante(b.dataset.pdComp,loadPagDiario)));
-    cont.querySelectorAll('[data-pd-del]').forEach(b=>b.addEventListener('click',async()=>{
-      if(!confirm('Excluir este lançamento?'))return;
-      try{await api('/api/lancamentos-diarios/'+b.dataset.pdDel,{method:'DELETE'});showToast('Excluído');loadPagDiario();}
-      catch(e){showToast('Erro');console.error(e);}}));
+    cont.querySelectorAll('[data-pd-delu]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este item? Não dá pra desfazer.'))return;
+      try{await api(b.dataset.pdDelu,{method:'DELETE'});showToast('Excluído');loadPagDiario();}
+      catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(e);}}));
+    cont.querySelectorAll('[data-pd-fixar]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Transformar em pagamento fixo mensal? A partir do próximo mês ele entra sozinho.'))return;
+      try{const r=await api('/api/boletos/'+b.dataset.pdFixar+'/fixar',{method:'POST'});showToast(r.ja?'Este boleto já era fixo':'Virou pagamento fixo ✓');loadPagDiario();}
+      catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixar: '+(m||'erro'));console.error(e);}}));
   }
   document.getElementById('pd-data').addEventListener('change',loadPagDiario);
   document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;openModal('ov-lancdia');});

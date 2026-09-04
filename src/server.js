@@ -620,6 +620,11 @@ app.delete('/api/boletos/:id', async (req, res, next) => {
   try { res.json(await db.deleteBoleto(req.params.id)); }
   catch (e) { next(e); }
 });
+// Transformar um boleto já lançado em pagamento fixo mensal
+app.post('/api/boletos/:id/fixar', async (req, res, next) => {
+  try { res.json(await db.fixarBoleto(req.params.id)); }
+  catch (e) { if (e.status) return res.status(e.status).json({ erro: e.message }); next(e); }
+});
 
 // ---- PAGAMENTOS FIXOS MENSAIS ----
 app.use('/api/fixos', requireAdmin);

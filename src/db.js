@@ -950,6 +950,23 @@ export const db = {
     if (novos.length) { const { error } = await sb('boletos').insert(novos); if (error) throw error; }
     return { gerados: novos.length };
   },
+  // Transforma um boleto já lançado em pagamento fixo mensal (sem relançar o mês atual).
+  async fixarBoleto(boletoId) {
+    if (!USING_SUPABASE) return { ja: false };
+    const { data: b } = await sb('boletos').select('*').eq('id', boletoId).maybeSingle();
+    if (!b) { const e = new Error('boleto não encontrado'); e.status = 404; throw e; }
+    if (b.fixo_id) return { ja: true, fixo_id: b.fixo_id };
+    const dia = Math.min(Math.max(1, Number((b.vencimento || '').slice(8, 10)) || 5), 31);
+    const fixo = await this.createFixo({
+      descricao: b.descricao, fornecedor: b.fornecedor || null,
+      categoria: b.categoria || 'OUTRO', categoria_custom: b.categoria_custom || null,
+      valor: b.valor, dia_vencimento: dia, ativo: true,
+    });
+    // vincula este boleto ao fixo e marca a competência para não duplicar no mês atual
+    const comp = (b.vencimento || '').slice(0, 7);
+    await sb('boletos').update({ fixo_id: fixo.id, competencia: comp || null }).eq('id', boletoId);
+    return { ja: false, fixo };
+  },
 
   // ---- LANÇAMENTOS DIÁRIOS (gastos do dia: pix, vale, dinheiro…) ----
   async listLancDiarios({ data } = {}) {
