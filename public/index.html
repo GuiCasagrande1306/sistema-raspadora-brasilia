@@ -3636,7 +3636,7 @@
       const fu=c.foto_url||c.avatar_url;const foto=fu?`<img src="${fu}" alt="">`:ini(c.nome);
       const banner=`<div class="ficha-banner"><div class="fb-foto">${foto}</div>
         <div><h3>${esc(c.nome)}</h3><div class="fb-meta"><span>CPF ${esc(c.cpf||'—')}</span><span>RG ${esc(c.rg||'—')}</span><span>${esc(c.cargo||'—')}</span><span>Admissão ${c.data_admissao?dtBR(c.data_admissao):'—'}</span><span>${esc(c.empresa||'')}</span></div></div>
-        <div class="fb-right"><div style="display:flex;gap:6px"><span class="an ${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[0]}">${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[1]}</span><span class="an ${fan}">${flbl}</span></div><div class="fb-actions"><button data-editcolab>✏️ Editar</button><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button></div></div></div>`;
+        <div class="fb-right"><div style="display:flex;gap:6px"><span class="an ${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[0]}">${(STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO)[1]}</span><span class="an ${fan}">${flbl}</span></div><div class="fb-actions"><button data-editcolab>✏️ Editar</button><button data-backup>Gerar Backup</button><button data-pdf>Exportar PDF</button><button data-delcolab style="background:rgba(220,38,38,.28)">🗑 Excluir</button></div></div></div>`;
       // Certificados = NRs (docs cujo nome contém "NR"); à vencer = presentes vencendo em ≤30 dias
       const certs=docs.filter(d=>/NR\s?\d/i.test(d.nome));
       const certPresentes=certs.filter(d=>d.presente).length;
@@ -3672,6 +3672,11 @@
         try{const full=await api('/api/dp/colaborador/'+docsState.colabId);abrirEditarColab(full);}catch(err){showToast('Erro ao abrir edição');console.error(err);}});
       el.querySelector('[data-backup]')?.addEventListener('click',()=>showToast('Backup do dossiê — em breve'));
       el.querySelector('[data-pdf]')?.addEventListener('click',()=>showToast('Exportar PDF — em breve'));
+      el.querySelector('[data-delcolab]')?.addEventListener('click',async()=>{
+        if(!confirm('Excluir '+(docsState.colabNome||'este colaborador')+' e todos os vínculos dele (documentos, cronograma, vales…)? Não dá pra desfazer.'))return;
+        try{await api('/api/dp/colaborador/'+docsState.colabId,{method:'DELETE'});showToast('Colaborador excluído');
+          docsState={nivel:docsState.empresa?'colaboradores':'empresas',empresa:docsState.empresa,empresaLabel:docsState.empresaLabel};renderDocs();
+        }catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(e);}});
       el.querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click',()=>abrirDocUp(b.dataset.up,b.dataset.nome)));
       el.querySelectorAll('[data-status]').forEach(s=>s.addEventListener('change',async()=>{
         try{await api('/api/documentos/'+s.dataset.status+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status_analise:s.value})});showToast('Status atualizado');renderDocs();}

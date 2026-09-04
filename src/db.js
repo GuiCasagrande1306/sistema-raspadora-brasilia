@@ -322,6 +322,17 @@ export const db = {
     if (USING_SUPABASE) { const { data, error } = await sb('colaboradores').update({ status }).eq('id', id).select().single(); if (error) throw error; return data; }
     const c = mock.colaboradores.find(x => x.id === id); if (!c) return null; c.status = status; return c;
   },
+  // Exclui o colaborador e os vínculos operacionais dele (cronograma, VT, docs, vales, descontos, apontamentos…)
+  async deleteColaborador(id) {
+    if (!USING_SUPABASE) { mock.colaboradores = (mock.colaboradores || []).filter(c => c.id !== id); return { ok: true }; }
+    const deps = ['cronograma_alocacoes', 'vt_semanal', 'documentos_colaborador', 'registro_diario_vt',
+      'vales_diaria', 'descontos_folha', 'apontamento_equipe', 'recibos', 'folha_pagamento',
+      'historico_funcional', 'ponto_frequencia', 'vacinas_colaborador'];
+    for (const t of deps) { try { await sb(t).delete().eq('colaborador_id', id); } catch (_) { /* tabela sem a coluna: ignora */ } }
+    const { error } = await sb('colaboradores').delete().eq('id', id);
+    if (error) throw error;
+    return { ok: true };
+  },
   // ---- PERFIS / ROLES ----
   async getProfile(userId) {
     if (USING_SUPABASE) {

@@ -1007,6 +1007,10 @@ app.patch('/api/dp/colaborador/:id/mover', async (req, res, next) => {
     res.json(c);
   } catch (e) { next(e); }
 });
+app.delete('/api/dp/colaborador/:id', async (req, res, next) => {
+  try { res.json(await db.deleteColaborador(req.params.id)); }
+  catch (e) { next(e); }
+});
 
 app.patch('/api/financeiro/obra/:id/mover', async (req, res, next) => {
   try {
