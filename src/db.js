@@ -202,7 +202,7 @@ export const db = {
   },
   async createObra(o) {
     const base = { custo_insumos: 0, custo_mao_obra: 0, progresso: 0, coluna_kanban: 'aprovado', ...o };
-    if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').insert(base).select().single(); if (error) throw error; return data; }
+    if (USING_SUPABASE) { return insertSafe('obras_financeiro', base); }   // tolerante: ignora coluna ausente (ex.: categoria_servico sem migration)
     const novo = { id: uid(), ...base }; mock.obras.push(novo); return novo;
   },
   async getObra(id) {
@@ -210,7 +210,7 @@ export const db = {
     return mock.obras.find(o => o.id === id) || null;
   },
   async updateObra(id, patch) {
-    if (USING_SUPABASE) { const { data, error } = await sb('obras_financeiro').update(patch).eq('id', id).select().single(); if (error) throw error; return data; }
+    if (USING_SUPABASE) { return updateSafeById('obras_financeiro', id, patch); }   // tolerante: ignora coluna que ainda não existe (ex.: categoria_servico sem migration)
     const o = mock.obras.find(x => x.id === id); if (!o) return null; Object.assign(o, patch); return o;
   },
   // ---- Medições / Notas recebidas por obra ----
