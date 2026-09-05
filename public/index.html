@@ -1419,6 +1419,18 @@
   </div>
 </div>
 
+<!-- MODAL: Marcar falta (clicando, sem arrastar) -->
+<div class="overlay" id="ov-falta-pick">
+  <div class="modal">
+    <header><h3>Marcar falta</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div class="field"><label>Quem faltou hoje</label><select id="fpick-colab"></select></div>
+      <div class="login-hint" style="text-align:left">Entra na coluna <b>FALTA</b> do dia. O valor do desconto você lança depois na <b>Folha</b>.</div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="fpick-confirm">Marcar falta</button></footer>
+  </div>
+</div>
+
 <!-- MODAL: Funções & Diárias (editável) -->
 <div class="overlay" id="ov-funcoes">
   <div class="modal">
@@ -2540,7 +2552,9 @@
       VT_STATE.resumo.balanco_mensal=+((VT_STATE.resumo.balanco_mensal||0)+delta).toFixed(2);vtRecalc();
       clearTimeout(vtDebounce[l.colaborador_id]);vtDebounce[l.colaborador_id]=setTimeout(()=>vtSave(l),500);
     }else if(e.target.dataset.f==='obs'){l.observacao=e.target.value;
-      clearTimeout(vtDebounce['o'+l.colaborador_id]);vtDebounce['o'+l.colaborador_id]=setTimeout(()=>vtSave(l),700);}
+      clearTimeout(vtDebounce['o'+l.colaborador_id]);vtDebounce['o'+l.colaborador_id]=setTimeout(()=>{
+        api('/api/dp/vt/observacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({colaborador_id:l.colaborador_id,observacao:l.observacao})}).catch(err=>{showToast('Erro ao salvar observação');console.error(err);});
+      },700);}
     else if(e.target.dataset.f==='cart'){l.carteirinha=e.target.value;
       clearTimeout(vtDebounce['c'+l.colaborador_id]);vtDebounce['c'+l.colaborador_id]=setTimeout(()=>{
         api('/api/dp/vt/carteirinha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({colaborador_id:l.colaborador_id,carteirinha:l.carteirinha})}).catch(err=>{showToast('Erro ao salvar carteirinha');console.error(err);});
@@ -3233,7 +3247,7 @@
         <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(f.colaborador_nome||'')}</h4><button class="doc-cloud" data-delfalta="${f.id}" title="Tirar falta" style="padding:2px">${DE_TRASH}</button></div>
         ${f.valor?`<div class="tags" style="margin-top:6px"><span class="tag" style="background:var(--danger);color:#fff">−${brl(f.valor)}</span></div>`:`<div style="margin-top:6px;font-size:11px;color:var(--ink-3)">valor a lançar na folha</div>`}</div>`).join('');
     const faltaCol=`<div class="col cron-col cron-falta" data-falta="1"><div class="colhead"><span class="swatch" style="background:var(--danger)"></span><div style="flex:1;min-width:0"><h3 style="margin:0">FALTA</h3><div class="cron-resp">quem não veio hoje</div></div><span class="count">${(CRON.faltas||[]).length}</span></div>
-      <div class="cards">${faltaCards}<div class="addcard" style="cursor:default;color:var(--ink-3);border-style:dashed">arraste o nome aqui</div></div></div>`;
+      <div class="cards">${faltaCards}<button class="addcard" data-addfalta="1">+ Marcar falta</button></div></div>`;
     const obrasHtml=(CRON.obras||[]).map(o=>{
         const alocs=CRON.alocacoes.filter(a=>a.obra_id===o.id);
         const cards=alocs.map(a=>`<div class="card" style="cursor:pointer" data-editaloc="${a.id}">
@@ -3261,6 +3275,7 @@
       try{await api('/api/cronograma/falta/'+b.dataset.delfalta,{method:'DELETE'});showToast('Falta removida');loadCronograma();}
       catch(err){showToast('Erro');console.error(err);}}));
     board.querySelectorAll('[data-alocobra]').forEach(b=>b.addEventListener('click',()=>abrirAlocar(null,b.dataset.alocobra,null)));
+    board.querySelectorAll('[data-addfalta]').forEach(b=>b.addEventListener('click',abrirFaltaPick));
     board.querySelectorAll('[data-editaloc]').forEach(c=>c.addEventListener('click',e=>{if(e.target.closest('[data-delaloc]'))return;const a=CRON.alocacoes.find(x=>x.id===c.dataset.editaloc);abrirAlocar(a.colaborador_id,a.obra_id,a);}));
     board.querySelectorAll('[data-delaloc]').forEach(b=>b.addEventListener('click',async e=>{
       e.stopPropagation();if(!confirm('Remover esta alocação?'))return;
@@ -3272,6 +3287,15 @@
       showToast('Falta registrada — lance o valor na Folha de Pagamento');loadCronograma();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Falta: '+(m||'erro'));console.error(err);}
   }
+  function abrirFaltaPick(){
+    const sel=document.getElementById('fpick-colab');
+    sel.innerHTML=(CRON.colaboradores||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    openModal('ov-falta-pick');
+  }
+  document.getElementById('fpick-confirm').addEventListener('click',()=>{
+    const id=document.getElementById('fpick-colab').value;if(!id)return;
+    document.getElementById('ov-falta-pick').classList.remove('open');marcarFalta(id);
+  });
   function abrirAlocar(colabId,obraId,aloc){
     const f=document.getElementById('form-alocar');f.reset();
     document.getElementById('alocar-id').value=aloc?aloc.id:'';

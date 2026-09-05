@@ -735,7 +735,7 @@ app.get('/api/cronograma', async (req, res, next) => {
       db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }), db.listFaltas(data),
     ]);
     // Cronograma do Adelino: só obras de campo (Fulget/Concreto/Cimento). Raspagem e Limpeza NÃO aparecem.
-    const FORA_CRONOGRAMA = ['RASPAGEM', 'LIMPEZA'];
+    const FORA_CRONOGRAMA = ['RASPAGEM'];   // só Raspagem fica fora; Limpeza aparece no cronograma
     const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
       .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null }));
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
@@ -924,6 +924,15 @@ app.post('/api/dp/vt/carteirinha', async (req, res, next) => {
     const { colaborador_id, carteirinha } = req.body;
     if (!colaborador_id) return res.status(400).json({ erro: 'colaborador_id é obrigatório' });
     res.json(await db.setCarteirinhaVT(colaborador_id, carteirinha));
+  } catch (e) { next(e); }
+});
+// Observação do VT (persiste no colaborador, entre semanas)
+app.use('/api/dp/vt/observacao', requireAuth);
+app.post('/api/dp/vt/observacao', async (req, res, next) => {
+  try {
+    const { colaborador_id, observacao } = req.body;
+    if (!colaborador_id) return res.status(400).json({ erro: 'colaborador_id é obrigatório' });
+    res.json(await db.setObservacaoVT(colaborador_id, observacao));
   } catch (e) { next(e); }
 });
 

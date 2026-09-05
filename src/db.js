@@ -1265,11 +1265,14 @@ export const db = {
   // VT semanal (edição inline): lista pré-carregada de ativos + resumo dos 5 cards
   async getVTSemana(ano_mes, semana) {
     if (!USING_SUPABASE) return { linhas: [], resumo: {} };
-    const [{ data: colabs }, { data: semRows }, { data: mesRows }] = await Promise.all([
-      sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt').neq('status_colaborador', 'DESLIGADO').order('nome'),
+    const [colabsR, { data: semRows }, { data: mesRows }] = await Promise.all([
+      sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt,observacao_vt').neq('status_colaborador', 'DESLIGADO').order('nome'),
       sb('vt_semanal').select('*').eq('ano_mes', ano_mes).eq('semana', semana),
       sb('vt_semanal').select('qtd_viagens,valor_passagem').eq('ano_mes', ano_mes),
     ]);
+    // se a coluna observacao_vt ainda não existe (migration não rodada), refaz sem ela
+    let colabs = colabsR.data;
+    if (colabsR.error) { const alt = await sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt').neq('status_colaborador', 'DESLIGADO').order('nome'); colabs = alt.data; }
     const porColab = Object.fromEntries((semRows || []).map(r => [r.colaborador_id, r]));
     const linhas = (colabs || []).map(c => {
       const r = porColab[c.id];
@@ -1278,7 +1281,7 @@ export const db = {
       return {
         colaborador_id: c.id, nome: c.nome, carteirinha: c.carteirinha_vt || '',
         qtd_viagens: qtd, valor_passagem: vp, total: +(qtd * vp).toFixed(2),
-        forma_pagamento: r ? r.forma_pagamento : 'CARTEIRINHA', observacao: r ? r.observacao : '',
+        forma_pagamento: r ? r.forma_pagamento : 'CARTEIRINHA', observacao: c.observacao_vt || '',
       };
     });
     const soma = (f) => linhas.filter(f).reduce((s, l) => s + l.total, 0);
@@ -1308,6 +1311,11 @@ export const db = {
     const { data, error } = await sb('colaboradores').update({ carteirinha_vt: carteirinha || null }).eq('id', colaborador_id).select('id,carteirinha_vt').single();
     if (error) throw error;
     return data;
+  },
+  // Observação do VT fixada no colaborador (persiste entre semanas; editável/apagável)
+  async setObservacaoVT(colaborador_id, observacao) {
+    if (!USING_SUPABASE) return { ok: true };
+    return updateSafeById('colaboradores', colaborador_id, { observacao_vt: observacao || null });
   },
   async upsertRegistroVT({ colaborador_id, data_registro, qtd_viagens, forma_pagamento, observacao }) {
     const dia = data_registro || new Date().toISOString().slice(0, 10);
