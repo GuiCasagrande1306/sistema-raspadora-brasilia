@@ -741,7 +741,8 @@ app.get('/api/cronograma', async (req, res, next) => {
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
-      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo }));
+      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo }))
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor }));
     const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
     res.json({ data, obras: obrasAtivas, colaboradores: colabs, alocacoes, faltas, total });
