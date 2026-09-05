@@ -1830,14 +1830,22 @@
         <div class="orc-block" style="margin-top:12px">
           <div class="orc-block-head"><span class="orc-marca">EXECUÇÃO</span></div>
           <div class="grid2">
-            <div class="field"><label>Data de início</label><input name="data_inicio" id="oe-inicio" type="date"></div>
+            <div class="field"><label>Data de início <span style="color:var(--ink-3);font-weight:400">(obra corrida)</span></label><input name="data_inicio" id="oe-inicio" type="date"></div>
             <div class="field"><label>Data prevista de término</label><input name="data_prevista_termino" id="oe-termino" type="date"></div>
           </div>
+          <div class="field">
+            <label>Dias de serviço <span style="color:var(--ink-3);font-weight:400">— quando NÃO é corrido (ex.: concreto em dias variados)</span></label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="date" id="oe-dia-servico" style="max-width:170px">
+              <button type="button" class="btn-ghost" id="oe-add-dia" style="min-height:38px;padding:0 12px;white-space:nowrap">+ dia</button>
+            </div>
+            <div id="oe-dias-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
+          </div>
           <div class="grid2">
-            <div class="field"><label>Responsável técnico</label><input name="responsavel" id="oe-responsavel" placeholder="Quem toca a obra"></div>
+            <div class="field"><label>Encarregado da obra <span style="color:var(--ink-3);font-weight:400">(quem toca)</span></label><input name="responsavel" id="oe-responsavel" placeholder="Ex.: Márcio, Lorena…"></div>
             <div class="field"><label>Etapa</label><select name="coluna_kanban" id="oe-etapa"><option value="aprovado">Aguardando Sinal / Entrada</option><option value="execucao">Em Execução</option><option value="afericao">Aferição de Margem</option><option value="liquidado">Concluído / Liquidado</option></select></div>
           </div>
-          <div class="field"><label>Equipe responsável</label><input name="equipe_responsavel" id="oe-equipe" placeholder="Ex.: Diego, Cleber, Luiz"></div>
+          <div class="dv" style="font-size:11px;color:var(--ink-3);margin:-2px 0 6px">O <b>encarregado</b> é só pra identificar a obra no <b>Cronograma</b> (não define comissão). A comissão é por m² de cada colaborador, na Folha.</div>
           <div class="field"><label>Andamento da obra: <b id="oe-prog-lbl">0%</b></label><input name="progresso" id="oe-progresso" type="range" min="0" max="100" step="5" style="width:100%"></div>
         </div>
 
@@ -2112,7 +2120,9 @@
     f.cliente.value=o.cliente||'';f.endereco.value=o.endereco||'';f.tipo_piso.value=o.tipo_piso||'';f.categoria_servico.value=o.categoria_servico||'';
     f.metragem_m2.value=o.metragem_m2||'';f.valor_contrato.value=o.valor_contrato?(o.valor_contrato/100).toFixed(2):'';
     f.data_inicio.value=o.data_inicio||'';f.data_prevista_termino.value=o.data_prevista_termino||'';
-    f.responsavel.value=o.responsavel||'';f.equipe_responsavel.value=o.equipe_responsavel||'';
+    f.responsavel.value=o.responsavel||'';
+    obraDias=Array.isArray(o.dias_servico)?o.dias_servico.slice().sort():[];renderObraDias();
+    document.getElementById('oe-dia-servico').value='';
     f.coluna_kanban.value=o.coluna_kanban||'aprovado';f.status_pagamento.value=o.status_pagamento||'';
     const prog=o.progresso||0;f.progresso.value=prog;document.getElementById('oe-prog-lbl').textContent=prog+'%';
     document.getElementById('oe-insumos').textContent=brl(o.custo_insumos||0);
@@ -2214,11 +2224,23 @@
     const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null,
       metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,
       data_inicio:f.data_inicio.value||null,data_prevista_termino:f.data_prevista_termino.value||null,
-      responsavel:f.responsavel.value||null,equipe_responsavel:f.equipe_responsavel.value||null,
+      responsavel:f.responsavel.value||null,dias_servico:obraDias,
       coluna_kanban:f.coluna_kanban.value,progresso:parseInt(f.progresso.value,10)||0,status_pagamento:f.status_pagamento.value||null};
     try{await api('/api/financeiro/obra/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-obra-exec').classList.remove('open');await loadFin();showToast('Obra atualizada');
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Obra: '+(m||'erro'));console.error(err);}});
+  // dias de serviço (obras de dias variáveis, ex.: concreto)
+  let obraDias=[];
+  function renderObraDias(){
+    const el=document.getElementById('oe-dias-chips');
+    el.innerHTML=obraDias.length?obraDias.map(d=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px">${dtBR(d)}<button type="button" data-diarm="${d}" style="border:0;background:none;cursor:pointer;color:var(--danger);font-weight:800;margin-left:4px">×</button></span>`).join(''):'<span class="dv" style="color:var(--ink-3);font-size:11.5px">Nenhum dia avulso. Use "+ dia" só se a obra NÃO for corrida (senão preencha início/término acima).</span>';
+    el.querySelectorAll('[data-diarm]').forEach(b=>b.addEventListener('click',()=>{obraDias=obraDias.filter(x=>x!==b.dataset.diarm);renderObraDias();}));
+  }
+  document.getElementById('oe-add-dia').addEventListener('click',()=>{
+    const inp=document.getElementById('oe-dia-servico');const d=inp.value;if(!d){showToast('Escolha uma data');return;}
+    if(!obraDias.includes(d)){obraDias.push(d);obraDias.sort();renderObraDias();}
+    const nx=new Date(d+'T00:00:00');nx.setDate(nx.getDate()+1);inp.value=nx.toISOString().slice(0,10);
+  });
   document.getElementById('form-obra').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
     if(!f.cliente.value.trim()){showToast('Informe o cliente');return;}

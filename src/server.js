@@ -1058,6 +1058,7 @@ app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
     for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
+    if (req.body.dias_servico !== undefined) patch.dias_servico = Array.isArray(req.body.dias_servico) ? [...new Set(req.body.dias_servico.filter(Boolean))].sort() : [];
     if (req.body.metragem_m2 !== undefined) patch.metragem_m2 = Number(req.body.metragem_m2) || 0;
     if (req.body.valor_contrato !== undefined) patch.valor_contrato = Math.round((Number(req.body.valor_contrato) || 0) * 100);
     if (req.body.progresso !== undefined) patch.progresso = Math.max(0, Math.min(100, Math.round(Number(req.body.progresso) || 0)));
