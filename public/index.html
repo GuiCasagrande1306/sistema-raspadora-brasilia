@@ -3259,7 +3259,7 @@
           <div class="cards">${cards}<button class="addcard" data-alocobra="${o.id}">+ Alocar</button></div>
           <div style="padding:4px 6px 0;font-size:11.5px;color:var(--ink-3)">Diárias: ${brl(sub)}</div></div>`;
       }).join('');
-    board.innerHTML=((CRON.obras||[]).length?obrasHtml:'<div class="orc-empty" style="grid-column:1/-1">Nenhuma obra ativa. Cadastre uma obra em <b>Obras &amp; Resultado</b> (ou feche um lead). A coluna FALTA continua disponível abaixo.</div>')+faltaCol;
+    board.innerHTML=faltaCol+((CRON.obras||[]).length?obrasHtml:'<div class="orc-empty" style="grid-column:1/-1">Nenhuma obra ativa. Cadastre uma obra em <b>Obras &amp; Resultado</b> (ou feche um lead).</div>');
     // drag da equipe
     equipe.querySelectorAll('[data-dragcolab]').forEach(t=>{
       t.addEventListener('dragstart',()=>{cronDragColab=t.dataset.dragcolab;t.classList.add('dragging');});
