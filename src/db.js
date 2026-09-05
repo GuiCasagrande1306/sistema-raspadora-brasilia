@@ -1557,7 +1557,8 @@ export const db = {
         lancamentos: p.lancamentos.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
         detalhe: p.detalhe.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
       };
-    }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto || (l.faltas_itens && l.faltas_itens.length));
+    }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto || (l.faltas_itens && l.faltas_itens.length))
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     const totais = {
       a_pagar: linhas.reduce((s, l) => s + l.total_liquido, 0),
       comissoes: linhas.reduce((s, l) => s + l.comissao, 0),
