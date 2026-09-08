@@ -1076,21 +1076,13 @@ export const db = {
     return [...mock.servicosCatalogo].sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
   },
   async createServico(s) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('servicos_catalogo').insert(s).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return insertSafe('servicos_catalogo', s); }   // tolerante: ignora metragem_minima/valor_fixo se a coluna não existir
     const novo = { id: uid(), criado_em: new Date().toISOString(), ...s };
     mock.servicosCatalogo.push(novo);
     return novo;
   },
   async updateServico(id, patch) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('servicos_catalogo').update(patch).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return updateSafeById('servicos_catalogo', id, patch); }
     const s = mock.servicosCatalogo.find(x => x.id === id);
     if (!s) return null; Object.assign(s, patch); return s;
   },

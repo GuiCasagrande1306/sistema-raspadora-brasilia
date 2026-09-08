@@ -221,7 +221,12 @@ const prepararItens = (itens) => {
     const area = Number(i.area_m2) || 0;
     const unit = Number(i.valor_unit) || 0;
     const unidade = ['m2', 'ml', 'm3'].includes(i.unidade) ? i.unidade : 'm2';
-    return { descricao: String(i.descricao || '').slice(0, 200), area_m2: area, unidade, valor_unit: unit, total: Math.round(area * unit * 100) / 100 };
+    const metragem_minima = Number(i.metragem_minima) || 0;
+    const valor_fixo = Number(i.valor_fixo) || 0;
+    // abaixo da metragem mínima cobra o valor fixo do serviço (mínimo por causa das máquinas)
+    const usaFixo = metragem_minima > 0 && valor_fixo > 0 && area < metragem_minima;
+    const total = usaFixo ? valor_fixo : Math.round(area * unit * 100) / 100;
+    return { descricao: String(i.descricao || '').slice(0, 200), area_m2: area, unidade, valor_unit: unit, metragem_minima, valor_fixo, total };
   });
   const valor_total = Math.round(norm.reduce((s, i) => s + i.total, 0) * 100) / 100;
   return { itens: norm, valor_total };
@@ -827,6 +832,8 @@ app.post('/api/catalogo-servicos', async (req, res, next) => {
       nome: req.body.nome, descricao: req.body.descricao || null,
       unidade: UNID_SERV.includes(req.body.unidade) ? req.body.unidade : 'm2',
       preco: Number(req.body.preco) || 0,
+      metragem_minima: Number(req.body.metragem_minima) || 0,
+      valor_fixo: Number(req.body.valor_fixo) || 0,
     }));
   } catch (e) { next(e); }
 });
@@ -836,6 +843,8 @@ app.patch('/api/catalogo-servicos/:id', async (req, res, next) => {
     for (const k of ['nome', 'descricao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.unidade !== undefined) patch.unidade = UNID_SERV.includes(req.body.unidade) ? req.body.unidade : 'm2';
     if (req.body.preco !== undefined) patch.preco = Number(req.body.preco) || 0;
+    if (req.body.metragem_minima !== undefined) patch.metragem_minima = Number(req.body.metragem_minima) || 0;
+    if (req.body.valor_fixo !== undefined) patch.valor_fixo = Number(req.body.valor_fixo) || 0;
     const s = await db.updateServico(req.params.id, patch);
     if (!s) return res.status(404).json({ erro: 'serviço não encontrado' });
     res.json(s);
