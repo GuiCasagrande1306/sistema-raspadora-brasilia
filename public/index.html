@@ -555,6 +555,8 @@
   #orc-outro-txt{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);font-size:13px;font-family:inherit;}
   .orc-item-med{display:grid;grid-template-columns:1fr 180px;gap:12px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--surface-2);}
   .orc-item-med textarea{width:100%;min-height:120px;padding:10px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13.5px;line-height:1.5;font-family:inherit;resize:vertical;}
+  /* descrições de serviço/proposta: Calibri, mais largas e altas */
+  .txt-desc{font-family:'Calibri','Carlito','Segoe UI',Arial,sans-serif!important;font-size:14px;line-height:1.5;min-height:110px;width:100%;resize:vertical;padding:10px 12px;}
   .orc-item-med textarea:focus,.orc-item-med input:focus{outline:2px solid var(--laranja);outline-offset:0;border-color:transparent;}
   .orc-area{display:flex;flex-direction:column;gap:6px;}
   .orc-area label{font-size:11px;font-weight:700;color:var(--ink-2);}
@@ -1768,7 +1770,7 @@
           <div class="field"><label>Unidade</label><select id="serv-unid"><option value="m2">m²</option><option value="ml">metro linear (ml)</option><option value="m3">m³</option></select></div>
           <div class="field" style="display:flex;flex-direction:column;justify-content:flex-end"><button type="button" class="primary" id="btn-add-servico" style="min-height:44px">+ Adicionar serviço</button></div>
         </div>
-        <div class="field"><label>Descrição padrão (entra na proposta)</label><textarea id="serv-desc" rows="2" placeholder="Texto que descreve o serviço na proposta…"></textarea></div>
+        <div class="field"><label>Descrição padrão (entra na proposta)</label><textarea id="serv-desc" class="txt-desc" rows="3" placeholder="Texto que descreve o serviço na proposta…"></textarea></div>
       </div>
     </div>
     <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
@@ -2359,7 +2361,7 @@
   function itemRow(it={descricao:'',area_m2:'',unidade:'m2'}){
     const div=document.createElement('div');div.className='orc-item-med';
     const u=it.unidade||'m2';
-    div.innerHTML=`<textarea name="descricao" rows="6" style="min-height:120px;font-size:13.5px;line-height:1.5;resize:vertical;width:100%" placeholder="Descreva o espaço, medidas, detalhes técnicos e observações da medição…">${esc(it.descricao||'')}</textarea>
+    div.innerHTML=`<textarea name="descricao" class="txt-desc" rows="6" style="min-height:130px" placeholder="Descreva o espaço, medidas, detalhes técnicos e observações da medição…">${esc(it.descricao||'')}</textarea>
       <div class="orc-area"><label>Medida
         <select name="unidade" style="margin-left:6px;font-size:11px;padding:2px 4px">
           <option value="m2"${u==='m2'?' selected':''}>m²</option>
@@ -3041,7 +3043,7 @@
         <select data-sv-unid="${s.id}" style="width:120px">${['m2','ml','m3'].map(u=>`<option value="${u}"${s.unidade===u?' selected':''}>${UNI_LABEL[u]}</option>`).join('')}</select>
         <input type="number" step="0.01" min="0" value="${s.preco||''}" data-sv-preco="${s.id}" style="width:110px" placeholder="R$/un">
         <button class="doc-cloud" data-sv-del="${s.id}" title="Excluir">${DE_TRASH}</button></div>
-      <textarea data-sv-desc="${s.id}" rows="2" style="width:100%;margin-top:8px" placeholder="Descrição padrão">${esc(s.descricao||'')}</textarea></div>`).join('');
+      <textarea data-sv-desc="${s.id}" class="txt-desc" rows="3" style="margin-top:8px" placeholder="Descrição padrão">${esc(s.descricao||'')}</textarea></div>`).join('');
     el.querySelectorAll('[data-sv-nome],[data-sv-unid],[data-sv-preco],[data-sv-desc]').forEach(i=>{
       const id=i.dataset.svNome||i.dataset.svUnid||i.dataset.svPreco||i.dataset.svDesc;
       i.addEventListener('change',()=>salvarServico(id));
@@ -3077,7 +3079,7 @@
     const catOpts='<option value="">— catálogo —</option>'+SERVICOS.map(s=>`<option value="${s.id}">${esc(s.nome)} · ${brlN(s.preco||0)}/${UNI_LABEL[s.unidade]||'m²'}</option>`).join('');
     box.innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr><th style="min-width:220px">Item / descrição</th><th class="num">Medida</th><th>R$ / unid.</th><th class="num">Total</th></tr></thead>
       <tbody>${itens.map((it,i)=>`<tr>
-        <td><textarea class="prop-desc" data-pd="${i}" rows="2" style="width:100%;font-size:12.5px" placeholder="Descrição do item">${esc(it.descricao||'')}</textarea>
+        <td><textarea class="prop-desc txt-desc" data-pd="${i}" rows="4" placeholder="Descrição do item">${esc(it.descricao||'')}</textarea>
           ${SERVICOS.length?`<select class="prop-cat" data-pc="${i}" style="width:100%;margin-top:4px;font-size:11.5px">${catOpts}</select>`:''}</td>
         <td class="num">${it.area_m2||0} ${UNI_LABEL[it.unidade]||'m²'}</td>
         <td><input class="vte-inp" type="number" step="0.01" min="0" data-pi="${i}" value="${it.valor_unit||''}" placeholder="0,00"></td>
