@@ -4066,7 +4066,7 @@
   });
 
   // ---------- BANCOS: abas (Contas & Fluxo · Pagamento Diário · Boletos) ----------
-  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['INSUMO','Insumo'],['DIARIA','Diária'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['OUTRO','Outro']];
+  const CAT_GASTO_OPTS=[['ALIMENTACAO','Alimentação'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto de máquina'],['MANUTENCAO_CARRO','Manutenção de carros'],['FORNECEDOR','Fornecedor'],['FOLHA','Folha'],['IMPOSTO','Imposto'],['INSUMO','Insumo'],['DIARIA','Diária'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['OUTRO','Outro']];
   const CAT_LABEL=Object.fromEntries(CAT_GASTO_OPTS);
   document.getElementById('boleto-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   document.getElementById('lancdia-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
