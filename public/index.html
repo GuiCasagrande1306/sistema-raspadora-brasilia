@@ -1459,8 +1459,9 @@
 <!-- MODAL: Lançamento diário -->
 <div class="overlay" id="ov-lancdia">
   <div class="modal">
-    <header><h3>Novo lançamento do dia</h3><button class="x" data-close>×</button></header>
+    <header><h3 id="lancdia-titulo">Novo lançamento do dia</h3><button class="x" data-close>×</button></header>
     <form id="form-lancdia">
+      <input type="hidden" id="lancdia-id">
       <div class="body">
         <div class="grid2">
           <div class="field"><label>Data</label><input name="data" type="date" required></div>
@@ -4225,6 +4226,7 @@
           ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
           ${i.origem==='BOLETO'&&!i.fixo_id?`<button class="btn-ghost" data-pd-fixar="${i.id}" title="Transformar em pagamento fixo mensal">★ Fixar</button>`:''}
           ${i.origem==='BOLETO'&&i.fixo_id?'<span class="tag t-lar" title="Já é pagamento fixo">★ fixo</span>':''}
+          <button class="btn-ghost" data-pd-edit="${i.id}" data-pd-og="${i.origem}" title="Editar (categoria, valor, data…)" style="padding:4px 10px;font-size:12px">✏️ Editar</button>
           <button class="doc-cloud" data-pd-comp="${base}/comprovante" title="Anexar comprovante">${UP_SVG}</button>
           <button class="doc-cloud" data-pd-delu="${base}" title="Excluir">${DE_TRASH}</button></div></div>`;
     }).join('')+'</div>';
@@ -4240,16 +4242,37 @@
       if(!confirm('Transformar em pagamento fixo mensal? A partir do próximo mês ele entra sozinho.'))return;
       try{const r=await api('/api/boletos/'+b.dataset.pdFixar+'/fixar',{method:'POST'});showToast(r.ja?'Este boleto já era fixo':'Virou pagamento fixo ✓');loadPagDiario();}
       catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixar: '+(m||'erro'));console.error(e);}}));
+    cont.querySelectorAll('[data-pd-edit]').forEach(b=>b.addEventListener('click',()=>{
+      const it=(PD_STATE.itens||[]).find(x=>String(x.id)===b.dataset.pdEdit&&x.origem===b.dataset.pdOg);if(!it)return;
+      if(it.origem==='LANCAMENTO'){
+        const f=document.getElementById('form-lancdia');f.reset();
+        document.getElementById('lancdia-id').value=it.id;
+        document.getElementById('lancdia-titulo').textContent='Editar lançamento';
+        f.data.value=it.data||'';f.valor.value=it.valor?(it.valor/100).toFixed(2):'';f.descricao.value=it.descricao||'';
+        document.getElementById('lancdia-cat').value=it.categoria||'OUTRO';f.forma.value=it.forma||'PIX';
+        document.getElementById('lancdia-outro').value=it.categoria_custom||'';document.getElementById('lancdia-pago').checked=!!it.pago;
+        lancdiaOutroToggle();openModal('ov-lancdia');
+      }else{
+        const f=document.getElementById('form-boleto');f.reset();
+        document.getElementById('boleto-id').value=it.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
+        f.descricao.value=it.descricao||'';f.fornecedor.value=it.fornecedor||'';f.valor.value=it.valor?(it.valor/100).toFixed(2):'';f.vencimento.value=it.vencimento||'';
+        f.categoria.value=it.categoria||'OUTRO';document.getElementById('boleto-outro').value=it.categoria_custom||'';boletoOutroToggle();
+        openModal('ov-boleto');
+      }
+    }));
   }
   document.getElementById('pd-data').addEventListener('change',loadPagDiario);
   const lancdiaOutroToggle=()=>{document.getElementById('lancdia-outro-wrap').style.display=document.getElementById('lancdia-cat').value==='OUTRO'?'':'none';};
   document.getElementById('lancdia-cat').addEventListener('change',lancdiaOutroToggle);
-  document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;lancdiaOutroToggle();openModal('ov-lancdia');});
+  document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.getElementById('lancdia-id').value='';document.getElementById('lancdia-titulo').textContent='Novo lançamento do dia';document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;lancdiaOutroToggle();openModal('ov-lancdia');});
   document.getElementById('form-lancdia').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
+    const id=document.getElementById('lancdia-id').value;
     const payload={data:f.data.value,descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('lancdia-outro').value||null):null,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
-    try{await api('/api/lancamentos-diarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-lancdia').classList.remove('open');showToast('Lançamento salvo');loadPagDiario();
+    try{
+      if(id)await api('/api/lancamentos-diarios/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      else await api('/api/lancamentos-diarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-lancdia').classList.remove('open');showToast(id?'Lançamento atualizado':'Lançamento salvo');loadPagDiario();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Lançamento: '+(m||'erro'));console.error(err);}});
 
   // ---- Gastos (pizza por categoria) ----

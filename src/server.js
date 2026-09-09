@@ -873,7 +873,7 @@ app.patch('/api/lancamentos-diarios/:id', async (req, res, next) => {
     const patch = {};
     for (const k of ['descricao', 'data', 'forma', 'data_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
-    if (req.body.categoria !== undefined) patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO';
+    if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = patch.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
     if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
     const l = await db.updateLancDiario(req.params.id, patch);
     if (!l) return res.status(404).json({ erro: 'lançamento não encontrado' });
