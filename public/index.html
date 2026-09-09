@@ -1332,6 +1332,8 @@
           <div id="orc-itens-body"></div>
         </div>
 
+        <div class="field"><label>Observações da medição <span style="color:var(--ink-3);font-weight:400">(medidas, detalhes do local, condições)</span></label><textarea id="orc-obs" class="txt-desc" rows="4" placeholder="Ex.: piso com desnível na entrada, medir de novo a área do fundo, etc."></textarea></div>
+
         <div class="field"><label>Fotos e vídeos da medição</label>
           <input type="file" id="orc-midias" multiple accept="image/*,video/*" capture="environment">
           <span class="hint">Tire foto/filme no local ou envie da galeria — múltiplos arquivos (imagens/MP4/MOV).</span>
@@ -2399,6 +2401,7 @@
     f.cliente_nome.value=orc?.cliente_nome||'';f.cliente_fone.value=orc?.cliente_fone||'';
     f.endereco_obra.value=orc?.endereco_obra||'';f.data_orcamento.value=(orc?.data_orcamento)||hoje();
     f.responsavel_tecnico.value=orc?.responsavel_tecnico||'';f.google_maps_link.value=orc?.google_maps_link||'';
+    document.getElementById('orc-obs').value=orc?.observacoes_medicao||'';
     const servs=(orc?.servico_tipo||'').split(',').map(s=>s.trim()).filter(Boolean);
     document.querySelectorAll('#orc-servicos input').forEach(cb=>cb.checked=servs.includes(cb.value));
     const outros=servs.filter(s=>!SERV_FIXOS.includes(s)),outroTxt=document.getElementById('orc-outro-txt');
@@ -2431,7 +2434,7 @@
     try{
       if(orcEditId){
         await api('/api/orcamentos/'+orcEditId,{method:'PATCH',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({cliente_nome:f.cliente_nome.value,cliente_fone:f.cliente_fone.value||null,endereco_obra:f.endereco_obra.value||null,data_orcamento:f.data_orcamento.value||null,servico_tipo,itens,responsavel_tecnico:f.responsavel_tecnico.value||null,google_maps_link:f.google_maps_link.value||null})});
+          body:JSON.stringify({cliente_nome:f.cliente_nome.value,cliente_fone:f.cliente_fone.value||null,endereco_obra:f.endereco_obra.value||null,data_orcamento:f.data_orcamento.value||null,servico_tipo,itens,responsavel_tecnico:f.responsavel_tecnico.value||null,google_maps_link:f.google_maps_link.value||null,observacoes_medicao:document.getElementById('orc-obs').value||null})});
         document.getElementById('ov-orc').classList.remove('open');await loadOrc();showToast('Medição atualizada');
       }else{
         const fd=new FormData();
@@ -2442,6 +2445,7 @@
         fd.append('servico_tipo',servico_tipo);fd.append('itens',JSON.stringify(itens));
         if(f.responsavel_tecnico.value)fd.append('responsavel_tecnico',f.responsavel_tecnico.value);
         if(f.google_maps_link.value)fd.append('google_maps_link',f.google_maps_link.value);
+        if(document.getElementById('orc-obs').value)fd.append('observacoes_medicao',document.getElementById('orc-obs').value);
         [...document.getElementById('orc-midias').files].forEach(fl=>fd.append('midias',fl));
         const r=await fetch('/api/orcamentos',{method:'POST',body:fd,headers:authHeaders()});
         if(!r.ok)throw new Error(await r.text());
@@ -3139,7 +3143,7 @@
     document.getElementById('prop-info').innerHTML=[orc.servico_tipo,orc.endereco_obra,orc.responsavel_tecnico?('Resp.: '+esc(orc.responsavel_tecnico)):''].filter(Boolean).map(esc).join(' · ');
     document.getElementById('prop-obs').value=orc.observacoes||'';
     document.getElementById('prop-global').value='';
-    document.getElementById('prop-enviar').textContent=orc.status==='PROPOSTA_ENVIADA'?'Reenviar proposta':'Enviar proposta';
+    document.getElementById('prop-enviar').textContent=orc.status==='PROPOSTA_ENVIADA'?'✓ Enviada (interno)':'Marcar como Enviada';
     document.getElementById('prop-enviar').style.display=orc.status==='APROVADO'?'none':'';
     document.getElementById('prop-aprovar').style.display=orc.status==='APROVADO'?'none':'';
     propRenderItens();
@@ -3157,12 +3161,12 @@
       await api('/api/orcamentos/'+propAtual.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       document.getElementById('ov-proposta').classList.remove('open');
       await loadPropostas();atualizarBadges();
-      showToast(novoStatus==='PROPOSTA_ENVIADA'?'Proposta enviada':(novoStatus==='APROVADO'?'Proposta aprovada — vira obra':'Preços salvos'));
+      showToast(novoStatus==='PROPOSTA_ENVIADA'?'Marcada como Enviada (controle interno)':(novoStatus==='APROVADO'?'Proposta aprovada — vira obra':'Preços salvos'));
     }catch(err){showToast('Erro ao salvar proposta');console.error(err);}
   }
   document.getElementById('prop-salvar').addEventListener('click',()=>propSalvar(null));
   document.getElementById('prop-aprovar').addEventListener('click',()=>{if(confirm('Marcar esta proposta como APROVADA? (o cliente aceitou)'))propSalvar('APROVADO');});
-  document.getElementById('prop-enviar').addEventListener('click',abrirEnviar);
+  document.getElementById('prop-enviar').addEventListener('click',()=>propSalvar('PROPOSTA_ENVIADA'));  // controle interno: só muda o status, não envia ao cliente
   // ---- Envio da proposta (WhatsApp / E-mail) ----
   let envCanal='whatsapp';
   function msgPadrao(nome){const primeiro=(nome||'').trim().split(/\s+/)[0]||'';return `${primeiro?primeiro+', ':''}segue a proposta para análise. Qualquer dúvida, fico à disposição!`;}

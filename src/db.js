@@ -639,11 +639,7 @@ export const db = {
     return mock.orcamentos.find(o => o.id === id) || null;
   },
   async createOrcamento(o) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('orcamentos').insert(o).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return insertSafe('orcamentos', o); }   // tolerante: ignora observacoes_medicao se a coluna não existir
     const novo = {
       id: uid(), numero_orcamento: ++mock._orcSeq,
       data_orcamento: o.data_orcamento || new Date().toISOString().slice(0, 10),
@@ -654,11 +650,7 @@ export const db = {
     return novo;
   },
   async updateOrcamento(id, patch) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('orcamentos').update(patch).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return updateSafeById('orcamentos', id, patch); }
     const o = mock.orcamentos.find(x => x.id === id);
     if (!o) return null;
     Object.assign(o, patch);
