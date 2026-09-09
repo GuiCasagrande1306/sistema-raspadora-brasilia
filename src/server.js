@@ -1074,7 +1074,7 @@ app.get('/api/financeiro/obra/:id', async (req, res, next) => {
 app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
+    for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'comissao_responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
     if (req.body.dias_servico !== undefined) patch.dias_servico = Array.isArray(req.body.dias_servico) ? [...new Set(req.body.dias_servico.filter(Boolean))].sort() : [];

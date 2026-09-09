@@ -1870,7 +1870,8 @@
             <div class="field"><label>Encarregado da obra <span style="color:var(--ink-3);font-weight:400">(quem toca)</span></label><input name="responsavel" id="oe-responsavel" placeholder="Ex.: Márcio, Lorena…"></div>
             <div class="field"><label>Etapa</label><select name="coluna_kanban" id="oe-etapa"><option value="aprovado">Aguardando Sinal / Entrada</option><option value="execucao">Em Execução</option><option value="afericao">Aferição de Margem</option><option value="liquidado">Concluído / Liquidado</option></select></div>
           </div>
-          <div class="dv" style="font-size:11px;color:var(--ink-3);margin:-2px 0 6px">O <b>encarregado</b> é só pra identificar a obra no <b>Cronograma</b> (não define comissão). A comissão é por m² de cada colaborador, na Folha.</div>
+          <div class="field"><label>Responsável de comissão <span style="color:var(--ink-3);font-weight:400">(de quem é a obra — quem recebe a comissão)</span></label><input name="comissao_responsavel" id="oe-comissao" list="oe-comissao-list" placeholder="Nome de quem recebe a comissão"><datalist id="oe-comissao-list"></datalist></div>
+          <div class="dv" style="font-size:11px;color:var(--ink-3);margin:-2px 0 6px">O <b>encarregado</b> identifica a obra no Cronograma; o <b>responsável de comissão</b> é de quem é a obra (quem leva a comissão dela).</div>
           <div class="field"><label>Andamento da obra: <b id="oe-prog-lbl">0%</b></label><input name="progresso" id="oe-progresso" type="range" min="0" max="100" step="5" style="width:100%"></div>
         </div>
 
@@ -2089,7 +2090,7 @@
     const margemCor=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
     return `<div class="card" draggable="true" data-card="${o.id}"><div class="crow"><div class="ini" style="background:${hue(o.cliente)}">${ini(o.cliente)}</div>
       <div><h4>${esc(o.cliente)}</h4><div class="role">${esc(o.endereco)}</div></div><button class="menu" data-obraedit="${o.id}" title="Abrir / editar obra">⋯</button></div>
-      <div class="tags"><span class="tag t-lar">${esc(o.tipo_piso)}</span><span class="tag t-info">${o.metragem_m2} m²</span></div>${prog}
+      <div class="tags"><span class="tag t-lar">${esc(o.tipo_piso)}</span><span class="tag t-info">${o.metragem_m2} m²</span>${o.comissao_responsavel?`<span class="tag" style="background:rgba(237,113,24,.15);color:var(--laranja-2)">🏆 ${esc(o.comissao_responsavel)}</span>`:''}</div>${prog}
       <div class="meta">
         <div class="mline"><span>Contrato</span><b class="money">${brl(o.valor_contrato)}</b></div>
         <div class="mline"><span>Custo operacional</span><b class="money">${brl(o.custo_operacional)}</b></div>
@@ -2146,6 +2147,9 @@
     f.metragem_m2.value=o.metragem_m2||'';f.valor_contrato.value=o.valor_contrato?(o.valor_contrato/100).toFixed(2):'';
     f.data_inicio.value=o.data_inicio||'';f.data_prevista_termino.value=o.data_prevista_termino||'';
     f.responsavel.value=o.responsavel||'';
+    f.comissao_responsavel.value=o.comissao_responsavel||'';
+    // datalist de nomes p/ facilitar escolher quem recebe a comissão
+    (async()=>{try{if(!COLABS_NOMES){COLABS_NOMES=await api('/api/dp/vt/colaboradores');}document.getElementById('oe-comissao-list').innerHTML=(COLABS_NOMES||[]).map(c=>`<option value="${esc(c.nome)}">`).join('');}catch(_){} })();
     obraDias=Array.isArray(o.dias_servico)?o.dias_servico.slice().sort():[];renderObraDias();
     document.getElementById('oe-dia-servico').value='';
     f.coluna_kanban.value=o.coluna_kanban||'aprovado';f.status_pagamento.value=o.status_pagamento||'';
@@ -2249,7 +2253,7 @@
     const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null,
       metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,
       data_inicio:f.data_inicio.value||null,data_prevista_termino:f.data_prevista_termino.value||null,
-      responsavel:f.responsavel.value||null,dias_servico:obraDias,
+      responsavel:f.responsavel.value||null,comissao_responsavel:f.comissao_responsavel.value||null,dias_servico:obraDias,
       coluna_kanban:f.coluna_kanban.value,progresso:parseInt(f.progresso.value,10)||0,status_pagamento:f.status_pagamento.value||null};
     try{await api('/api/financeiro/obra/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-obra-exec').classList.remove('open');await loadFin();showToast('Obra atualizada');
