@@ -226,7 +226,7 @@ const prepararItens = (itens) => {
     // abaixo da metragem mínima cobra o valor fixo do serviço (mínimo por causa das máquinas)
     const usaFixo = metragem_minima > 0 && valor_fixo > 0 && area < metragem_minima;
     const total = usaFixo ? valor_fixo : Math.round(area * unit * 100) / 100;
-    return { descricao: String(i.descricao || '').slice(0, 200), area_m2: area, unidade, valor_unit: unit, metragem_minima, valor_fixo, total };
+    return { descricao: String(i.descricao || '').slice(0, 4000), area_m2: area, unidade, valor_unit: unit, metragem_minima, valor_fixo, total };
   });
   const valor_total = Math.round(norm.reduce((s, i) => s + i.total, 0) * 100) / 100;
   return { itens: norm, valor_total };
