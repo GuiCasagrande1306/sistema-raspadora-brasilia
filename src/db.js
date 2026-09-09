@@ -1501,7 +1501,7 @@ export const db = {
   async fecharFolha(desde, ate) {
     if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
     const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }, descRes] = await Promise.all([
-      sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status'),
+      sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status,is_diarista'),
       sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
       sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
       // Cronograma Diário: alocações do período (fonte principal das diárias)
@@ -1540,7 +1540,7 @@ export const db = {
       const bruto = diarias + comissao + bonus_assiduidade;
       const total_liquido = bruto - p.vales - p.faltas - p.inss - p.outros_desc;
       return {
-        colaborador_id: p.id, nome: p.nome, cargo: p.cargo,
+        colaborador_id: p.id, nome: p.nome, cargo: p.cargo, is_diarista: !!p.is_diarista,
         dias_trabalhados: dias, m2_processados: Math.round(p.m2 * 100) / 100,
         origem_diaria: temCron ? 'cronograma' : 'apontamento',
         diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales,
@@ -1551,8 +1551,13 @@ export const db = {
       };
     }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto || (l.faltas_itens && l.faltas_itens.length))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+    const fichados = linhas.filter(l => !l.is_diarista);
+    const diaristas = linhas.filter(l => l.is_diarista);
     const totais = {
-      a_pagar: linhas.reduce((s, l) => s + l.total_liquido, 0),
+      // Total a pagar = SÓ fichados (recebem no mês). Diarista recebe no dia, não entra aqui.
+      a_pagar: fichados.reduce((s, l) => s + l.total_liquido, 0),
+      diaristas_pago: diaristas.reduce((s, l) => s + l.total_liquido, 0),   // diárias de diaristas (já pagas no dia)
+      diaristas_qtd: diaristas.length,
       comissoes: linhas.reduce((s, l) => s + l.comissao, 0),
       diarias: linhas.reduce((s, l) => s + l.diarias, 0),
       vales: linhas.reduce((s, l) => s + l.vales_abatidos, 0),

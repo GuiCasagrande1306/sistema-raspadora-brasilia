@@ -963,8 +963,9 @@
         </div>
       </div>
       <div class="metrics">
-        <div class="metric"><div class="lbl">Total a Pagar</div><div class="val money" id="folha-total">—</div><div class="sub">líquido no período</div></div>
-        <div class="metric"><div class="lbl">Diárias</div><div class="val money" id="folha-diarias">—</div><div class="sub">dias × diária base</div></div>
+        <div class="metric"><div class="lbl">Total a Pagar</div><div class="val money" id="folha-total">—</div><div class="sub">só fichados (recebem no mês)</div></div>
+        <div class="metric"><div class="lbl">Diaristas (pagas no dia)</div><div class="val money" id="folha-diaristas" style="color:#2563EB">—</div><div class="sub"><span id="folha-diaristas-qtd">0</span> diaristas · já pagos</div></div>
+        <div class="metric"><div class="lbl">Diárias (total)</div><div class="val money" id="folha-diarias">—</div><div class="sub">fichados + diaristas</div></div>
         <div class="metric"><div class="lbl">Comissões m²</div><div class="val money" id="folha-comissoes">—</div><div class="sub">produção rateada</div></div>
         <div class="metric"><div class="lbl">Vales abatidos</div><div class="val money" id="folha-vales">—</div><div class="sub">adiantados via PIX</div></div>
       </div>
@@ -4396,6 +4397,8 @@
     const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
     folhaAtual=r;
     document.getElementById('folha-total').textContent=brl(r.totais.a_pagar||0);
+    document.getElementById('folha-diaristas').textContent=brl(r.totais.diaristas_pago||0);
+    document.getElementById('folha-diaristas-qtd').textContent=(r.totais.diaristas_qtd||0);
     document.getElementById('folha-diarias').textContent=brl(r.totais.diarias||0);
     document.getElementById('folha-comissoes').textContent=brl(r.totais.comissoes||0);
     document.getElementById('folha-vales').textContent=brl(r.totais.vales||0);
@@ -4407,16 +4410,20 @@
       const faltaAlerta=(l.faltas_itens||[]).some(fi=>!fi.valor);
       const cronTag=l.origem_diaria==='cronograma'?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">cronograma</span>':'';
       const faltaTag=faltaAlerta?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:var(--danger);color:#fff">falta s/ valor</span>':'';
+      const diarTag=l.is_diarista?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:#2563EB;color:#fff">diarista</span>':'';
       const seta=expand?'<span style="color:var(--ink-3);margin-right:4px" data-arrow>▸</span>':'';
+      const liqCell=l.is_diarista
+        ? `<td class="num" style="color:var(--ink-3)" title="Diarista recebe no dia — não entra no Total a Pagar">${brl(l.total_liquido)}<div style="font-size:9.5px;color:#2563EB">pago no dia</div></td>`
+        : `<td class="num money">${brl(l.total_liquido)}</td>`;
       const linha=`<tr data-folharow="${idx}" style="cursor:${expand?'pointer':'default'}">
-        <td><div class="vt-nome">${seta}<div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}${faltaTag}</div></td>
+        <td><div class="vt-nome">${seta}<div class="ini" style="background:${l.is_diarista?'#2563EB':hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}${diarTag}${faltaTag}</div></td>
         <td class="num">${l.dias_trabalhados}</td><td class="num">${l.m2_processados}</td>
         <td class="num">${brl(l.diarias)}</td><td class="num">${brl(l.comissao)}</td>
         <td class="num">${l.bonus_assiduidade?brl(l.bonus_assiduidade):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):(temFaltas?'<span style="color:var(--danger)">a lançar</span>':'—')}</td>
         <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
-        <td class="num money">${brl(l.total_liquido)}</td></tr>`;
+        ${liqCell}</tr>`;
       const diariasBlock=temDet?`<div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th></tr></thead>
         <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div>`:'';
