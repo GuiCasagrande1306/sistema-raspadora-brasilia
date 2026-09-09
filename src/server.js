@@ -169,7 +169,7 @@ app.patch('/api/dp/colaborador/:id', async (req, res, next) => {
   try {
     const patch = {};
     const campos = ['nome', 'apelido', 'cpf', 'rg', 'orgao_emissor_rg', 'pis', 'ctps', 'data_nascimento', 'nacionalidade',
-      'pcd', 'primeiro_emprego', 'numero_registro', 'escolaridade', 'data_admissao', 'data_demissao',
+      'pcd', 'primeiro_emprego', 'is_diarista', 'numero_registro', 'escolaridade', 'data_admissao', 'data_demissao',
       'cargo', 'telefone', 'email', 'empresa', 'status_colaborador'];
     for (const k of campos) if (req.body[k] !== undefined) patch[k] = req.body[k] === '' ? null : req.body[k];
     if (!Object.keys(patch).length) return res.status(400).json({ erro: 'nada para atualizar' });
@@ -746,7 +746,7 @@ app.get('/api/cronograma', async (req, res, next) => {
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
-      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo }))
+      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo, is_diarista: c.is_diarista || false }))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor }));
     const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
