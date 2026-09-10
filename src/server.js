@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db, USING_SUPABASE, docStatus, supabase, BUCKET } from './db.js';
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
-import { sicoobStatus } from './sicoobService.js';
+import { sicoobStatus, getSaldo as sicoobSaldo, getExtrato as sicoobExtrato, CONTAS as SICOOB_CONTAS } from './sicoobService.js';
 import { createZip } from './zip.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1430,6 +1430,21 @@ app.post('/api/test-whatsapp', requireAdmin, async (req, res, next) => {
 app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON, sicoob: sicoobStatus().configurado, version: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }));
 // Status da integração Sicoob (só presença das credenciais, sem expor valores) — para conferir env vars na Vercel
 app.get('/api/sicoob/status', requireAdmin, (_req, res) => res.json(sicoobStatus()));
+// Saldo de uma conta (:conta = principal | cofre)
+app.get('/api/sicoob/:conta/saldo', requireAdmin, async (req, res) => {
+  const acc = String(req.params.conta || '').toLowerCase();
+  if (!SICOOB_CONTAS[acc]) return res.status(400).json({ erro: 'conta inválida (use principal ou cofre)' });
+  try { res.json(await sicoobSaldo(acc)); }
+  catch (e) { res.status(502).json({ erro: e.message || 'falha ao consultar saldo no Sicoob' }); }
+});
+// Extrato de uma conta e período. ?mes=&ano=&diaInicial=&diaFinal=
+app.get('/api/sicoob/:conta/extrato', requireAdmin, async (req, res) => {
+  const acc = String(req.params.conta || '').toLowerCase();
+  if (!SICOOB_CONTAS[acc]) return res.status(400).json({ erro: 'conta inválida (use principal ou cofre)' });
+  const num = (v) => (v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : undefined);
+  try { res.json(await sicoobExtrato(acc, { mes: num(req.query.mes), ano: num(req.query.ano), diaInicial: num(req.query.diaInicial), diaFinal: num(req.query.diaFinal) })); }
+  catch (e) { res.status(502).json({ erro: e.message || 'falha ao consultar extrato no Sicoob' }); }
+});
 
 app.use((err, _req, res, _next) => {
   if (err && err.status) return res.status(err.status).json({ erro: err.message });
