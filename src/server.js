@@ -1426,7 +1426,7 @@ app.post('/api/test-whatsapp', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON, version: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }));
 
 app.use((err, _req, res, _next) => {
   if (err && err.status) return res.status(err.status).json({ erro: err.message });
