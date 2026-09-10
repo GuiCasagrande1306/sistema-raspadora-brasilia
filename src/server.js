@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db, USING_SUPABASE, docStatus, supabase, BUCKET } from './db.js';
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
+import { sicoobStatus } from './sicoobService.js';
 import { createZip } from './zip.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1426,7 +1427,9 @@ app.post('/api/test-whatsapp', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON, version: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON, sicoob: sicoobStatus().configurado, version: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }));
+// Status da integração Sicoob (só presença das credenciais, sem expor valores) — para conferir env vars na Vercel
+app.get('/api/sicoob/status', requireAdmin, (_req, res) => res.json(sicoobStatus()));
 
 app.use((err, _req, res, _next) => {
   if (err && err.status) return res.status(err.status).json({ erro: err.message });
