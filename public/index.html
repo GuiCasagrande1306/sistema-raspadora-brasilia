@@ -1078,6 +1078,7 @@
           <button class="on" data-pf="AGUARDANDO_PROPOSTA">Aguardando proposta</button>
           <button data-pf="PROPOSTA_ENVIADA">Enviadas</button>
           <button data-pf="APROVADO">Aprovadas</button>
+          <button data-pf="CONCLUIDO">Concluídas</button>
         </div>
         <button class="btn-ghost" id="btn-catalogo" style="min-height:40px">⚙️ Catálogo de Serviços</button>
         <button class="btn-ghost" id="btn-empresa" style="min-height:40px">🏢 Dados da Empresa</button>
@@ -1699,7 +1700,8 @@
       <button type="button" class="btn-ghost" id="prop-pdf">Exportar PDF</button>
       <button type="button" class="btn-ghost" id="prop-salvar">Salvar preços</button>
       <button type="button" class="btn-ghost" id="prop-aprovar" style="display:none;border-color:var(--ok);color:var(--ok)">✓ Marcar Aprovada</button>
-      <button type="button" class="primary" id="prop-enviar">Enviar proposta</button>
+      <button type="button" class="btn-ghost" id="prop-concluir" style="display:none;border-color:var(--info);color:var(--info)">✓ Marcar Concluído</button>
+      <button type="button" class="primary" id="prop-enviar">Marcar como Enviada</button>
     </footer>
   </div>
 </div>
@@ -2301,7 +2303,7 @@
 
   // ---------- ORÇAMENTOS & MEDIÇÕES ----------
   const brlN=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2});
-  const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],AGUARDANDO_PROPOSTA:['st-aguard','Aguardando proposta'],PROPOSTA_ENVIADA:['st-medi','Proposta enviada'],APROVADO:['st-aprov','Aprovado'],CANCELADO:['st-canc','Cancelado']};
+  const ST={PENDENTE_MEDICAO:['st-pend','Pendente medição'],MEDIDO:['st-medi','Medido'],AGUARDANDO_PROPOSTA:['st-aguard','Aguardando proposta'],PROPOSTA_ENVIADA:['st-medi','Proposta enviada'],APROVADO:['st-aprov','Aprovado'],CONCLUIDO:['st-aprov','Concluído'],CANCELADO:['st-canc','Cancelado']};
   const ORC_COLS=[
     {k:'PENDENTE_MEDICAO',t:'1º A Medir',c:'var(--wait)'},
     {k:'AGUARDANDO_PROPOSTA',t:'2º Aguardando Proposta',c:'var(--laranja)'},
@@ -3143,9 +3145,11 @@
     document.getElementById('prop-info').innerHTML=[orc.servico_tipo,orc.endereco_obra,orc.responsavel_tecnico?('Resp.: '+esc(orc.responsavel_tecnico)):''].filter(Boolean).map(esc).join(' · ');
     document.getElementById('prop-obs').value=orc.observacoes||'';
     document.getElementById('prop-global').value='';
+    const propFinal=orc.status==='APROVADO'||orc.status==='CONCLUIDO';
     document.getElementById('prop-enviar').textContent=orc.status==='PROPOSTA_ENVIADA'?'✓ Enviada (interno)':'Marcar como Enviada';
-    document.getElementById('prop-enviar').style.display=orc.status==='APROVADO'?'none':'';
-    document.getElementById('prop-aprovar').style.display=orc.status==='APROVADO'?'none':'';
+    document.getElementById('prop-enviar').style.display=propFinal?'none':'';
+    document.getElementById('prop-aprovar').style.display=propFinal?'none':'';
+    document.getElementById('prop-concluir').style.display=orc.status==='CONCLUIDO'?'none':'';
     propRenderItens();
     openModal('ov-proposta');
   }
@@ -3161,11 +3165,12 @@
       await api('/api/orcamentos/'+propAtual.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       document.getElementById('ov-proposta').classList.remove('open');
       await loadPropostas();atualizarBadges();
-      showToast(novoStatus==='PROPOSTA_ENVIADA'?'Marcada como Enviada (controle interno)':(novoStatus==='APROVADO'?'Proposta aprovada — vira obra':'Preços salvos'));
+      showToast(novoStatus==='PROPOSTA_ENVIADA'?'Marcada como Enviada (controle interno)':(novoStatus==='APROVADO'?'Proposta aprovada — vira obra':(novoStatus==='CONCLUIDO'?'Proposta concluída (arquivada)':'Preços salvos')));
     }catch(err){showToast('Erro ao salvar proposta');console.error(err);}
   }
   document.getElementById('prop-salvar').addEventListener('click',()=>propSalvar(null));
-  document.getElementById('prop-aprovar').addEventListener('click',()=>{if(confirm('Marcar esta proposta como APROVADA? (o cliente aceitou)'))propSalvar('APROVADO');});
+  document.getElementById('prop-aprovar').addEventListener('click',()=>{if(confirm('Marcar esta proposta como APROVADA? (o cliente aceitou — vira obra)'))propSalvar('APROVADO');});
+  document.getElementById('prop-concluir').addEventListener('click',()=>{if(confirm('Marcar como CONCLUÍDA? (arquiva a proposta — controle interno, não vira obra)'))propSalvar('CONCLUIDO');});
   document.getElementById('prop-enviar').addEventListener('click',()=>propSalvar('PROPOSTA_ENVIADA'));  // controle interno: só muda o status, não envia ao cliente
   // ---- Envio da proposta (WhatsApp / E-mail) ----
   let envCanal='whatsapp';

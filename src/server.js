@@ -213,7 +213,7 @@ app.get('/api/dp/documento/:id/url', async (req, res, next) => {
 });
 
 // ---------- ORÇAMENTOS & MEDIÇÕES ----------
-const STATUS_ORC = ['PENDENTE_MEDICAO', 'MEDIDO', 'AGUARDANDO_PROPOSTA', 'PROPOSTA_ENVIADA', 'APROVADO', 'CANCELADO'];
+const STATUS_ORC = ['PENDENTE_MEDICAO', 'MEDIDO', 'AGUARDANDO_PROPOSTA', 'PROPOSTA_ENVIADA', 'APROVADO', 'CONCLUIDO', 'CANCELADO'];
 // normaliza itens de medição e calcula totais (área × valor unitário)
 const prepararItens = (itens) => {
   const lista = Array.isArray(itens) ? itens : [];
