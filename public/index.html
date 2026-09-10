@@ -167,6 +167,9 @@
   .menu:hover{color:var(--ink);}
   .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;}
   .tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;}
+  .emp-tag{font-size:9.5px;font-weight:700;letter-spacing:.3px;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:middle;display:inline-block;}
+  .emp-rb{background:#E7F0FF;color:#1D4ED8;}
+  .emp-eco{background:#E6F6EC;color:#128040;}
   .t-ok{background:var(--ok-bg);color:var(--ok-ink);}
   .t-warn{background:var(--warn-bg);color:var(--warn-ink);}
   .t-info{background:var(--info-bg);color:var(--info-ink);}
@@ -1378,6 +1381,7 @@
           <div class="field"><label>Vencimento *</label><input name="vencimento" type="date" required></div>
           <div class="field"><label>Categoria</label><select name="categoria" id="boleto-cat"></select></div>
         </div>
+        <div class="field"><label>Empresa</label><select name="empresa" id="boleto-empresa"><option value="">— não definida —</option><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
         <div class="field" id="boleto-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="boleto-outro" placeholder="Ex.: reforma do galpão"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar boleto</button></footer>
@@ -4104,8 +4108,9 @@
     const st=b.pago?'<span class="tag t-ok">Pago</span>':(atrasado?'<span class="tag t-danger">Vencido</span>':'<span class="tag t-wait">A vencer</span>');
     const comp=b.comprovante_url?`<a class="doc-open" href="${b.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
     const fixoTag=b.fixo_id?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">fixo</span>':'';
+    const empTag=b.empresa?`<span class="emp-tag emp-${b.empresa==='ECO_PISOS'?'eco':'rb'}">${b.empresa==='ECO_PISOS'?'ECO PISOS':'R.B PISOS'}</span>`:'';
     return `<div class="fin-item">
-      <div class="fi-main"><h4>${esc(b.descricao)}${fixoTag}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
+      <div class="fi-main"><h4>${esc(b.descricao)}${empTag}${fixoTag}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
       <div class="fi-val">${brl(b.valor)}</div>${st}
       <div class="fi-act">${comp}
         ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
@@ -4135,7 +4140,7 @@
       const f=document.getElementById('form-boleto');f.reset();
       document.getElementById('boleto-id').value=bo.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
       f.descricao.value=bo.descricao||'';f.fornecedor.value=bo.fornecedor||'';f.valor.value=bo.valor?(bo.valor/100).toFixed(2):'';f.vencimento.value=bo.vencimento||'';
-      f.categoria.value=bo.categoria||'OUTRO';document.getElementById('boleto-outro').value=bo.categoria_custom||'';boletoOutroToggle();
+      f.categoria.value=bo.categoria||'OUTRO';document.getElementById('boleto-outro').value=bo.categoria_custom||'';f.empresa.value=bo.empresa||'';boletoOutroToggle();
       openModal('ov-boleto');
     }));
     el.querySelectorAll('[data-pagar]').forEach(b=>b.addEventListener('click',async()=>{
@@ -4162,7 +4167,7 @@
   document.getElementById('form-boleto').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
     const id=document.getElementById('boleto-id').value;
-    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('boleto-outro').value||null):null};
+    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('boleto-outro').value||null):null,empresa:f.empresa.value||null};
     try{
       if(id)await api('/api/boletos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -4234,7 +4239,7 @@
       const comp=i.comprovante_url?`<a class="doc-open" href="${i.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
       const base=i.origem==='BOLETO'?'/api/boletos/'+i.id:'/api/lancamentos-diarios/'+i.id;
       return `<div class="fin-item">
-        <div class="fi-main"><h4>${esc(i.descricao)}</h4><div class="fi-sub">${i.categoria==='OUTRO'&&i.categoria_custom?esc(i.categoria_custom):(CAT_LABEL[i.categoria]||i.categoria||'')}${i.atrasado?' · <span style="color:var(--danger);font-weight:700">⚠ atrasado (venc. '+dtBR(i.vencimento)+')</span>':''}</div></div>
+        <div class="fi-main"><h4>${esc(i.descricao)}${i.empresa?`<span class="emp-tag emp-${i.empresa==='ECO_PISOS'?'eco':'rb'}">${i.empresa==='ECO_PISOS'?'ECO PISOS':'R.B PISOS'}</span>`:''}</h4><div class="fi-sub">${i.categoria==='OUTRO'&&i.categoria_custom?esc(i.categoria_custom):(CAT_LABEL[i.categoria]||i.categoria||'')}${i.atrasado?' · <span style="color:var(--danger);font-weight:700">⚠ atrasado (venc. '+dtBR(i.vencimento)+')</span>':''}</div></div>
         <div class="fi-val">${brl(i.valor)}</div>${tag}${st}
         <div class="fi-act">${comp}
           ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
@@ -4270,7 +4275,7 @@
         const f=document.getElementById('form-boleto');f.reset();
         document.getElementById('boleto-id').value=it.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
         f.descricao.value=it.descricao||'';f.fornecedor.value=it.fornecedor||'';f.valor.value=it.valor?(it.valor/100).toFixed(2):'';f.vencimento.value=it.vencimento||'';
-        f.categoria.value=it.categoria||'OUTRO';document.getElementById('boleto-outro').value=it.categoria_custom||'';boletoOutroToggle();
+        f.categoria.value=it.categoria||'OUTRO';document.getElementById('boleto-outro').value=it.categoria_custom||'';f.empresa.value=it.empresa||'';boletoOutroToggle();
         openModal('ov-boleto');
       }
     }));

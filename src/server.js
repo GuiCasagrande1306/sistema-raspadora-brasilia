@@ -578,6 +578,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
 const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'DESPESA_FUNCIONARIO', 'OUTRO'];
+const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
   const safe = (file.originalname || 'comprovante').replace(/[^\w.\-]+/g, '_');
@@ -602,6 +603,7 @@ app.post('/api/boletos', async (req, res, next) => {
       descricao, fornecedor: req.body.fornecedor || null, vencimento,
       valor: cents(req.body.valor), categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
+      empresa: EMP_VALID.includes(req.body.empresa) ? req.body.empresa : null,
       pago: false,
     }));
   } catch (e) { next(e); }
@@ -612,6 +614,7 @@ app.patch('/api/boletos/:id', async (req, res, next) => {
     for (const k of ['descricao', 'fornecedor', 'vencimento', 'data_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
     if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = patch.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
+    if (req.body.empresa !== undefined) patch.empresa = EMP_VALID.includes(req.body.empresa) ? req.body.empresa : null;
     if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
     const b = await db.updateBoleto(req.params.id, patch);
     if (!b) return res.status(404).json({ erro: 'boleto não encontrado' });

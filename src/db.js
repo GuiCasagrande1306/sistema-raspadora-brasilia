@@ -923,9 +923,7 @@ export const db = {
   },
   async updateBoleto(id, patch) {
     if (USING_SUPABASE) {
-      const { data, error } = await sb('boletos').update(patch).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
+      return updateSafeById('boletos', id, patch);   // tolerante: ignora coluna ausente (ex.: empresa antes da migration)
     }
     const b = mock.boletos.find(x => x.id === id);
     if (!b) return null;
