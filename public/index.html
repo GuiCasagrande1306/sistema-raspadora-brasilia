@@ -1023,7 +1023,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v104</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v105</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2590,13 +2590,13 @@
       <td class="num">${brlN(l.valor_passagem)}</td>
       <td class="num vte-total" data-total>${brlN(l.total)}</td>
       <td><span class="pgtoggle"><button data-pg="CARTEIRINHA" class="${l.forma_pagamento==='CARTEIRINHA'?'on-cart':''}">Carteirinha</button><button data-pg="CONTA" class="${l.forma_pagamento==='CONTA'?'on-conta':''}">Conta</button></span></td>
-      <td><input class="vte-obs" data-f="obs" value="${esc(l.observacao||'')}" placeholder="Observações…"></td></tr>`).join('');
+      <td><input class="vte-obs" data-f="obs" value="${esc(l.observacao||'')}" placeholder="Obs. fixa — fica salva (ex.: só volta das obras)" title="Fica salva no colaborador e aparece toda semana. Edite quando mudar."></td></tr>`).join('');
     document.getElementById('vt-content').innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr>
       <th>Funcionário</th><th>Carteirinha</th><th>Qtd. Viagens</th><th class="num">Passagem</th><th class="num">Total</th><th>Pagamento</th><th>Observações</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function vtSave(l){api('/api/dp/vt/semana',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({colaborador_id:l.colaborador_id,ano_mes:VT_STATE.ano_mes,semana:VT_STATE.semana,qtd_viagens:l.qtd_viagens,forma_pagamento:l.forma_pagamento,observacao:l.observacao})})
+    body:JSON.stringify({colaborador_id:l.colaborador_id,ano_mes:VT_STATE.ano_mes,semana:VT_STATE.semana,qtd_viagens:l.qtd_viagens,forma_pagamento:l.forma_pagamento})})
     .catch(e=>{showToast('Erro ao salvar VT');console.error(e);});}
   document.getElementById('vt-content').addEventListener('input',e=>{
     const tr=e.target.closest('tr[data-i]');if(!tr)return;const l=VT_STATE.linhas[+tr.dataset.i];
@@ -4533,8 +4533,15 @@
         <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
         ${liqCell}</tr>`;
       const diariasBlock=temDet?`<div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
-        <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th></tr></thead>
-        <tbody>${l.detalhe.map(d=>`<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td></tr>`).join('')}</tbody></table></div>`:'';
+        <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th><th style="text-align:right;padding:4px">Gratificação</th></tr></thead>
+        <tbody>${l.detalhe.map(d=>{
+          const gratifCell=d.is_gratificacao
+            ?(d.gratificacao_paga
+              ?`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="1" title="Clique para desmarcar" style="padding:2px 8px;font-size:11px;color:#12805c;border-color:#12805c">✓ paga</button>`
+              :`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="0" style="padding:2px 8px;font-size:11px;border-color:var(--laranja);color:var(--laranja)">Marcar como paga</button>`)
+            :'';
+          return `<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}</td></tr>`;
+        }).join('')}</tbody></table></div>`:'';
       const TIPO_LBL={VALE:'Vale',ADIANTAMENTO_VALE:'Vale',REEMBOLSO_COMBUSTIVEL:'Reembolso',BONUS_METRAGEM:'Bônus',FALTA:'Falta',INSS:'INSS',OUTRO:'Outro desconto'};
       const lancBlock=temLanc?`<div style="padding:8px 18px 12px">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:4px">Lançamentos do período — vales e descontos</div>
@@ -4567,6 +4574,12 @@
       const url=b.dataset.lancorigem==='vale'?'/api/dp/vale/':'/api/dp/desconto/';
       try{await api(url+b.dataset.lancdel,{method:'DELETE'});showToast('Lançamento excluído');await calcularFolha();}
       catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(err);}
+    }));
+    document.querySelectorAll('#folha-content [data-gratif]').forEach(b=>b.addEventListener('click',async e=>{
+      e.stopPropagation();const novo=b.dataset.gpago!=='1';b.disabled=true;
+      try{await api('/api/cronograma/alocacao/'+b.dataset.gratif,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({gratificacao_paga:novo})});
+        showToast(novo?'Gratificação marcada como paga':'Gratificação desmarcada');await calcularFolha();}
+      catch(err){b.disabled=false;let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Gratificação: '+(m||'erro'));console.error(err);}
     }));
   }
   // Bárbara lança o valor da falta vinda do Cronograma

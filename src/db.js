@@ -1493,7 +1493,7 @@ export const db = {
       sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
       sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
       // Cronograma Diário: alocações do período (fonte principal das diárias)
-      sb('cronograma_alocacoes').select('colaborador_id,data,obra_nome,funcao,valor_diaria').gte('data', desde).lte('data', ate),
+      sb('cronograma_alocacoes').select('*').gte('data', desde).lte('data', ate),
       // Descontos manuais (FALTA / INSS / OUTRO) — valores variáveis lançados na folha
       sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
     ]);
@@ -1516,7 +1516,7 @@ export const db = {
     for (const a of (alocs || [])) {
       const p = porColab[a.colaborador_id]; if (!p) continue;
       p.cronDiarias += (a.valor_diaria || 0); p.cronDias.add(a.data);
-      p.detalhe.push({ data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0 });
+      p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: /GRATIFICA/i.test(a.funcao || ''), gratificacao_paga: !!a.gratificacao_paga });
     }
     const linhas = Object.values(porColab).map(p => {
       const temCron = p.cronDias.size > 0;
