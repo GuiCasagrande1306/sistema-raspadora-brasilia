@@ -529,6 +529,11 @@
   .apont-chip.cron-chip.diarista{border-color:#2563EB;background:rgba(37,99,235,.12);}
   .apont-chip.cron-chip.diarista .cron-ini{background:#2563EB;}
   .cron-diar-tag{font-size:8.5px;font-weight:800;color:#2563EB;background:rgba(37,99,235,.15);border-radius:5px;padding:1px 5px;margin-left:5px;text-transform:uppercase;letter-spacing:.03em;}
+  .diar-toggle{cursor:pointer;font-size:9px;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;user-select:none;white-space:nowrap;transition:all .12s;}
+  .diar-toggle.on{background:#2563EB;color:#fff;}
+  .diar-toggle.on:hover{filter:brightness(1.1);}
+  .diar-toggle.off{background:transparent;color:var(--concreto);border:1px dashed var(--line);}
+  .diar-toggle.off:hover{color:#2563EB;border-color:#2563EB;background:rgba(37,99,235,.06);}
   .cron-col.dragover .cards{outline:2px dashed var(--laranja);outline-offset:4px;border-radius:12px;background:var(--laranja-50);}
   .cron-resp{font-size:12px;font-weight:700;color:var(--laranja-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .dre-hero{background:var(--chumbo-900);color:#fff;padding:18px 20px;}
@@ -1018,7 +1023,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v102</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v103</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3741,8 +3746,19 @@
   function miniFoto(c,size){const s=size||28;return c&&c.foto_url
     ?`<img src="${c.foto_url}" alt="" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;flex-shrink:0">`
     :`<div class="ini" style="width:${s}px;height:${s}px;background:${hue(c.nome||'')};flex-shrink:0">${ini(c.nome||'?')}</div>`;}
+  // Botão liga/desliga "diarista" — clique alterna is_diarista sem abrir a ficha
+  function diarToggle(c){return c.is_diarista
+    ?`<span class="diar-toggle on" data-toggle-diar="${c.id}" title="Diarista — clique para tirar">diarista</span>`
+    :`<span class="diar-toggle off" data-toggle-diar="${c.id}" title="Clique para marcar como diarista">+ diarista</span>`;}
+  async function toggleDiarista(id){
+    const c=docsListaCache.find(x=>x.id===id);const novo=!(c&&c.is_diarista);
+    try{await api('/api/dp/colaborador/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_diarista:novo})});
+      if(c)c.is_diarista=novo;showToast(novo?'Marcado como diarista':'Deixou de ser diarista');renderColabView(docsListaCache);
+    }catch(err){showToast('Erro ao alterar diarista');console.error(err);}
+  }
+  function bindDiarToggles(el){el.querySelectorAll('[data-toggle-diar]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();toggleDiarista(b.dataset.toggleDiar);}));}
   const COLS_DEF=[
-    {k:'nome',label:'Nome',get:c=>`<div style="display:flex;align-items:center;gap:8px">${miniFoto(c)}<b>${esc(c.nome)}</b>${c.is_diarista?'<span class="tag t-lar" style="font-size:9px">diarista</span>':''}</div>`},
+    {k:'nome',label:'Nome',get:c=>`<div style="display:flex;align-items:center;gap:8px">${miniFoto(c)}<b>${esc(c.nome)}</b>${diarToggle(c)}</div>`},
     {k:'cpf',label:'CPF',get:c=>esc(c.cpf||'—')},
     {k:'cargo',label:'Função',get:c=>esc(c.cargo||'—')},
     {k:'data_admissao',label:'Data Admissional',get:c=>c.data_admissao?dtBR(c.data_admissao):'—'},
@@ -3783,6 +3799,7 @@
     }).join('');
     el.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table></div>`;
     el.querySelectorAll('tbody tr').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
+    bindDiarToggles(el);
     let dragCol=null;
     el.querySelectorAll('th[draggable]').forEach(th=>{
       th.addEventListener('dragstart',()=>{dragCol=th.dataset.col;th.classList.add('dragging');});
@@ -3813,10 +3830,11 @@
       const cards=items.map(c=>{const aniv=c.data_nascimento&&c.data_nascimento.slice(5,7)===mesAtual;return `<div class="qcard${aniv?' aniversariante':''}" data-colab="${c.id}" data-nome="${esc(c.nome)}"${aniv?' title="🎂 Aniversariante do mês"':''}>
         <div class="qtop">${miniFoto(c,38)}
           <div><h4>${esc(c.nome)}${aniv?' 🎂':''}</h4><div class="qsub">${esc(c.cargo||'—')}${c.cpf?' · '+esc(c.cpf):''}</div></div></div>
-        <div class="qbadges">${stTag(c)}${farolTag(c)}</div></div>`;}).join('')||'<div class="dv" style="padding:8px 4px">Nenhum</div>';
+        <div class="qbadges">${stTag(c)}${farolTag(c)}${diarToggle(c)}</div></div>`;}).join('')||'<div class="dv" style="padding:8px 4px">Nenhum</div>';
       return `<div class="qcol"><div class="qhead"><span class="sw" style="background:${color}"></span><h4>${label}</h4><span class="cnt">${items.length}</span></div>${cards}</div>`;
     }).join('')+'</div>';
     el.querySelectorAll('[data-colab]').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
+    bindDiarToggles(el);
   }
   let docsState={nivel:'empresas'};
   function renderCrumb(){
