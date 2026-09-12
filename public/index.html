@@ -1023,7 +1023,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v105</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v106</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4540,7 +4540,8 @@
               ?`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="1" title="Clique para desmarcar" style="padding:2px 8px;font-size:11px;color:#12805c;border-color:#12805c">✓ paga</button>`
               :`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="0" style="padding:2px 8px;font-size:11px;border-color:var(--laranja);color:var(--laranja)">Marcar como paga</button>`)
             :'';
-          return `<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${brl(d.valor)}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}</td></tr>`;
+          const valorCell=(d.is_gratificacao&&d.gratificacao_paga)?`<span style="text-decoration:line-through;color:var(--ink-3)" title="Paga à parte — fora do total da folha">${brl(d.valor)}</span>`:brl(d.valor);
+          return `<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}</td></tr>`;
         }).join('')}</tbody></table></div>`:'';
       const TIPO_LBL={VALE:'Vale',ADIANTAMENTO_VALE:'Vale',REEMBOLSO_COMBUSTIVEL:'Reembolso',BONUS_METRAGEM:'Bônus',FALTA:'Falta',INSS:'INSS',OUTRO:'Outro desconto'};
       const lancBlock=temLanc?`<div style="padding:8px 18px 12px">

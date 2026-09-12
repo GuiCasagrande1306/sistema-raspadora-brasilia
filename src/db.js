@@ -1515,8 +1515,11 @@ export const db = {
     }
     for (const a of (alocs || [])) {
       const p = porColab[a.colaborador_id]; if (!p) continue;
-      p.cronDiarias += (a.valor_diaria || 0); p.cronDias.add(a.data);
-      p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: /GRATIFICA/i.test(a.funcao || ''), gratificacao_paga: !!a.gratificacao_paga });
+      const ehGratif = /GRATIFICA/i.test(a.funcao || '');
+      const gratifPaga = ehGratif && !!a.gratificacao_paga;
+      if (!gratifPaga) p.cronDiarias += (a.valor_diaria || 0);   // gratificação já paga à parte sai do total da folha
+      p.cronDias.add(a.data);
+      p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga });
     }
     const linhas = Object.values(porColab).map(p => {
       const temCron = p.cronDias.size > 0;
