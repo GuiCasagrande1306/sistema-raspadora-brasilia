@@ -1023,7 +1023,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v103</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v104</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1075,6 +1075,7 @@
       <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="cron-data" class="dash-sel"></label>
         <button class="btn-ghost" id="btn-funcoes" style="min-height:40px">⚙️ Funções &amp; Diárias</button>
+        <button class="btn-ghost" id="btn-relatorio-semana" style="min-height:40px">📋 Relatório da semana</button>
         <div class="metric" style="margin-left:auto;min-width:170px"><div class="lbl">Total de diárias do dia</div><div class="val money" id="cron-total">—</div></div>
       </div>
       <div style="padding:16px 26px 0">
@@ -1437,6 +1438,7 @@
           <div class="field"><label>Diária (R$)</label><input name="valor_diaria" id="alocar-valor" type="number" step="0.01" min="0" placeholder="0,00"></div>
         </div>
         <div class="hint">A diária vem da função escolhida, mas você pode ajustar aqui. Sem função na lista? Abra “Funções &amp; Diárias”.</div>
+        <div class="field"><label>Observação (sobre o funcionário neste dia)</label><textarea name="observacao" id="alocar-obs" rows="2" placeholder="Ex.: chegou atrasado, saiu mais cedo, meia diária…"></textarea></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar alocação</button></footer>
     </form>
@@ -1452,6 +1454,23 @@
       <div class="login-hint" style="text-align:left">Entra na coluna <b>FALTA</b> do dia. O valor do desconto você lança depois na <b>Folha</b>.</div>
     </div>
     <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="fpick-confirm">Marcar falta</button></footer>
+  </div>
+</div>
+
+<!-- MODAL: Relatório da semana (presença/falta) -->
+<div class="overlay" id="ov-relatorio">
+  <div class="modal" style="max-width:920px;width:96vw">
+    <header><h3>Relatório da semana — presença e faltas</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn-ghost" id="rel-prev" title="Semana anterior">◀</button>
+        <b id="rel-periodo" style="font-size:13px">—</b>
+        <button class="btn-ghost" id="rel-next" title="Próxima semana">▶</button>
+        <span style="font-size:11.5px;color:var(--ink-3);margin-left:auto"><b style="color:#12805c">P</b> = presente · <b style="color:var(--danger)">F</b> = falta · – = sem registro</span>
+      </div>
+      <div id="rel-conteudo" style="overflow-x:auto"></div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
   </div>
 </div>
 
@@ -3301,7 +3320,7 @@
         const alocs=CRON.alocacoes.filter(a=>a.obra_id===o.id);
         const cards=alocs.map(a=>`<div class="card" style="cursor:pointer" data-editaloc="${a.id}">
           <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(a.colaborador_nome||'')}</h4><button class="doc-cloud" data-delaloc="${a.id}" title="Remover" style="padding:2px">${DE_TRASH}</button></div>
-          <div class="tags" style="margin-top:6px"><span class="tag t-lar">${esc(a.funcao||'sem função')}</span><span class="tag money">${brl(a.valor_diaria||0)}</span></div></div>`).join('');
+          <div class="tags" style="margin-top:6px"><span class="tag t-lar">${esc(a.funcao||'sem função')}</span><span class="tag money">${brl(a.valor_diaria||0)}</span></div>${a.observacao?`<div style="margin-top:5px;font-size:11px;color:var(--ink-3)">📝 ${esc(a.observacao)}</div>`:''}</div>`).join('');
         const sub=alocs.reduce((s,a)=>s+(a.valor_diaria||0),0);
         const resp=o.responsavel?`<div class="cron-resp">👤 ${esc(o.responsavel)}</div>`:'';
         return `<div class="col cron-col" data-obra="${o.id}"><div class="colhead"><span class="swatch" style="background:var(--laranja)"></span><div style="flex:1;min-width:0"><h3 style="margin:0">${esc(o.cliente)}</h3>${resp}</div><span class="count">${alocs.length}</span></div>
@@ -3354,7 +3373,7 @@
     f.funcao.innerHTML='<option value="">— função / equipamento —</option>'+FUNCOES.map(fu=>`<option value="${esc(fu.nome)}" data-val="${fu.valor}">${esc(fu.nome)} · ${brl(fu.valor)}</option>`).join('');
     if(colabId)f.colaborador_id.value=colabId;
     if(obraId)f.obra_id.value=obraId;
-    if(aloc){f.funcao.value=aloc.funcao||'';f.valor_diaria.value=aloc.valor_diaria?(aloc.valor_diaria/100).toFixed(2):'';}
+    if(aloc){f.funcao.value=aloc.funcao||'';f.valor_diaria.value=aloc.valor_diaria?(aloc.valor_diaria/100).toFixed(2):'';f.observacao.value=aloc.observacao||'';}
     openModal('ov-alocar');
   }
   document.getElementById('alocar-funcao').addEventListener('change',e=>{
@@ -3365,13 +3384,39 @@
     e.preventDefault();const f=e.target;const id=document.getElementById('alocar-id').value;
     const colab=(CRON.colaboradores||[]).find(c=>c.id===f.colaborador_id.value);
     const obra=(CRON.obras||[]).find(o=>o.id===f.obra_id.value);
-    const payload={data:CRON.data,colaborador_id:f.colaborador_id.value,colaborador_nome:colab?colab.nome:null,obra_id:f.obra_id.value,obra_nome:obra?obra.cliente:null,funcao:f.funcao.value||null,valor_diaria:parseFloat(f.valor_diaria.value)||0};
+    const payload={data:CRON.data,colaborador_id:f.colaborador_id.value,colaborador_nome:colab?colab.nome:null,obra_id:f.obra_id.value,obra_nome:obra?obra.cliente:null,funcao:f.funcao.value||null,valor_diaria:parseFloat(f.valor_diaria.value)||0,observacao:f.observacao.value||null};
     try{
       if(id)await api('/api/cronograma/alocacao/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/cronograma/alocacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-alocar').classList.remove('open');showToast('Alocação salva');loadCronograma();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Alocar: '+(m||'erro'));console.error(err);}});
   document.getElementById('cron-data').addEventListener('change',loadCronograma);
+  // ---- Relatório da semana (presença/falta) ----
+  let relRef=null;
+  function semanaDe(ref){const d=new Date(ref+'T00:00:00');const dow=(d.getDay()+6)%7;const seg=new Date(d);seg.setDate(d.getDate()-dow);const dom=new Date(seg);dom.setDate(seg.getDate()+6);return {desde:seg.toISOString().slice(0,10),ate:dom.toISOString().slice(0,10)};}
+  async function carregarRelatorio(){
+    const cont=document.getElementById('rel-conteudo');cont.innerHTML='<div class="dv" style="padding:12px">Carregando…</div>';
+    const {desde,ate}=semanaDe(relRef);
+    try{
+      const r=await api('/api/cronograma/relatorio?desde='+desde+'&ate='+ate);
+      document.getElementById('rel-periodo').textContent=dtBR(r.desde)+' a '+dtBR(r.ate);
+      if(!r.linhas.length){cont.innerHTML='<div class="orc-empty">Ninguém alocado nem com falta nesta semana.</div>';return;}
+      const dow=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+      const head=r.dias.map(d=>{const dt=new Date(d+'T00:00:00');return `<th style="text-align:center;white-space:nowrap">${dow[(dt.getDay()+6)%7]}<br><span style="font-weight:400;font-size:10px">${d.slice(8,10)}/${d.slice(5,7)}</span></th>`;}).join('');
+      const rows=r.linhas.map(l=>{
+        const cells=r.dias.map(d=>{const c=l.dias[d];
+          if(!c)return '<td style="text-align:center;color:var(--ink-3)">–</td>';
+          if(c.status==='F')return '<td style="text-align:center;font-weight:800;color:var(--danger)" title="Falta">F</td>';
+          return `<td style="text-align:center;font-weight:800;color:#12805c" title="${esc((c.obra||'')+(c.funcao?' · '+c.funcao:''))}">P</td>`;
+        }).join('');
+        return `<tr><td style="white-space:nowrap"><b>${esc(l.nome)}</b>${l.is_diarista?' <span class="tag" style="font-size:8.5px;background:#2563EB;color:#fff">diarista</span>':''}</td>${cells}<td style="text-align:center;font-weight:800;color:#12805c">${l.presencas}</td><td style="text-align:center;font-weight:800;color:var(--danger)">${l.faltas}</td></tr>`;
+      }).join('');
+      cont.innerHTML=`<table class="ltable" style="min-width:660px"><thead><tr><th>Colaborador</th>${head}<th style="text-align:center">Pres.</th><th style="text-align:center">Faltas</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }catch(err){cont.innerHTML='<div class="orc-empty">Erro ao carregar o relatório.</div>';console.error(err);}
+  }
+  document.getElementById('btn-relatorio-semana').addEventListener('click',()=>{relRef=document.getElementById('cron-data').value||isoHoje();carregarRelatorio();openModal('ov-relatorio');});
+  document.getElementById('rel-prev').addEventListener('click',()=>{const d=new Date(relRef+'T00:00:00');d.setDate(d.getDate()-7);relRef=d.toISOString().slice(0,10);carregarRelatorio();});
+  document.getElementById('rel-next').addEventListener('click',()=>{const d=new Date(relRef+'T00:00:00');d.setDate(d.getDate()+7);relRef=d.toISOString().slice(0,10);carregarRelatorio();});
   // Funções & Diárias (editável)
   document.getElementById('btn-funcoes').addEventListener('click',()=>{renderFuncoes();openModal('ov-funcoes');});
   function renderFuncoes(){

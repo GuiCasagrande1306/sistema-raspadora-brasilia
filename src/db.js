@@ -1129,21 +1129,13 @@ export const db = {
       (!desde || a.data >= desde) && (!ate || a.data <= ate));
   },
   async createAlocacao(a) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('cronograma_alocacoes').insert(a).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return insertSafe('cronograma_alocacoes', a); }   // tolerante: ignora coluna ausente (observacao antes da migration)
     const novo = { id: uid(), criado_em: new Date().toISOString(), ...a };
     mock.cronogramaAloc.push(novo);
     return novo;
   },
   async updateAlocacao(id, patch) {
-    if (USING_SUPABASE) {
-      const { data, error } = await sb('cronograma_alocacoes').update(patch).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
-    }
+    if (USING_SUPABASE) { return updateSafeById('cronograma_alocacoes', id, patch); }   // tolerante
     const a = mock.cronogramaAloc.find(x => x.id === id);
     if (!a) return null; Object.assign(a, patch); return a;
   },
@@ -1445,6 +1437,12 @@ export const db = {
     if (!USING_SUPABASE) return [];
     const { data: rows } = await sb('descontos_folha').select('id,colaborador_id,valor,data_lancamento,observacao')
       .eq('tipo', 'FALTA').eq('data_lancamento', data).eq('abatido_folha', false);
+    return rows || [];
+  },
+  async listFaltasRange(desde, ate) {
+    if (!USING_SUPABASE) return [];
+    const { data: rows } = await sb('descontos_folha').select('id,colaborador_id,valor,data_lancamento')
+      .eq('tipo', 'FALTA').gte('data_lancamento', desde).lte('data_lancamento', ate).eq('abatido_folha', false);
     return rows || [];
   },
   async updateDesconto(id, patch) {

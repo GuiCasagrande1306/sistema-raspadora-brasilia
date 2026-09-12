@@ -1,6 +1,6 @@
 // Service Worker — Raspadora Brasília PWA
 // HTML/navegação: network-first (deploy aparece na hora). Dados da API NUNCA são cacheados.
-const CACHE = 'raspadora-v103';
+const CACHE = 'raspadora-v104';
 const ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',

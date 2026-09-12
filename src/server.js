@@ -737,6 +737,25 @@ app.get('/api/cronograma/dias-trabalhados', async (req, res, next) => {
     res.json({ desde, ate, porColaborador: dias });
   } catch (e) { next(e); }
 });
+// Relatório da semana: presença/falta por colaborador (para conferir Vale-Transporte)
+app.get('/api/cronograma/relatorio', async (req, res, next) => {
+  try {
+    const ate = req.query.ate || new Date().toISOString().slice(0, 10);
+    let desde = req.query.desde;
+    if (!desde) { const d = new Date(ate + 'T00:00:00'); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); desde = d.toISOString().slice(0, 10); } // segunda-feira da semana
+    const [alocs, faltas, colaboradores] = await Promise.all([
+      db.listAlocacoes({ desde, ate }), db.listFaltasRange(desde, ate), db.listColaboradores(),
+    ]);
+    const dias = []; { const s = new Date(desde + 'T00:00:00'), e = new Date(ate + 'T00:00:00'); for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) dias.push(d.toISOString().slice(0, 10)); }
+    const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c]));
+    const linhas = {};
+    const get = (id) => (linhas[id] ||= { colaborador_id: id, nome: (nomeMap[id] && nomeMap[id].nome) || '—', is_diarista: !!(nomeMap[id] && nomeMap[id].is_diarista), dias: {}, presencas: 0, faltas: 0 });
+    for (const a of alocs) { if (!a.colaborador_id) continue; const L = get(a.colaborador_id); if (!L.dias[a.data]) { L.dias[a.data] = { status: 'P', obra: a.obra_nome || null, funcao: a.funcao || null }; L.presencas++; } }
+    for (const f of faltas) { if (!f.colaborador_id) continue; const L = get(f.colaborador_id); const cur = L.dias[f.data_lancamento]; if (cur) continue; L.dias[f.data_lancamento] = { status: 'F' }; L.faltas++; }
+    const arr = Object.values(linhas).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' }));
+    res.json({ desde, ate, dias, linhas: arr });
+  } catch (e) { next(e); }
+});
 // quadro do dia: obras + colaboradores + alocações
 app.get('/api/cronograma', async (req, res, next) => {
   try {
@@ -766,14 +785,16 @@ app.post('/api/cronograma/alocacao', async (req, res, next) => {
       data, colaborador_id, colaborador_nome: req.body.colaborador_nome || null,
       obra_id: req.body.obra_id || null, obra_nome: req.body.obra_nome || null,
       funcao: req.body.funcao || null, valor_diaria: cents(req.body.valor_diaria),
+      observacao: req.body.observacao || null,
     }));
   } catch (e) { next(e); }
 });
 app.patch('/api/cronograma/alocacao/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['obra_id', 'obra_nome', 'funcao', 'colaborador_id', 'colaborador_nome', 'data']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    for (const k of ['obra_id', 'obra_nome', 'funcao', 'colaborador_id', 'colaborador_nome', 'data', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor_diaria !== undefined) patch.valor_diaria = cents(req.body.valor_diaria);
+    if (req.body.gratificacao_paga !== undefined) patch.gratificacao_paga = !!req.body.gratificacao_paga;
     const a = await db.updateAlocacao(req.params.id, patch);
     if (!a) return res.status(404).json({ erro: 'alocação não encontrada' });
     res.json(a);
