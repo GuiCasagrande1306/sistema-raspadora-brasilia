@@ -1367,6 +1367,45 @@ export const db = {
     if (m.status !== 'PREVISTO') await this._saldoAjustar(m.conta_bancaria_id, m.tipo === 'ENTRADA' ? m.valor : -m.valor);
     return data;
   },
+  // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos
+  // (dedupe por sicoob_tx_id) e ajusta o saldo da conta para o saldo real do banco. Idempotente.
+  async importarExtratoSicoob(ref, extrato, meta = {}) {
+    if (!USING_SUPABASE) return { importados: 0, ignorados: 0, saldo: 0 };
+    let { data: c } = await sb('contas_bancarias').select('*').eq('sicoob_ref', ref).limit(1).maybeSingle();
+    if (!c) {
+      c = await insertSafe('contas_bancarias', {
+        nome_instituicao: meta.nome || ('Sicoob — ' + ref), tipo_conta: ref === 'cofre' ? 'POUPANCA_RESERVA' : 'CORRENTE',
+        agencia: meta.agencia || null, conta: meta.conta || null, saldo_atual: 0, sicoob_ref: ref,
+      });
+    }
+    const tx = (extrato && extrato.transacoes) || [];
+    const ids = tx.map(t => t.transactionId).filter(Boolean);
+    const existentes = new Set();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data } = await sb('movimentacoes_caixa').select('sicoob_tx_id').in('sicoob_tx_id', ids.slice(i, i + 200));
+      (data || []).forEach(r => existentes.add(r.sicoob_tx_id));
+    }
+    const novos = tx.filter(t => !(t.transactionId && existentes.has(t.transactionId))).map(t => {
+      const cred = String(t.tipo || '').toUpperCase() === 'CREDITO';
+      return {
+        conta_bancaria_id: c.id,
+        data_movimento: String(t.dataLote || t.data || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+        descricao: [t.descricao, t.descInfComplementar].filter(Boolean).join(' — ').slice(0, 240) || 'Lançamento Sicoob',
+        categoria: 'OUTROS', tipo: cred ? 'ENTRADA' : 'SAIDA',
+        valor: Math.abs(Math.round((Number(t.valor) || 0) * 100)),
+        status: 'REALIZADO', conciliado: true, sicoob_tx_id: t.transactionId || null,
+      };
+    });
+    let importados = 0;
+    for (let i = 0; i < novos.length; i += 100) {
+      const { data, error } = await sb('movimentacoes_caixa').insert(novos.slice(i, i + 100)).select('id');
+      if (error) throw error;
+      importados += (data || []).length;
+    }
+    const saldoCent = Math.round((Number(extrato && extrato.saldoAtual) || 0) * 100);
+    await sb('contas_bancarias').update({ saldo_atual: saldoCent }).eq('id', c.id);
+    return { importados, ignorados: tx.length - importados, saldo: saldoCent, conta_id: c.id, conta_nome: c.nome_instituicao };
+  },
   // Proposta aprovada → entrada PREVISTA no fluxo de caixa (recebível), uma única vez por orçamento
   async lancarRecebivelProposta(orc, hojeStr) {
     if (!USING_SUPABASE) return null;

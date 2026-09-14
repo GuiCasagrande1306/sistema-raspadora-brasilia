@@ -1466,6 +1466,17 @@ app.get('/api/sicoob/:conta/extrato', requireAdmin, async (req, res) => {
   try { res.json(await sicoobExtrato(acc, { mes: num(req.query.mes), ano: num(req.query.ano), diaInicial: num(req.query.diaInicial), diaFinal: num(req.query.diaFinal) })); }
   catch (e) { res.status(502).json({ erro: e.message || 'falha ao consultar extrato no Sicoob' }); }
 });
+// Importa o extrato de um mês para o Cofre (movimentações), sem duplicar. Body: { mes, ano }
+app.post('/api/sicoob/:conta/importar', requireAdmin, async (req, res) => {
+  const acc = String(req.params.conta || '').toLowerCase();
+  if (!SICOOB_CONTAS[acc]) return res.status(400).json({ erro: 'conta inválida (use principal ou cofre)' });
+  const num = (v) => (v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : undefined);
+  try {
+    const ext = await sicoobExtrato(acc, { mes: num(req.body.mes), ano: num(req.body.ano), diaInicial: num(req.body.diaInicial), diaFinal: num(req.body.diaFinal) });
+    const nome = acc === 'principal' ? 'Sicoob — Conta Principal (ECO PISOS)' : 'Sicoob — Cofre (R.B PISOS)';
+    res.json(await db.importarExtratoSicoob(acc, ext, { nome }));
+  } catch (e) { res.status(502).json({ erro: e.message || 'falha ao importar extrato' }); }
+});
 
 app.use((err, _req, res, _next) => {
   if (err && err.status) return res.status(err.status).json({ erro: err.message });
