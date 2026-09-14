@@ -4,7 +4,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, USING_SUPABASE, docStatus, supabase, BUCKET } from './db.js';
+import { db, USING_SUPABASE, docStatus, supabase, BUCKET, categorizarMov } from './db.js';
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
 import { sicoobStatus, getSaldo as sicoobSaldo, getExtrato as sicoobExtrato, CONTAS as SICOOB_CONTAS } from './sicoobService.js';
 import { createZip } from './zip.js';
@@ -1316,11 +1316,18 @@ app.post('/api/bancos/desbloquear', (req, res) => {
   if (!req.body || req.body.senha !== esperada) return res.status(401).json({ ok: false, erro: 'Senha incorreta' });
   res.json({ ok: true });
 });
+// Cofre — senha própria pra revelar o saldo (dedicada; cai na financeira se COFRE_PASSWORD não estiver setada)
+app.post('/api/cofre/desbloquear', requireAdmin, (req, res) => {
+  const esperada = process.env.COFRE_PASSWORD || process.env.FINANCE_PASSWORD || 'raspadora@fin';
+  if (!req.body || req.body.senha !== esperada) return res.status(401).json({ ok: false, erro: 'Senha do Cofre incorreta' });
+  res.json({ ok: true });
+});
 
 // Bancos — saldos consolidados
 app.get('/api/bancos/saldos', async (_req, res, next) => {
   try {
-    const contas = await db.listContas();
+    // Cofre (sicoob_ref='cofre') fica fora do consolidado visível — só aparece com a senha do Cofre
+    const contas = (await db.listContas()).filter(c => c.sicoob_ref !== 'cofre');
     const total = contas.reduce((s, c) => s + c.saldo_atual, 0);
     res.json({ contas, total_consolidado: total });
   } catch (e) { next(e); }
@@ -1463,8 +1470,11 @@ app.get('/api/sicoob/:conta/extrato', requireAdmin, async (req, res) => {
   const acc = String(req.params.conta || '').toLowerCase();
   if (!SICOOB_CONTAS[acc]) return res.status(400).json({ erro: 'conta inválida (use principal ou cofre)' });
   const num = (v) => (v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : undefined);
-  try { res.json(await sicoobExtrato(acc, { mes: num(req.query.mes), ano: num(req.query.ano), diaInicial: num(req.query.diaInicial), diaFinal: num(req.query.diaFinal) })); }
-  catch (e) { res.status(502).json({ erro: e.message || 'falha ao consultar extrato no Sicoob' }); }
+  try {
+    const ext = await sicoobExtrato(acc, { mes: num(req.query.mes), ano: num(req.query.ano), diaInicial: num(req.query.diaInicial), diaFinal: num(req.query.diaFinal) });
+    if (ext && Array.isArray(ext.transacoes)) ext.transacoes = ext.transacoes.map(t => ({ ...t, categoria: categorizarMov([t.descricao, t.descInfComplementar].filter(Boolean).join(' '), String(t.tipo || '').toUpperCase() === 'CREDITO') }));
+    res.json(ext);
+  } catch (e) { res.status(502).json({ erro: e.message || 'falha ao consultar extrato no Sicoob' }); }
 });
 // Importa o extrato de um mês para o Cofre (movimentações), sem duplicar. Body: { mes, ano }
 app.post('/api/sicoob/:conta/importar', requireAdmin, async (req, res) => {

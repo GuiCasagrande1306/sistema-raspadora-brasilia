@@ -190,6 +190,22 @@ async function updateSafeById(table, id, obj) {
   throw new Error('updateSafeById: colunas demais faltando em ' + table);
 }
 
+// Categoriza um lançamento do extrato bancário para os baldes que o DRE reconhece.
+// SAÍDA precisa cair em: FOLHA_DP | VALE_CAMPO | COMPRA_INSUMOS | COMBUSTIVEL_LOGISTICA | MANUTENCAO | IMPOSTOS | OUTROS
+// (categoria fora dessa lista some do custo do DRE). ENTRADA vira RECEITA_OBRA (cosmético).
+export function categorizarMov(texto, credito) {
+  const t = (texto || '').toUpperCase();
+  const has = (...ks) => ks.some(k => t.includes(k));
+  if (credito) return 'RECEITA_OBRA';
+  if (has('DARF', 'DAS ', 'SIMPLES NAC', ' GPS', 'FGTS', 'INSS', 'TRIBUT', 'IMPOSTO', 'RECEITA FEDERAL', 'GOV.BR', 'PREFEITURA', 'ISSQN', 'DAE ', 'DARE', ' ISS ', 'GARE')) return 'IMPOSTOS';
+  if (has('POSTO', 'COMBUSTIV', 'IPIRANGA', 'SHELL', 'PETROBR', 'AUTO POSTO', 'BR DISTRIB', 'GASOLINA', 'ETANOL', 'DIESEL', 'ALESAT', 'RODOIL')) return 'COMBUSTIVEL_LOGISTICA';
+  if (has('OFICINA', 'MECANIC', 'MECÂNIC', 'AUTO CENTER', 'PNEU', 'CONSERTO', 'MANUTEN', 'RETIFICA', 'FUNILARIA', 'AUTO PECAS', 'AUTOPECAS', 'AUTO PEÇAS')) return 'MANUTENCAO';
+  if (has('FOLHA', 'SALARIO', 'SALÁRIO', 'RESCIS', 'PRO LABORE', 'PRO-LABORE', 'PROLABORE', 'ADIANT SALAR')) return 'FOLHA_DP';
+  if (has('VALE', 'ADIANTAMENTO')) return 'VALE_CAMPO';
+  if (has('MADEIR', 'TINTA', 'VERNIZ', 'RESINA', 'FERRAGE', 'FERRAM', 'PARAFUSO', 'LIXA', 'MATERIA', 'CONSTRU', 'DISTRIBUIDORA', 'COMERCIO', 'COMÉRCIO', 'DEPOSITO DE', 'ATACAD', 'HOME CENTER', 'MADEIREIRA', 'INSUMO')) return 'COMPRA_INSUMOS';
+  return 'OUTROS';
+}
+
 export const db = {
   // ---- OBRAS ----
   async listObras() {
@@ -1385,13 +1401,16 @@ export const db = {
       const { data } = await sb('movimentacoes_caixa').select('sicoob_tx_id').in('sicoob_tx_id', ids.slice(i, i + 200));
       (data || []).forEach(r => existentes.add(r.sicoob_tx_id));
     }
+    const porCategoria = {};
     const novos = tx.filter(t => !(t.transactionId && existentes.has(t.transactionId))).map(t => {
       const cred = String(t.tipo || '').toUpperCase() === 'CREDITO';
+      const categoria = categorizarMov([t.descricao, t.descInfComplementar].filter(Boolean).join(' '), cred);
+      porCategoria[categoria] = (porCategoria[categoria] || 0) + 1;
       return {
         conta_bancaria_id: c.id,
         data_movimento: String(t.dataLote || t.data || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
         descricao: [t.descricao, t.descInfComplementar].filter(Boolean).join(' — ').slice(0, 240) || 'Lançamento Sicoob',
-        categoria: 'OUTROS', tipo: cred ? 'ENTRADA' : 'SAIDA',
+        categoria, tipo: cred ? 'ENTRADA' : 'SAIDA',
         valor: Math.abs(Math.round((Number(t.valor) || 0) * 100)),
         status: 'REALIZADO', conciliado: true, sicoob_tx_id: t.transactionId || null,
       };
@@ -1404,7 +1423,7 @@ export const db = {
     }
     const saldoCent = Math.round((Number(extrato && extrato.saldoAtual) || 0) * 100);
     await sb('contas_bancarias').update({ saldo_atual: saldoCent }).eq('id', c.id);
-    return { importados, ignorados: tx.length - importados, saldo: saldoCent, conta_id: c.id, conta_nome: c.nome_instituicao };
+    return { importados, ignorados: tx.length - importados, saldo: saldoCent, conta_id: c.id, conta_nome: c.nome_instituicao, por_categoria: porCategoria };
   },
   // Proposta aprovada → entrada PREVISTA no fluxo de caixa (recebível), uma única vez por orçamento
   async lancarRecebivelProposta(orc, hojeStr) {
