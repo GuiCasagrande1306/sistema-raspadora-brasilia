@@ -1041,7 +1041,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v113</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v114</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1405,6 +1405,18 @@
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Ver saldo</button></footer>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: itens de uma categoria de gasto -->
+<div class="overlay" id="ov-gastos-cat">
+  <div class="modal" style="max-width:760px;width:96vw">
+    <header><h3 id="gcat-titulo">Categoria</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div id="gcat-resumo" style="font-size:13px;margin-bottom:10px;color:var(--ink-2)"></div>
+      <div id="gcat-conteudo" style="overflow-x:auto"></div>
+    </div>
+    <footer><button type="button" class="btn-ghost" id="gcat-pdf">🖨️ Relatório desta categoria (PDF)</button><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
   </div>
 </div>
 
@@ -4474,7 +4486,7 @@
     const legenda=r.categorias.map((c,i)=>{
       const cor=GASTO_CORES[i%GASTO_CORES.length];const nome=CAT_LABEL[c.categoria]||c.categoria;
       const temSub=c.categoria==='OUTRO'&&c.subcategorias&&c.subcategorias.length;
-      const head=`<div class="gasto-leg"${temSub?' data-gsub="1" style="cursor:pointer"':''}><span class="gasto-dot" style="background:${cor}"></span><span class="gl-nome">${esc(nome)}${temSub?' <span class="gsub-arrow">▾</span>':''}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`;
+      const head=`<div class="gasto-leg" data-gcat="${c.categoria}" style="cursor:pointer" title="Ver itens desta categoria"><span class="gasto-dot" style="background:${cor}"></span><span class="gl-nome">${esc(nome)}${temSub?' <span class="gsub-arrow" data-gsub="1" title="Resumo por descrição">▾</span>':''}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`;
       if(!temSub)return head;
       const subrows=c.subcategorias.map(s=>`<div class="gasto-subleg"><span class="gl-nome">${esc(s.nome)}</span><span class="gl-val money">${brl(s.total)}</span><span class="gl-pct">${(s.total/c.total*100).toFixed(1)}%</span></div>`).join('');
       return head+`<div class="gasto-sublist hidden">${subrows}</div>`;
@@ -4483,8 +4495,30 @@
       <div class="gastos-chart"><svg viewBox="0 0 200 200" aria-label="Gastos por categoria">${slices}</svg>
         <div class="gastos-center"><span>${rg.rotulo}</span><b class="money">${brl(r.total_geral)}</b></div></div>
       <div class="gastos-leg"><div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(rg.subt)}</div>${legenda}</div></div>`;
-    el.querySelectorAll('[data-gsub]').forEach(h=>h.addEventListener('click',()=>{const l=h.nextElementSibling;if(l&&l.classList.contains('gasto-sublist')){l.classList.toggle('hidden');const a=h.querySelector('.gsub-arrow');if(a)a.textContent=l.classList.contains('hidden')?'▾':'▴';}}));
+    el.querySelectorAll('[data-gcat]').forEach(h=>h.addEventListener('click',()=>abrirGastoCat(h.dataset.gcat)));
+    el.querySelectorAll('[data-gsub]').forEach(a=>a.addEventListener('click',e=>{e.stopPropagation();const row=a.closest('.gasto-leg');const l=row&&row.nextElementSibling;if(l&&l.classList.contains('gasto-sublist')){l.classList.toggle('hidden');a.textContent=l.classList.contains('hidden')?'▾':'▴';}}));
   }
+  // Detalhe/relatório de UMA categoria de gasto (itens + PDF)
+  let GCAT_STATE=null;
+  async function abrirGastoCat(categoria){
+    const rg=gastosRange();const el=document.getElementById('gcat-conteudo');
+    document.getElementById('gcat-titulo').textContent='Gastos — '+(CAT_LABEL[categoria]||categoria);
+    document.getElementById('gcat-resumo').textContent='';el.innerHTML='<div class="dv" style="padding:12px;color:var(--ink-3)">Carregando…</div>';
+    openModal('ov-gastos-cat');
+    try{
+      const r=await api('/api/gastos/detalhe?desde='+rg.desde+'&ate='+rg.ate+'&categoria='+encodeURIComponent(categoria));
+      GCAT_STATE={...r,rotulo:CAT_LABEL[categoria]||categoria,subt:rg.subt};
+      document.getElementById('gcat-resumo').innerHTML=`<b>${esc(rg.subt)}</b> · ${r.itens.length} lançamento(s) · Total <b>${brl(r.total)}</b>`;
+      if(!r.itens.length){el.innerHTML='<div class="orc-empty">Nenhum lançamento nesta categoria no período.</div>';return;}
+      const rows=r.itens.map(i=>`<tr><td style="white-space:nowrap">${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?`<div style="font-size:10.5px;color:var(--concreto)">${esc(i.detalhe)}</div>`:''}</td><td style="white-space:nowrap;color:var(--concreto);font-size:11.5px">${i.origem}</td><td style="text-align:right;white-space:nowrap;font-weight:700">${brl(i.valor)}</td></tr>`).join('');
+      el.innerHTML=`<table class="ltable" style="min-width:560px"><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}el.innerHTML='<div class="orc-empty">Erro ao carregar os itens'+(m?': '+esc(String(m)).slice(0,120):'')+'.</div>';GCAT_STATE=null;console.error(err);}
+  }
+  document.getElementById('gcat-pdf').addEventListener('click',()=>{
+    const g=GCAT_STATE;if(!g||!g.itens.length){showToast('Abra uma categoria primeiro');return;}
+    const rows=g.itens.map(i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?' — '+esc(i.detalhe):''}</td><td>${i.origem}</td><td class="r">${brl(i.valor)}</td></tr>`).join('');
+    finPrint('Gastos — '+g.rotulo,`<h1>Gastos — ${esc(g.rotulo)}</h1><p class="sub">${esc(g.subt)} · ${g.itens.length} lançamentos</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th>Valor</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">${brl(g.total)}</td></tr></tfoot></table>`);
+  });
   document.getElementById('gastos-periodo').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     gastosPeriodo=b.dataset.gp;
     document.getElementById('gastos-periodo').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));

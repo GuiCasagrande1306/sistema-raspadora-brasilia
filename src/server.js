@@ -694,6 +694,17 @@ app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
     res.json(await db.gastosPorCategoria(desde, ate));
   } catch (e) { next(e); }
 });
+// Itens de uma categoria no período (para ver/imprimir tudo de uma categoria)
+app.get('/api/gastos/detalhe', requireAdmin, async (req, res, next) => {
+  try {
+    let { desde, ate, mes, categoria } = req.query;
+    if (!categoria) return res.status(400).json({ erro: 'categoria é obrigatória' });
+    const ultimoDiaMes = ym => { const [y, mm] = ym.split('-').map(Number); return ym + '-' + String(new Date(y, mm, 0).getDate()).padStart(2, '0'); };
+    if ((!desde || !ate) && mes) { desde = mes + '-01'; ate = ultimoDiaMes(mes); }
+    if (!desde || !ate) { const m = new Date().toISOString().slice(0, 7); desde = m + '-01'; ate = ultimoDiaMes(m); }
+    res.json(await db.gastosDetalhe(desde, ate, categoria));
+  } catch (e) { next(e); }
+});
 
 // ---------- CRONOGRAMA DIÁRIO (funções/diárias editáveis + alocação por obra/dia) ----------
 app.use('/api/cronograma', requireCronograma);

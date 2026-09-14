@@ -1187,6 +1187,26 @@ export const db = {
     const total_geral = categorias.reduce((s, c) => s + c.total, 0);
     return { desde, ate, total_geral, categorias };
   },
+  // Itens individuais de uma categoria no período (boletos + lançamentos diários) — para ver/imprimir tudo de uma categoria
+  async gastosDetalhe(desde, ate, categoria) {
+    let boletos, lancs;
+    if (USING_SUPABASE) {
+      const [b, l] = await Promise.all([
+        sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,pago').eq('categoria', categoria).gte('vencimento', desde).lte('vencimento', ate),
+        sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').eq('categoria', categoria).gte('data', desde).lte('data', ate),
+      ]);
+      boletos = b.data || []; lancs = l.data || [];
+    } else {
+      boletos = mock.boletos.filter(x => (x.categoria || 'OUTRO') === categoria && x.vencimento >= desde && x.vencimento <= ate);
+      lancs = mock.lancDiarios.filter(x => (x.categoria || 'OUTRO') === categoria && x.data >= desde && x.data <= ate);
+    }
+    const itens = [
+      ...boletos.map(x => ({ data: x.vencimento, descricao: x.descricao || '', detalhe: x.fornecedor || x.categoria_custom || '', valor: x.valor || 0, origem: 'Boleto', categoria_custom: x.categoria_custom || null, pago: !!x.pago })),
+      ...lancs.map(x => ({ data: x.data, descricao: x.descricao || '', detalhe: x.categoria_custom || '', valor: x.valor || 0, origem: 'Pagamento diário', categoria_custom: x.categoria_custom || null, pago: !!x.pago })),
+    ].sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+    const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
+    return { categoria, desde, ate, total, itens };
+  },
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {
     const [boletos, lancs, contas] = await Promise.all([
