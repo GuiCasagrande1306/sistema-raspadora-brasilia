@@ -578,7 +578,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
-const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'DESPESA_FUNCIONARIO', 'OUTRO'];
+const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'DESPESA_FUNCIONARIO', 'EDVARD', 'OUTRO'];
 const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
