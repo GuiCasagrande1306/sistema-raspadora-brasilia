@@ -29,7 +29,7 @@ export const SICOOB_BASE = {
   sandbox: 'https://sandbox.sicoob.com.br/sicoob/sandbox/conta-corrente/v4',
   producao: 'https://api.sicoob.com.br/conta-corrente/v4',
 };
-export const SICOOB_SCOPES = 'cco_saldo cco_extrato openid';
+export const SICOOB_SCOPES = process.env.SICOOB_SCOPES || 'cco_consulta';   // este app usa cco_consulta (cobre saldo + extrato); override por env se precisar
 // Token público de homologação do portal Sicoob (não é segredo; serve só p/ sandbox).
 const SANDBOX_TOKEN_PADRAO = '1301865f-c6bc-38f3-9f49-666dbcfc59c3';
 
@@ -121,7 +121,8 @@ export async function getSaldo(acc) {
   const url = `${SICOOB_BASE[ambiente()]}/saldo?numeroContaCorrente=${encodeURIComponent(conta)}`;
   const r = await request('GET', url, { headers: baseHeaders(acc, token), ...agentOpts(acc) });
   if (r.status !== 200) throw new Error(`Sicoob saldo (${acc}): HTTP ${r.status} ${r.texto?.slice(0, 300) || ''}`);
-  return r.json;
+  const d = (r.json && r.json.resultado) ? r.json.resultado : (r.json || {});   // produção aninha em resultado (strings); sandbox vem plano
+  return { saldo: Number(d.saldo) || 0, saldoLimite: Number(d.saldoLimite) || 0, saldoBloqueado: Number(d.saldoBloqueado) || 0 };
 }
 
 // Extrato de um período. { mes, ano, diaInicial, diaFinal }
@@ -134,5 +135,5 @@ export async function getExtrato(acc, { mes, ano, diaInicial = 1, diaFinal = 31 
   const url = `${SICOOB_BASE[ambiente()]}/extrato/${mes}/${ano}?${qs}`;
   const r = await request('GET', url, { headers: baseHeaders(acc, token), ...agentOpts(acc) });
   if (r.status !== 200) throw new Error(`Sicoob extrato (${acc}): HTTP ${r.status} ${r.texto?.slice(0, 300) || ''}`);
-  return r.json;
+  return (r.json && r.json.resultado) ? r.json.resultado : r.json;   // produção aninha em resultado
 }
