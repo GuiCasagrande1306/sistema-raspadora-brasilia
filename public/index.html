@@ -910,7 +910,7 @@
         </div>
         <!-- Painel: Contas & Fluxo -->
         <div id="bancos-panel-contas">
-          <div style="display:flex;justify-content:flex-end;gap:8px;padding:0 26px"><button class="btn-ghost" id="btn-sicoob-saldo" style="min-height:38px">🏦 Saldo no Sicoob</button><button class="btn-ghost" id="btn-contas-pdf" style="min-height:38px">🖨️ Exportar PDF</button></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;padding:0 26px"><button class="btn-ghost" id="btn-sicoob-saldo" style="min-height:38px">🏦 Saldo no Sicoob</button><button class="btn-ghost" id="btn-sicoob-extrato" style="min-height:38px">📄 Extrato Sicoob</button><button class="btn-ghost" id="btn-contas-pdf" style="min-height:38px">🖨️ Exportar PDF</button></div>
           <div id="sicoob-saldos" style="padding:8px 26px 0"></div>
           <div class="metrics">
             <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
@@ -1034,7 +1034,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v107</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v108</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1383,6 +1383,25 @@
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Transferir</button></footer>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: Extrato Sicoob -->
+<div class="overlay" id="ov-extrato">
+  <div class="modal" style="max-width:840px;width:96vw">
+    <header><h3>Extrato Sicoob</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select id="ext-conta" class="dash-sel"><option value="principal">Conta Principal · ECO PISOS</option><option value="cofre">Cofre · R.B PISOS</option></select>
+        <button class="btn-ghost" id="ext-prev" title="Mês anterior">◀</button>
+        <b id="ext-mes" style="font-size:13px;min-width:130px;text-align:center">—</b>
+        <button class="btn-ghost" id="ext-next" title="Próximo mês">▶</button>
+        <button class="btn-ghost" id="ext-pdf" style="margin-left:auto">🖨️ PDF</button>
+      </div>
+      <div id="ext-resumo" style="font-size:12px;color:var(--concreto);margin-bottom:8px"></div>
+      <div id="ext-conteudo" style="overflow-x:auto"></div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
   </div>
 </div>
 
@@ -4504,6 +4523,37 @@
     }catch(err){box.innerHTML='<div class="orc-empty">Erro ao consultar o Sicoob.</div>';console.error(err);}
   }
   document.getElementById('btn-sicoob-saldo').addEventListener('click',carregarSaldosSicoob);
+  // Extrato Sicoob (por conta + mês)
+  let EXT_STATE={conta:'principal',ano:0,mes:0,ultimo:null};
+  const extContaLbl=()=>EXT_STATE.conta==='principal'?'Conta Principal · ECO PISOS':'Cofre · R.B PISOS';
+  const extMesLabel=()=>{const s=new Date(EXT_STATE.ano,EXT_STATE.mes-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});return s.charAt(0).toUpperCase()+s.slice(1);};
+  const extData=s=>{if(!s)return '—';const d=String(s).slice(0,10).split('-');return d.length===3?`${d[2]}/${d[1]}`:String(s);};
+  async function carregarExtrato(){
+    const cont=document.getElementById('ext-conteudo');
+    document.getElementById('ext-mes').textContent=extMesLabel();
+    document.getElementById('ext-resumo').textContent='';
+    cont.innerHTML='<div class="dv" style="padding:12px;color:var(--ink-3)">Consultando o Sicoob…</div>';
+    const lastDay=new Date(EXT_STATE.ano,EXT_STATE.mes,0).getDate();
+    try{
+      const r=await api(`/api/sicoob/${EXT_STATE.conta}/extrato?mes=${EXT_STATE.mes}&ano=${EXT_STATE.ano}&diaInicial=1&diaFinal=${lastDay}`);
+      const tx=r.transacoes||[];EXT_STATE.ultimo={r,tx};
+      document.getElementById('ext-resumo').innerHTML=`Saldo anterior <b>${brlN(Number(r.saldoAnterior)||0)}</b> → saldo atual <b>${brlN(Number(r.saldoAtual)||0)}</b> · <b>${tx.length}</b> lançamento(s)`;
+      if(!tx.length){cont.innerHTML='<div class="orc-empty">Sem lançamentos neste mês.</div>';return;}
+      const rows=tx.map(t=>{const v=Number(t.valor)||0;const cred=(t.tipo||'').toUpperCase()==='CREDITO';
+        return `<tr><td style="white-space:nowrap">${extData(t.data||t.dataLote)}</td><td>${esc(t.descricao||'')}${t.descInfComplementar?`<div style="font-size:10.5px;color:var(--concreto)">${esc(t.descInfComplementar)}</div>`:''}</td><td style="text-align:right;white-space:nowrap;font-weight:700;color:${cred?'#12805c':'var(--danger)'}">${cred?'+':'−'}${brlN(v)}</td></tr>`;}).join('');
+      cont.innerHTML=`<table class="ltable" style="min-width:520px"><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}cont.innerHTML=`<div class="orc-empty">Não foi possível carregar o extrato${m?': '+esc(String(m)).slice(0,140):''}.</div>`;EXT_STATE.ultimo=null;console.error(err);}
+  }
+  function abrirExtrato(){const now=new Date();EXT_STATE={conta:'principal',ano:now.getFullYear(),mes:now.getMonth()+1,ultimo:null};document.getElementById('ext-conta').value='principal';carregarExtrato();openModal('ov-extrato');}
+  document.getElementById('btn-sicoob-extrato').addEventListener('click',abrirExtrato);
+  document.getElementById('ext-conta').addEventListener('change',e=>{EXT_STATE.conta=e.target.value;carregarExtrato();});
+  document.getElementById('ext-prev').addEventListener('click',()=>{EXT_STATE.mes--;if(EXT_STATE.mes<1){EXT_STATE.mes=12;EXT_STATE.ano--;}carregarExtrato();});
+  document.getElementById('ext-next').addEventListener('click',()=>{EXT_STATE.mes++;if(EXT_STATE.mes>12){EXT_STATE.mes=1;EXT_STATE.ano++;}carregarExtrato();});
+  document.getElementById('ext-pdf').addEventListener('click',()=>{
+    const u=EXT_STATE.ultimo;if(!u||!u.tx.length){showToast('Carregue o extrato primeiro');return;}
+    const rows=u.tx.map(t=>{const v=Number(t.valor)||0;const cred=(t.tipo||'').toUpperCase()==='CREDITO';return `<tr><td>${extData(t.data||t.dataLote)}</td><td>${esc(t.descricao||'')}</td><td class="r" style="color:${cred?'#12805c':'#b3261e'}">${cred?'+':'−'}${brlN(v)}</td></tr>`;}).join('');
+    finPrint('Extrato — '+extContaLbl(),`<h1>Extrato — ${esc(extContaLbl())}</h1><p class="sub">${extMesLabel()} · saldo anterior ${brlN(Number(u.r.saldoAnterior)||0)} → atual ${brlN(Number(u.r.saldoAtual)||0)}</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>`);
+  });
   // Contas & Fluxo (saldos + projeção)
   document.getElementById('btn-contas-pdf').addEventListener('click',()=>{
     if(!BANCOS_STATE){showToast('Abra Contas & Fluxo primeiro');return;}
