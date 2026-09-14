@@ -1165,20 +1165,25 @@ export const db = {
     let boletos, lancs;
     if (USING_SUPABASE) {
       const [b, l] = await Promise.all([
-        sb('boletos').select('categoria,valor').gte('vencimento', desde).lte('vencimento', ate),
-        sb('lancamentos_diarios').select('categoria,valor').gte('data', desde).lte('data', ate),
+        sb('boletos').select('categoria,categoria_custom,valor').gte('vencimento', desde).lte('vencimento', ate),
+        sb('lancamentos_diarios').select('categoria,categoria_custom,valor').gte('data', desde).lte('data', ate),
       ]);
       boletos = b.data || []; lancs = l.data || [];
     } else {
       boletos = mock.boletos.filter(x => x.vencimento >= desde && x.vencimento <= ate);
       lancs = mock.lancDiarios.filter(x => x.data >= desde && x.data <= ate);
     }
-    const acc = {};
+    const acc = {}; const outroSub = {};
     for (const x of [...boletos, ...lancs]) {
       const c = x.categoria || 'OUTRO';
       acc[c] = (acc[c] || 0) + (x.valor || 0);
+      if (c === 'OUTRO') { const k = ((x.categoria_custom || '').trim()) || 'Sem descrição'; outroSub[k] = (outroSub[k] || 0) + (x.valor || 0); }
     }
-    const categorias = Object.entries(acc).map(([categoria, total]) => ({ categoria, total })).sort((a, b) => b.total - a.total);
+    const categorias = Object.entries(acc).map(([categoria, total]) => {
+      const o = { categoria, total };
+      if (categoria === 'OUTRO') o.subcategorias = Object.entries(outroSub).map(([nome, t]) => ({ nome, total: t })).sort((a, b) => b.total - a.total);
+      return o;
+    }).sort((a, b) => b.total - a.total);
     const total_geral = categorias.reduce((s, c) => s + c.total, 0);
     return { desde, ate, total_geral, categorias };
   },

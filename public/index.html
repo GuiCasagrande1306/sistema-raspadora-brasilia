@@ -375,6 +375,10 @@
   .gasto-leg:last-child{border-bottom:0;}
   .gasto-dot{width:12px;height:12px;border-radius:3px;flex:none;}
   .gl-nome{flex:1;} .gl-val{font-weight:700;font-variant-numeric:tabular-nums;} .gl-pct{color:var(--ink-3);min-width:56px;text-align:right;}
+  .gsub-arrow{font-size:10px;color:var(--ink-3);margin-left:4px;}
+  .gasto-sublist{margin:0 0 4px 24px;padding-left:10px;border-left:2px solid var(--laranja-50);}
+  .gasto-subleg{display:flex;align-items:center;gap:10px;font-size:12px;padding:5px 0;color:var(--concreto);border-bottom:1px dashed var(--line);}
+  .gasto-subleg:last-child{border-bottom:0;}
   .colab-list,.doc-list{display:flex;flex-direction:column;gap:8px;}
   .colab-row{border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.12s;}
   .colab-row:hover{border-color:var(--laranja-100);background:var(--laranja-50);}
@@ -1037,7 +1041,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v110</b></span>
+          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v111</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4464,11 +4468,19 @@
     if(!r.total_geral){el.innerHTML='<div class="orc-empty">Nenhum gasto em '+rg.subt+'. Cadastre boletos e lançamentos para ver a distribuição por categoria.</div>';return;}
     const C=2*Math.PI*80;let off=0;
     const slices=r.categorias.map((c,i)=>{const len=(c.total/r.total_geral)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('');
-    const legenda=r.categorias.map((c,i)=>`<div class="gasto-leg"><span class="gasto-dot" style="background:${GASTO_CORES[i%GASTO_CORES.length]}"></span><span class="gl-nome">${CAT_LABEL[c.categoria]||c.categoria}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`).join('');
+    const legenda=r.categorias.map((c,i)=>{
+      const cor=GASTO_CORES[i%GASTO_CORES.length];const nome=CAT_LABEL[c.categoria]||c.categoria;
+      const temSub=c.categoria==='OUTRO'&&c.subcategorias&&c.subcategorias.length;
+      const head=`<div class="gasto-leg"${temSub?' data-gsub="1" style="cursor:pointer"':''}><span class="gasto-dot" style="background:${cor}"></span><span class="gl-nome">${esc(nome)}${temSub?' <span class="gsub-arrow">▾</span>':''}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`;
+      if(!temSub)return head;
+      const subrows=c.subcategorias.map(s=>`<div class="gasto-subleg"><span class="gl-nome">${esc(s.nome)}</span><span class="gl-val money">${brl(s.total)}</span><span class="gl-pct">${(s.total/c.total*100).toFixed(1)}%</span></div>`).join('');
+      return head+`<div class="gasto-sublist hidden">${subrows}</div>`;
+    }).join('');
     el.innerHTML=`<div class="gastos-wrap">
       <div class="gastos-chart"><svg viewBox="0 0 200 200" aria-label="Gastos por categoria">${slices}</svg>
         <div class="gastos-center"><span>${rg.rotulo}</span><b class="money">${brl(r.total_geral)}</b></div></div>
       <div class="gastos-leg"><div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(rg.subt)}</div>${legenda}</div></div>`;
+    el.querySelectorAll('[data-gsub]').forEach(h=>h.addEventListener('click',()=>{const l=h.nextElementSibling;if(l&&l.classList.contains('gasto-sublist')){l.classList.toggle('hidden');const a=h.querySelector('.gsub-arrow');if(a)a.textContent=l.classList.contains('hidden')?'▾':'▴';}}));
   }
   document.getElementById('gastos-periodo').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     gastosPeriodo=b.dataset.gp;
