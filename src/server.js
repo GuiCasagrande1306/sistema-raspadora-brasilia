@@ -1329,8 +1329,9 @@ app.post('/api/bancos/desbloquear', (req, res) => {
 });
 // Cofre — senha própria pra revelar o saldo (dedicada; cai na financeira se COFRE_PASSWORD não estiver setada)
 app.post('/api/cofre/desbloquear', requireAdmin, (req, res) => {
-  const esperada = process.env.COFRE_PASSWORD || process.env.FINANCE_PASSWORD || 'raspadora@fin';
-  if (!req.body || req.body.senha !== esperada) return res.status(401).json({ ok: false, erro: 'Senha do Cofre incorreta' });
+  const esperada = (process.env.COFRE_PASSWORD || process.env.FINANCE_PASSWORD || 'raspadora@fin').trim();
+  const enviada = ((req.body && req.body.senha) || '').trim();   // ignora espaços/quebras de linha nas pontas (comum ao colar na Vercel)
+  if (!enviada || enviada !== esperada) return res.status(401).json({ ok: false, erro: 'Senha do Cofre incorreta' });
   res.json({ ok: true });
 });
 
