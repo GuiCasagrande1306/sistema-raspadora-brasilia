@@ -377,7 +377,7 @@
   .gl-nome{flex:1;} .gl-val{font-weight:700;font-variant-numeric:tabular-nums;} .gl-pct{color:var(--ink-3);min-width:56px;text-align:right;}
   .gsub-arrow{font-size:10px;color:var(--ink-3);margin-left:4px;}
   .gasto-sublist{margin:0 0 4px 24px;padding-left:10px;border-left:2px solid var(--laranja-50);}
-  .gasto-subleg{display:flex;align-items:center;gap:10px;font-size:12px;padding:5px 0;color:var(--concreto);border-bottom:1px dashed var(--line);}
+  .gasto-subleg{display:flex;align-items:center;gap:10px;font-size:12px;padding:5px 0;color:var(--ink-3);border-bottom:1px dashed var(--line);}
   .gasto-subleg:last-child{border-bottom:0;}
   .colab-list,.doc-list{display:flex;flex-direction:column;gap:8px;}
   .colab-row{border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.12s;}
@@ -512,14 +512,14 @@
   .sic-card{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--laranja);border-radius:12px;padding:12px 14px;}
   .sic-card.sic-err{border-top-color:var(--danger);}
   .sic-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;}
-  .sic-emp{font-size:9.5px;font-weight:700;color:var(--concreto);text-transform:uppercase;letter-spacing:.03em;}
+  .sic-emp{font-size:9.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em;}
   .sic-saldo{font-size:22px;font-weight:800;color:var(--ok);}
   .sic-saldo.neg{color:var(--danger);}
-  .sic-sub{font-size:11px;color:var(--concreto);margin-top:2px;}
+  .sic-sub{font-size:11px;color:var(--ink-3);margin-top:2px;}
   .sic-msg{font-size:12px;color:var(--danger);}
-  .sic-hint{font-size:11px;color:var(--concreto);margin-top:6px;}
-  .sic-card.sic-lock{border-top-color:var(--concreto);background:repeating-linear-gradient(45deg,var(--surface),var(--surface) 10px,rgba(0,0,0,.02) 10px,rgba(0,0,0,.02) 20px);}
-  .sic-locktext{font-size:16px;font-weight:800;color:var(--concreto);margin:4px 0;}
+  .sic-hint{font-size:11px;color:var(--ink-3);margin-top:6px;}
+  .sic-card.sic-lock{border-top-color:var(--ink-3);background:repeating-linear-gradient(45deg,var(--surface),var(--surface) 10px,rgba(0,0,0,.02) 10px,rgba(0,0,0,.02) 20px);}
+  .sic-locktext{font-size:16px;font-weight:800;color:var(--ink-3);margin:4px 0;}
   .mov-cat{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--laranja-50);color:var(--laranja-esc);white-space:nowrap;}
   .conta-card .cc-nome{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px;}
   .conta-card .cc-tipo{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em;margin-top:2px;}
@@ -549,7 +549,7 @@
   .diar-toggle{cursor:pointer;font-size:9px;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;user-select:none;white-space:nowrap;transition:all .12s;}
   .diar-toggle.on{background:#2563EB;color:#fff;}
   .diar-toggle.on:hover{filter:brightness(1.1);}
-  .diar-toggle.off{background:transparent;color:var(--concreto);border:1px dashed var(--line);}
+  .diar-toggle.off{background:transparent;color:var(--ink-3);border:1px dashed var(--line);}
   .diar-toggle.off:hover{color:#2563EB;border-color:#2563EB;background:rgba(37,99,235,.06);}
   .cron-col.dragover .cards{outline:2px dashed var(--laranja);outline-offset:4px;border-radius:12px;background:var(--laranja-50);}
   .cron-resp{font-size:12px;font-weight:700;color:var(--laranja-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1041,7 +1041,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--concreto)">Versão do app: <b id="app-versao">v114</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v115</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1433,7 +1433,7 @@
         <button class="primary" id="ext-importar" style="margin-left:auto">⬇️ Importar pro Cofre</button>
         <button class="btn-ghost" id="ext-pdf">🖨️ PDF</button>
       </div>
-      <div id="ext-resumo" style="font-size:12px;color:var(--concreto);margin-bottom:8px"></div>
+      <div id="ext-resumo" style="font-size:12px;color:var(--ink-3);margin-bottom:8px"></div>
       <div id="ext-conteudo" style="overflow-x:auto"></div>
     </div>
     <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
@@ -4510,7 +4510,7 @@
       GCAT_STATE={...r,rotulo:CAT_LABEL[categoria]||categoria,subt:rg.subt};
       document.getElementById('gcat-resumo').innerHTML=`<b>${esc(rg.subt)}</b> · ${r.itens.length} lançamento(s) · Total <b>${brl(r.total)}</b>`;
       if(!r.itens.length){el.innerHTML='<div class="orc-empty">Nenhum lançamento nesta categoria no período.</div>';return;}
-      const rows=r.itens.map(i=>`<tr><td style="white-space:nowrap">${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?`<div style="font-size:10.5px;color:var(--concreto)">${esc(i.detalhe)}</div>`:''}</td><td style="white-space:nowrap;color:var(--concreto);font-size:11.5px">${i.origem}</td><td style="text-align:right;white-space:nowrap;font-weight:700">${brl(i.valor)}</td></tr>`).join('');
+      const rows=r.itens.map(i=>`<tr><td style="white-space:nowrap">${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?`<div style="font-size:10.5px;color:var(--ink-3)">${esc(i.detalhe)}</div>`:''}</td><td style="white-space:nowrap;color:var(--ink-3);font-size:11.5px">${i.origem}</td><td style="text-align:right;white-space:nowrap;font-weight:700">${brl(i.valor)}</td></tr>`).join('');
       el.innerHTML=`<table class="ltable" style="min-width:560px"><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}el.innerHTML='<div class="orc-empty">Erro ao carregar os itens'+(m?': '+esc(String(m)).slice(0,120):'')+'.</div>';GCAT_STATE=null;console.error(err);}
   }
@@ -4635,7 +4635,7 @@
       document.getElementById('ext-resumo').innerHTML=`Saldo anterior <b>${brlN(Number(r.saldoAnterior)||0)}</b> → saldo atual <b>${brlN(Number(r.saldoAtual)||0)}</b> · <b>${tx.length}</b> lançamento(s)`;
       if(!tx.length){cont.innerHTML='<div class="orc-empty">Sem lançamentos neste mês.</div>';return;}
       const rows=tx.map(t=>{const v=Number(t.valor)||0;const cred=(t.tipo||'').toUpperCase()==='CREDITO';
-        return `<tr><td style="white-space:nowrap">${extData(t.data||t.dataLote)}</td><td>${esc(t.descricao||'')}${t.descInfComplementar?`<div style="font-size:10.5px;color:var(--concreto)">${esc(t.descInfComplementar)}</div>`:''}</td><td><span class="mov-cat">${MOV_CAT_LABEL[t.categoria]||t.categoria||'—'}</span></td><td style="text-align:right;white-space:nowrap;font-weight:700;color:${cred?'#12805c':'var(--danger)'}">${cred?'+':'−'}${brlN(v)}</td></tr>`;}).join('');
+        return `<tr><td style="white-space:nowrap">${extData(t.data||t.dataLote)}</td><td>${esc(t.descricao||'')}${t.descInfComplementar?`<div style="font-size:10.5px;color:var(--ink-3)">${esc(t.descInfComplementar)}</div>`:''}</td><td><span class="mov-cat">${MOV_CAT_LABEL[t.categoria]||t.categoria||'—'}</span></td><td style="text-align:right;white-space:nowrap;font-weight:700;color:${cred?'#12805c':'var(--danger)'}">${cred?'+':'−'}${brlN(v)}</td></tr>`;}).join('');
       cont.innerHTML=`<table class="ltable" style="min-width:560px"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}cont.innerHTML=`<div class="orc-empty">Não foi possível carregar o extrato${m?': '+esc(String(m)).slice(0,140):''}.</div>`;EXT_STATE.ultimo=null;console.error(err);}
   }
