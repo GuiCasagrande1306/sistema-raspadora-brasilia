@@ -1466,7 +1466,7 @@ app.post('/api/test-whatsapp', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON, sicoob: sicoobStatus().configurado, version: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, storage: USING_SUPABASE ? 'supabase' : 'mock', whatsapp: WHATSAPP_ON, sicoob: sicoobStatus().configurado, cofre_pass: !!process.env.COFRE_PASSWORD, version: process.env.VERCEL_GIT_COMMIT_SHA || 'dev' }));
 // Status da integração Sicoob (só presença das credenciais, sem expor valores) — para conferir env vars na Vercel
 app.get('/api/sicoob/status', requireAdmin, (_req, res) => res.json(sicoobStatus()));
 // Saldo de uma conta (:conta = principal | cofre)
