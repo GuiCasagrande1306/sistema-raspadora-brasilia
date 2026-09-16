@@ -1679,28 +1679,40 @@ export const db = {
   // DRE individual da obra
   async dreObra(obraId) {
     if (!USING_SUPABASE) return null;
-    const [{ data: obra }, { data: custos }, { data: apeq }] = await Promise.all([
-      sb('obras_financeiro').select('*').eq('id', obraId).single(),
-      sb('custos_obras').select('custo_total').eq('obra_id', obraId),
-      sb('apontamento_equipe').select('m2_rateado,colaborador_id,apontamento_id').in('apontamento_id',
-        (await sb('apontamentos_diarios').select('id').eq('obra_id', obraId)).data?.map(a => a.id) || ['00000000-0000-0000-0000-000000000000']),
-    ]);
+    const { data: obra } = await sb('obras_financeiro').select('*').eq('id', obraId).single();
     if (!obra) return null;
-    const custo_insumos = (custos || []).reduce((s, c) => s + c.custo_total, 0) || obra.custo_insumos || 0;
-    // mão de obra: por colaborador-dia = diária + m²*comissão
-    let custo_mao_obra = 0;
-    if (apeq && apeq.length) {
-      const ids = [...new Set(apeq.map(r => r.colaborador_id))];
-      const { data: cs } = await sb('colaboradores').select('id,valor_diaria,comissao_por_m2').in('id', ids);
-      const map = Object.fromEntries((cs || []).map(c => [c.id, c]));
-      // diária: 1 por colaborador-dia (par colaborador+apontamento)
-      custo_mao_obra = apeq.reduce((s, r) => {
-        const c = map[r.colaborador_id] || {};
-        return s + (c.valor_diaria || 0) + Math.round(Number(r.m2_rateado) * (c.comissao_por_m2 || 0));
-      }, 0);
-    } else {
-      custo_mao_obra = obra.custo_mao_obra || 0;
+    const [{ data: custos }, { data: aps }, { data: lancs }] = await Promise.all([
+      sb('custos_obras').select('descricao_insumo,custo_total').eq('obra_id', obraId),
+      sb('apontamentos_diarios').select('id,data').eq('obra_id', obraId),
+      sb('lancamentos').select('categoria,valor,descricao,tipo,created_at').eq('obra_id', obraId).eq('tipo', 'saida'),
+    ]);
+    // INSUMOS/MATERIAIS: custos de obra (planilha) + lançamentos marcados como insumo
+    const insumos_itens = [
+      ...(custos || []).map(c => ({ descricao: c.descricao_insumo || 'Material', valor: c.custo_total || 0 })),
+      ...(lancs || []).filter(l => l.categoria === 'insumo').map(l => ({ descricao: l.descricao || 'Material', valor: l.valor || 0 })),
+    ];
+    // MÃO DE OBRA: apontamento (diária + comissão por colaborador-dia) + demais lançamentos de saída
+    const maoobra_itens = [];
+    const apIds = (aps || []).map(a => a.id);
+    if (apIds.length) {
+      const { data: apeq } = await sb('apontamento_equipe').select('m2_rateado,colaborador_id,apontamento_id').in('apontamento_id', apIds);
+      if (apeq && apeq.length) {
+        const ids = [...new Set(apeq.map(r => r.colaborador_id))];
+        const { data: cs } = await sb('colaboradores').select('id,nome,valor_diaria,comissao_por_m2').in('id', ids);
+        const map = Object.fromEntries((cs || []).map(c => [c.id, c]));
+        for (const r of apeq) {
+          const c = map[r.colaborador_id] || {};
+          const v = (c.valor_diaria || 0) + Math.round(Number(r.m2_rateado) * (c.comissao_por_m2 || 0));
+          maoobra_itens.push({ descricao: (c.nome || 'Colaborador') + ' — diária + comissão', valor: v });
+        }
+      }
     }
+    for (const l of (lancs || [])) if (l.categoria !== 'insumo') maoobra_itens.push({ descricao: l.descricao || 'Mão de obra', valor: l.valor || 0 });
+
+    let custo_insumos = insumos_itens.reduce((s, i) => s + i.valor, 0);
+    let custo_mao_obra = maoobra_itens.reduce((s, i) => s + i.valor, 0);
+    if (!insumos_itens.length && obra.custo_insumos) custo_insumos = obra.custo_insumos;   // fallback denormalizado
+    if (!maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
     const receita_bruta = obra.valor_contrato || 0;
     const custo_direto = custo_insumos + custo_mao_obra;
     const lucro_bruto = receita_bruta - custo_direto;
@@ -1708,6 +1720,7 @@ export const db = {
     return {
       obra_id: obraId, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
       receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra,
+      insumos_itens, maoobra_itens,
       lucro_bruto, margem_lucro_percentual: margem,
     };
   },
