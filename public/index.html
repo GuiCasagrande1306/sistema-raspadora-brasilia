@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v126</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v127</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2003,7 +2003,7 @@
           </div>
           <div class="grid2">
             <div class="field"><label>Encarregado da obra <span style="color:var(--ink-3);font-weight:400">(quem toca)</span></label><input name="responsavel" id="oe-responsavel" placeholder="Ex.: Márcio, Lorena…"></div>
-            <div class="field"><label>Etapa</label><select name="coluna_kanban" id="oe-etapa"><option value="aprovado">Aguardando Sinal / Entrada</option><option value="execucao">Em Execução</option><option value="afericao">Aferição de Margem</option><option value="liquidado">Concluído / Liquidado</option></select></div>
+            <div class="field"><label>Etapa</label><select name="coluna_kanban" id="oe-etapa"><option value="aprovado">Aguardando Sinal / Entrada</option><option value="execucao">Em Execução</option><option value="liquidado">Concluído / Liquidado</option></select></div>
           </div>
           <div class="field"><label>Responsável de comissão <span style="color:var(--ink-3);font-weight:400">(de quem é a obra — quem recebe a comissão)</span></label><input name="comissao_responsavel" id="oe-comissao" list="oe-comissao-list" placeholder="Nome de quem recebe a comissão"><datalist id="oe-comissao-list"></datalist></div>
           <div class="dv" style="font-size:11px;color:var(--ink-3);margin:-2px 0 6px">O <b>encarregado</b> identifica a obra no Cronograma; o <b>responsável de comissão</b> é de quem é a obra (quem leva a comissão dela).</div>
@@ -2218,7 +2218,6 @@
   const FIN_COLS=[
     {k:'aprovado',t:'Aguardando Sinal / Entrada',c:'var(--wait)'},
     {k:'execucao',t:'Em Execução — Custos Abertos',c:'var(--laranja)'},
-    {k:'afericao',t:'Aferição de Margem',c:'var(--info)'},
     {k:'liquidado',t:'Concluído / Liquidado',c:'var(--ok)'},
   ];
   function obraCard(o){
