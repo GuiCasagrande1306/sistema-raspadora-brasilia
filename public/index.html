@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v127</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v128</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3703,7 +3703,7 @@
 
   // Categorias do lançamento dependem do tipo
   const CATS={entrada:[['sinal','Sinal / Entrada'],['saldo','Saldo final']],
-    saida:[['insumo','Insumo (materiais / ferramentas)'],['insumo_prestador','Insumo + Mão de obra (valor total)'],['diaria','Mão de obra'],['combustivel','Combustível'],['vale','Vale / Adiantamento']]};
+    saida:[['insumo','Materiais / ferramentas'],['insumo_prestador','Materiais + Mão de obra (valor total)'],['diaria','Mão de obra'],['combustivel','Combustível'],['vale','Vale / Adiantamento'],['almoco','Almoço'],['vale_transporte','Vale transporte'],['outros','Outros']]};
   function fillCats(){const t=document.getElementById('lanc-tipo').value;
     document.getElementById('lanc-cat').innerHTML=CATS[t].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');}
   document.getElementById('lanc-tipo').addEventListener('change',fillCats);fillCats();
