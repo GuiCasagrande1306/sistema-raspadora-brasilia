@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v124</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v125</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1678,6 +1678,22 @@
 </div>
 
 <!-- MODAL: Upload/atualização de documento (Inmeta) -->
+<!-- MODAL: corrigir data de vencimento do documento -->
+<div class="overlay" id="ov-doc-data">
+  <div class="modal" style="max-width:380px">
+    <header><h3>Corrigir data de vencimento</h3><button class="x" data-close>×</button></header>
+    <form id="form-doc-data">
+      <div class="body">
+        <div id="docdata-nome" class="login-hint" style="text-align:left;margin-bottom:8px"></div>
+        <input type="hidden" id="docdata-id">
+        <div class="field"><label>Data de vencimento</label><input type="date" id="docdata-venc"></div>
+        <div class="hint" style="font-size:11.5px">Corrija aqui se digitou errado — não precisa reenviar o arquivo. Deixe em branco para "sem validade".</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar data</button></footer>
+    </form>
+  </div>
+</div>
+
 <div class="overlay" id="ov-docup">
   <div class="modal">
     <header><h3 id="docup-titulo">Atualizar documento</h3><button class="x" data-close>×</button></header>
@@ -4037,15 +4053,11 @@
           const validade=!d.vencivel?'<span class="sem-validade">Sem Validade</span>'
             :(d.presente&&d.data_vencimento?`<span class="sub" style="font-size:11.5px">${v.dias<0?'⚠ vencido há '+(-v.dias)+'d':v.dias+' dias · '+dtBR(d.data_vencimento)}</span>`:'<span class="sub" style="font-size:11.5px">—</span>');
           const l2=d.presente?`Versão ${d.versao} · atualizado ${d.atualizado_em?dtBR(d.atualizado_em.slice(0,10)):''}`:'Não enviado';
-          const ctl=d.presente?`<select class="an-sel" data-status="${d.id}">
-              <option value="NAO_VALIDADO" ${d.status_analise==='NAO_VALIDADO'?'selected':''}>Pendente</option>
-              <option value="VALIDADO" ${d.status_analise==='VALIDADO'?'selected':''}>Aprovado</option>
-              <option value="REPROVADO" ${d.status_analise==='REPROVADO'?'selected':''}>Reprovado</option></select>`
-            :'<span class="an an-nao">Pendente</span>';
+          const editData=(d.vencivel&&d.presente)?`<button data-editdata="${d.id}" data-venc="${d.data_vencimento||''}" data-nome="${esc(d.nome)}" title="Corrigir data de vencimento" style="border:0;background:none;color:var(--laranja);cursor:pointer;font-size:11px;padding:0 2px;font-weight:600">✏️ data</button>`:'';
           const anexosLinks=(d.anexos||[]).map((ax,i)=>`<a class="doc-open" href="${ax.url}" target="_blank" rel="noopener" title="${esc(ax.nome||'')}">Abrir ${i+2}</a>`).join('');
           const abrir=d.presente&&d.arquivo_url?`<a class="doc-open" href="${d.arquivo_url}" target="_blank" rel="noopener" title="Abrir / acessar o documento">Abrir${(d.anexos||[]).length?' 1':''}</a>`+anexosLinks:'';
           return `<div class="doc-row"><div class="pdf-ic">PDF</div>
-            <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}</div></div>${ctl}${abrir}
+            <div class="di"><h4>${d.codigo} · ${esc(d.nome)}</h4><div class="sub">${l2} · ${validade}${editData?' · '+editData:''}</div></div>${abrir}
             <button class="doc-cloud" data-up="${d.codigo}" data-nome="${esc(d.nome)}" title="Atualizar arquivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></button></div>`;}).join('')+'</div>';
       }else tabela='<div class="orc-empty">Nenhum documento nesta aba.</div>';
       el.innerHTML=banner+counts+tabs+tabela;
@@ -4060,9 +4072,7 @@
           docsState={nivel:docsState.empresa?'colaboradores':'empresas',empresa:docsState.empresa,empresaLabel:docsState.empresaLabel};renderDocs();
         }catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(e);}});
       el.querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click',()=>abrirDocUp(b.dataset.up,b.dataset.nome)));
-      el.querySelectorAll('[data-status]').forEach(s=>s.addEventListener('change',async()=>{
-        try{await api('/api/documentos/'+s.dataset.status+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status_analise:s.value})});showToast('Status atualizado');renderDocs();}
-        catch(err){showToast('Erro ao mudar status');console.error(err);}}));
+      el.querySelectorAll('[data-editdata]').forEach(b=>b.addEventListener('click',()=>abrirEditData(b.dataset.editdata,b.dataset.nome,b.dataset.venc)));
     }
   }
   function loadDocs(){docsState={nivel:'empresas'};return renderDocs();}
@@ -4076,6 +4086,13 @@
   }
   document.getElementById('docup-temelab').addEventListener('change',e=>{document.getElementById('docup-elab-wrap').style.display=e.target.checked?'':'none';});
   document.getElementById('docup-temvenc').addEventListener('change',e=>{document.getElementById('docup-venc-wrap').style.display=e.target.checked?'':'none';});
+  function abrirEditData(id,nome,venc){document.getElementById('docdata-id').value=id;document.getElementById('docdata-nome').innerHTML='<b>'+esc(nome||'Documento')+'</b>';document.getElementById('docdata-venc').value=(venc||'').slice(0,10);openModal('ov-doc-data');}
+  document.getElementById('form-doc-data').addEventListener('submit',async e=>{
+    e.preventDefault();const id=document.getElementById('docdata-id').value;const dv=document.getElementById('docdata-venc').value||null;
+    try{await api('/api/documentos/'+id+'/vencimento',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data_vencimento:dv})});
+      document.getElementById('ov-doc-data').classList.remove('open');showToast('Data de vencimento atualizada');renderDocs();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Data: '+(m||'erro'));console.error(err);}
+  });
   document.getElementById('form-docup').addEventListener('submit',async e=>{
     e.preventDefault();const fd=new FormData(e.target);
     fd.set('tem_vencimento',document.getElementById('docup-temvenc').checked?'true':'false');
@@ -4737,7 +4754,7 @@
         <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):(temFaltas?'<span style="color:var(--danger)">a lançar</span>':'—')}</td>
         <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
         ${liqCell}</tr>`;
-      const diariasBlock=temDet?`<div style="padding:8px 18px"><table style="width:100%;font-size:12px;border-collapse:collapse">
+      const diariasBlock=temDet?`<div style="padding:8px 18px"><div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn-ghost" data-recibofolha="${idx}" style="padding:4px 12px;font-size:12px">🖨️ Exportar PDF deste colaborador</button></div><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th><th style="text-align:right;padding:4px">Gratificação</th></tr></thead>
         <tbody>${l.detalhe.map(d=>{
           const gratifCell=d.is_gratificacao

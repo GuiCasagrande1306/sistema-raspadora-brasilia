@@ -491,6 +491,12 @@ export const db = {
     if (error) throw error;
     return data;
   },
+  async setVencimentoDoc(docId, data_vencimento) {
+    if (!USING_SUPABASE) return { id: docId, data_vencimento };
+    const { data, error } = await sb('documentos_colaborador').update({ data_vencimento: data_vencimento || null }).eq('id', docId).select().single();
+    if (error) throw error;
+    return data;
+  },
 
   // ---- DASHBOARD FINANCEIRO ----
   async dashboardFinanceiro(empresa, periodo) {

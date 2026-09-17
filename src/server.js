@@ -1445,6 +1445,14 @@ app.patch('/api/documentos/:docId/status', async (req, res, next) => {
     res.json(await db.setStatusDoc(req.params.docId, status_analise));
   } catch (e) { next(e); }
 });
+// Corrigir a data de vencimento de um documento (quando digitada errada, sem reenviar o arquivo)
+app.patch('/api/documentos/:docId/vencimento', async (req, res, next) => {
+  try {
+    const dv = req.body.data_vencimento || null;
+    if (dv && !/^\d{4}-\d{2}-\d{2}$/.test(dv)) return res.status(400).json({ erro: 'data_vencimento inválida (use AAAA-MM-DD)' });
+    res.json(await db.setVencimentoDoc(req.params.docId, dv));
+  } catch (e) { next(e); }
+});
 app.get('/api/documentos/relatorio-pendencias', async (req, res, next) => {
   try {
     const lista = await db.listColaboradoresDocs({ empresa: req.query.empresa, pendencias: true });
