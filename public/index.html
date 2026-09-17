@@ -554,6 +554,7 @@
   .diar-toggle.off:hover{color:#2563EB;border-color:#2563EB;background:rgba(37,99,235,.06);}
   .cron-col.dragover .cards{outline:2px dashed var(--laranja);outline-offset:4px;border-radius:12px;background:var(--laranja-50);}
   .cron-resp{font-size:12px;font-weight:700;color:var(--laranja-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #ov-dre .modal{max-width:480px;}
   .dre-hero{background:var(--chumbo-900);color:#fff;padding:18px 20px;}
   .dre-hero h3{margin:0;font-size:17px;} .dre-hero .sub{color:var(--laranja);font-size:12.5px;font-weight:600;margin-top:2px;}
   .dre-line{display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--line);font-size:14px;}
@@ -1042,7 +1043,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v119</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v120</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4939,9 +4940,10 @@
 
   // ---- DRE (a partir do board Financeiro) ----
   document.getElementById('board-fin').addEventListener('click',e=>{const b=e.target.closest('[data-dre]');if(b)abrirDre(b.dataset.dre);});
+  const brlD=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
   const dreItens=(arr)=>(arr&&arr.length)
-    ?`<div style="margin:1px 0 9px;padding:3px 0 3px 14px;border-left:2px solid var(--laranja-50)">${arr.map(i=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink-2);padding:3px 0"><span>${esc(i.descricao)}</span><span style="white-space:nowrap;color:var(--ink);font-weight:600">${brl(i.valor)}</span></div>`).join('')}</div>`
-    :'<div style="font-size:11.5px;color:var(--ink-3);margin:-3px 0 9px 14px">— sem itens lançados nesta linha —</div>';
+    ?`<div style="margin:1px 0 9px 20px;padding:3px 20px 3px 14px;border-left:2px solid var(--laranja-50)">${arr.map(i=>`<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;color:var(--ink-2);padding:3px 0"><span>${esc(i.descricao)}</span><span style="white-space:nowrap;color:var(--ink);font-weight:600">${brlD(i.valor)}</span></div>`).join('')}</div>`
+    :'<div style="font-size:11.5px;color:var(--ink-3);margin:-3px 20px 9px 34px">— sem itens lançados nesta linha —</div>';
   async function abrirDre(id){
     openModal('ov-dre');document.getElementById('dre-body').innerHTML='<div class="sec">Carregando…</div>';
     try{const d=await api('/api/obras/'+id+'/dre');
@@ -4949,12 +4951,12 @@
       document.getElementById('dre-body').innerHTML=`
         <div class="dre-hero"><button class="x" data-close style="float:right;border:0;background:none;color:#9CA3AF;font-size:22px;cursor:pointer;line-height:1">×</button>
           <h3>${esc(d.cliente)}</h3><div class="sub">DRE · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²</div></div>
-        <div class="dre-line"><span>Receita bruta (contrato)</span><b>${brl(d.receita_bruta)}</b></div>
-        <div class="dre-line neg"><span>(−) Materiais / Insumos</span><b>${brl(d.custo_direto_insumos)}</b></div>
+        <div class="dre-line"><span>Receita bruta (contrato)</span><b>${brlD(d.receita_bruta)}</b></div>
+        <div class="dre-line neg"><span>(−) Materiais / Insumos</span><b>${brlD(d.custo_direto_insumos)}</b></div>
         ${dreItens(d.insumos_itens)}
-        <div class="dre-line neg"><span>(−) Mão de obra (diárias + comissões)</span><b>${brl(d.custo_direto_mao_obra)}</b></div>
+        <div class="dre-line neg"><span>(−) Mão de obra (diárias + comissões)</span><b>${brlD(d.custo_direto_mao_obra)}</b></div>
         ${dreItens(d.maoobra_itens)}
-        <div class="dre-line total"><span>Lucro bruto</span><b>${brl(d.lucro_bruto)}</b></div>
+        <div class="dre-line total"><span>Lucro bruto</span><b>${brlD(d.lucro_bruto)}</b></div>
         <div class="dre-margem">Margem de lucro<b style="color:${cor}">${d.margem_lucro_percentual}%</b></div>`;
       document.querySelector('#ov-dre [data-close]').addEventListener('click',()=>document.getElementById('ov-dre').classList.remove('open'));
     }catch(err){document.getElementById('dre-body').innerHTML='<div class="sec">Erro ao carregar DRE.</div>';console.error(err);}
