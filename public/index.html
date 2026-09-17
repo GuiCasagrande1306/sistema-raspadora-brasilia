@@ -1043,7 +1043,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v122</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v123</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4723,9 +4723,10 @@
       const faltaTag=faltaAlerta?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:var(--danger);color:#fff">falta s/ valor</span>':'';
       const diarTag=l.is_diarista?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:#2563EB;color:#fff">diarista</span>':'';
       const seta=expand?'<span style="color:var(--ink-3);margin-right:4px" data-arrow>▸</span>':'';
+      const reciboBtn=`<button class="btn-ghost" data-recibofolha="${idx}" title="Recibo detalhado do colaborador (imprimir)" style="padding:2px 8px;font-size:12px;margin-left:8px">🧾</button>`;
       const liqCell=l.is_diarista
-        ? `<td class="num" style="color:var(--ink-3)" title="Diarista recebe no dia — não entra no Total a Pagar">${brl(l.total_liquido)}<div style="font-size:9.5px;color:#2563EB">pago no dia</div></td>`
-        : `<td class="num money">${brl(l.total_liquido)}</td>`;
+        ? `<td class="num" style="color:var(--ink-3)" title="Diarista recebe no dia — não entra no Total a Pagar"><div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">${brl(l.total_liquido)}${reciboBtn}</div><div style="font-size:9.5px;color:#2563EB">pago no dia</div></td>`
+        : `<td class="num money"><div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">${brl(l.total_liquido)}${reciboBtn}</div></td>`;
       const linha=`<tr data-folharow="${idx}" style="cursor:${expand?'pointer':'default'}">
         <td><div class="vt-nome">${seta}<div class="ini" style="background:${l.is_diarista?'#2563EB':hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}${diarTag}${faltaTag}</div></td>
         <td class="num">${l.dias_trabalhados}</td><td class="num">${l.m2_processados}</td>
@@ -4769,6 +4770,11 @@
     document.querySelectorAll('#folha-content [data-folharow]').forEach(tr=>tr.addEventListener('click',()=>{
       const d=document.querySelector('#folha-content [data-det="'+tr.dataset.folharow+'"]');if(!d)return;
       d.classList.toggle('hidden');const ar=tr.querySelector('[data-arrow]');if(ar)ar.textContent=d.classList.contains('hidden')?'▸':'▾';
+    }));
+    document.querySelectorAll('#folha-content [data-recibofolha]').forEach(b=>b.addEventListener('click',e=>{
+      e.stopPropagation();const l=folhaAtual&&folhaAtual.colaboradores[+b.dataset.recibofolha];if(!l)return;
+      const p=(folhaAtual&&folhaAtual.periodo)||{};const ref=(p.desde?dtBR(p.desde):'')+' a '+(p.ate?dtBR(p.ate):'');
+      finPrint('Recibo — '+l.nome,reciboBody(linhaToRecibo(l,ref)));
     }));
     document.querySelectorAll('#folha-content [data-faltaval]').forEach(b=>b.addEventListener('click',e=>{
       e.stopPropagation();abrirFaltaValor(b.dataset.faltaval,b.dataset.faltanome,b.dataset.faltadata,+b.dataset.faltaatual);
