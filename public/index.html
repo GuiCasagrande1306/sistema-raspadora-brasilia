@@ -1043,7 +1043,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v120</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v121</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2326,22 +2326,27 @@
     if(ret>0&&!rg.value){const base=medDatas.length?medDatas[medDatas.length-1]:(document.getElementById('med-data').value||isoHoje());rg.value=add6meses(base);}
   }
   document.getElementById('med-retido').addEventListener('input',sugerirResgate);
-  document.getElementById('btn-add-medicao').addEventListener('click',async()=>{
-    const id=document.getElementById('oe-id').value;if(!id)return;
+  // Salva a nota/medição se os campos estiverem preenchidos. Retorna 'ok' | 'vazio' | 'faltadata'.
+  async function salvarMedicao(id,{silencioso=false}={}){
     const valor=parseFloat(document.getElementById('med-valor').value)||0;
-    if(valor<=0){showToast('Informe o valor da medição');return;}
-    // usa os dias adicionados; se nenhum, cai na data única do campo
+    if(valor<=0)return 'vazio';   // nenhuma nota preenchida
     let datas=medDatas.slice();
     const unica=document.getElementById('med-data').value;
     if(!datas.length&&unica)datas=[unica];
-    if(!datas.length){showToast('Adicione ao menos 1 data');return;}
+    if(!datas.length){if(!silencioso)showToast('Adicione ao menos 1 data');return 'faltadata';}
     const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:document.getElementById('med-recebido').checked,
       valor_retido:parseFloat(document.getElementById('med-retido').value)||0,data_resgate:document.getElementById('med-resgate').value||null};
-    try{await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
-      document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
-      medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
-      carregarMedicoes(id);showToast(datas.length>1?`Nota adicionada (${datas.length} dias)`:'Medição adicionada');}
+    await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
+    medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
+    return 'ok';
+  }
+  document.getElementById('btn-add-medicao').addEventListener('click',async()=>{
+    const id=document.getElementById('oe-id').value;if(!id)return;
+    try{const r=await salvarMedicao(id);
+      if(r==='vazio'){showToast('Informe o valor da medição');return;}
+      if(r==='ok'){carregarMedicoes(id);showToast('Nota/medição adicionada');}}
     catch(e){showToast('Erro ao adicionar');console.error(e);}
   });
   document.getElementById('oe-progresso').addEventListener('input',e=>{document.getElementById('oe-prog-lbl').textContent=e.target.value+'%';});
@@ -2359,7 +2364,12 @@
       responsavel:f.responsavel.value||null,comissao_responsavel:f.comissao_responsavel.value||null,dias_servico:obraDias,
       coluna_kanban:f.coluna_kanban.value,progresso:parseInt(f.progresso.value,10)||0,status_pagamento:f.status_pagamento.value||null};
     try{await api('/api/financeiro/obra/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-obra-exec').classList.remove('open');await loadFin();showToast('Obra atualizada');
+      // se a pessoa preencheu a nota/medição e clicou em Salvar (em vez de "+ Adicionar"), grava a nota também
+      let notaMsg='';
+      const r=await salvarMedicao(id,{silencioso:true});
+      if(r==='faltadata'){showToast('Falta a data da nota — adicione a data e salve de novo');return;}
+      if(r==='ok')notaMsg=' + nota';
+      document.getElementById('ov-obra-exec').classList.remove('open');await loadFin();showToast('Obra atualizada'+notaMsg);
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Obra: '+(m||'erro'));console.error(err);}});
   // dias de serviço (obras de dias variáveis, ex.: concreto)
   let obraDias=[];
