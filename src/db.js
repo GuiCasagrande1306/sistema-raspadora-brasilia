@@ -1752,8 +1752,9 @@ export const db = {
     const base = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? new Date(hojeStr + 'T12:00:00Z') : new Date();
     const ate = new Date(base.getTime() + dias * 86400000);
     const d0 = base.toISOString().slice(0, 10), d1 = ate.toISOString().slice(0, 10);
-    const { data: contas } = await sb('contas_bancarias').select('saldo_atual');
-    const saldo_atual = (contas || []).reduce((s, c) => s + c.saldo_atual, 0);
+    const { data: contas } = await sb('contas_bancarias').select('saldo_atual,sicoob_ref');
+    // contas-espelho do Sicoob ficam fora da base (o saldo real do Sicoob é somado no cliente)
+    const saldo_atual = (contas || []).filter(c => !c.sicoob_ref).reduce((s, c) => s + c.saldo_atual, 0);
     const [{ data: prev }, { data: boletos }, { data: lancs }, { data: medicoes }] = await Promise.all([
       sb('movimentacoes_caixa').select('data_movimento,tipo,valor').eq('status', 'PREVISTO').lte('data_movimento', d1),
       // pendentes: inclui ATRASADOS (venc/data no passado) — ainda são a pagar

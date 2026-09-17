@@ -1338,8 +1338,9 @@ app.post('/api/cofre/desbloquear', requireAdmin, (req, res) => {
 // Bancos — saldos consolidados
 app.get('/api/bancos/saldos', async (_req, res, next) => {
   try {
-    // Cofre (sicoob_ref='cofre') fica fora do consolidado visível — só aparece com a senha do Cofre
-    const contas = (await db.listContas()).filter(c => c.sicoob_ref !== 'cofre');
+    // Contas-espelho do Sicoob (sicoob_ref) ficam fora do consolidado das contas cadastradas —
+    // o saldo real do Sicoob é somado no cliente (Conta Principal ao vivo); o Cofre fica bloqueado.
+    const contas = (await db.listContas()).filter(c => !c.sicoob_ref);
     const total = contas.reduce((s, c) => s + c.saldo_atual, 0);
     res.json({ contas, total_consolidado: total });
   } catch (e) { next(e); }
