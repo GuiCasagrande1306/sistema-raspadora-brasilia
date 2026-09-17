@@ -243,7 +243,7 @@ export const db = {
     (mock.medicoesObra ||= []).push({ id: uid(), criado_em: new Date().toISOString(), ...m }); return mock.medicoesObra[mock.medicoesObra.length - 1];
   },
   async updateMedicaoObra(id, patch) {
-    if (USING_SUPABASE) { const { data, error } = await sb('medicoes_obra').update(patch).eq('id', id).select().single(); if (error) throw error; return data; }
+    if (USING_SUPABASE) { return updateSafeById('medicoes_obra', id, patch); }   // tolerante: ignora coluna ausente (data_recebimento antes da migration)
     const m = (mock.medicoesObra || []).find(x => x.id === id); if (!m) return null; Object.assign(m, patch); return m;
   },
   async deleteMedicaoObra(id) {

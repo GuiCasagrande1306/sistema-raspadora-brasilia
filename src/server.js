@@ -1145,6 +1145,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
     res.status(201).json(await db.createMedicaoObra({
       obra_id: req.params.id, data: req.body.data || datas[0] || null, descricao: req.body.descricao || null,
       datas, valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
+      data_recebimento: (req.body.recebido === true || req.body.recebido === 'true') ? (req.body.data_recebimento || null) : null,
       valor_retido: Math.round((Number(req.body.valor_retido) || 0) * 100), data_resgate: req.body.data_resgate || null,
     }));
   } catch (e) { next(e); }
@@ -1155,7 +1156,13 @@ app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
     for (const k of ['data', 'descricao', 'data_resgate']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
     if (req.body.valor_retido !== undefined) patch.valor_retido = Math.round((Number(req.body.valor_retido) || 0) * 100);
-    if (req.body.recebido !== undefined) patch.recebido = !!req.body.recebido;
+    if (req.body.recebido !== undefined) {
+      patch.recebido = !!req.body.recebido;
+      // ao marcar recebido, grava a data do pagamento; ao desmarcar, limpa
+      if (patch.recebido) patch.data_recebimento = req.body.data_recebimento || new Date().toISOString().slice(0, 10);
+      else patch.data_recebimento = null;
+    }
+    if (req.body.data_recebimento !== undefined && patch.data_recebimento === undefined) patch.data_recebimento = req.body.data_recebimento || null;
     if (req.body.retido_resgatado !== undefined) {
       patch.retido_resgatado = !!req.body.retido_resgatado;
       patch.data_retido_resgatado = patch.retido_resgatado ? (req.body.hoje || new Date().toISOString().slice(0, 10)) : null;

@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v125</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v126</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1678,6 +1678,21 @@
 </div>
 
 <!-- MODAL: Upload/atualização de documento (Inmeta) -->
+<!-- MODAL: marcar medição/nota como recebida (com a data do pagamento) -->
+<div class="overlay" id="ov-med-receb">
+  <div class="modal" style="max-width:380px">
+    <header><h3>Marcar como recebido</h3><button class="x" data-close>×</button></header>
+    <form id="form-med-receb">
+      <div class="body">
+        <input type="hidden" id="medreceb-id">
+        <div class="field"><label>Data do recebimento <span style="color:var(--ink-3);font-weight:400">(quando o pagamento caiu)</span></label><input type="date" id="medreceb-data" required></div>
+        <div class="hint" style="font-size:11.5px">A nota pode ser de um dia e o pagamento cair em outro — registre aqui a data em que você recebeu.</div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Confirmar recebimento</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: corrigir data de vencimento do documento -->
 <div class="overlay" id="ov-doc-data">
   <div class="modal" style="max-width:380px">
@@ -2017,6 +2032,7 @@
               <div class="field" style="flex:1;min-width:120px"><label>Descrição / Nº nota</label><input id="med-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
               <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
+              <div class="field" id="med-receb-data-wrap" style="flex:0 0 160px;display:none"><label>Data do recebimento</label><input type="date" id="med-receb-data"></div>
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
@@ -2305,13 +2321,20 @@
       <div style="display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span></div>
         <b class="money">${brl(m.valor)}</b>
-        <button type="button" class="btn-ghost med-receb" data-med="${m.id}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?'✓ Recebido':'Marcar recebido'}</button>
+        <button type="button" class="btn-ghost med-receb" data-med="${m.id}" data-recebido="${m.recebido?1:0}" data-recdata="${m.data_recebimento||''}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'Marcar recebido'}</button>
         <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
       </div>${retidoLinha}</div>`;}).join('');
     el.querySelectorAll('.med-receb').forEach(b=>b.addEventListener('click',async()=>{
-      const cur=b.textContent.includes('✓');
-      try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido:!cur})});carregarMedicoes(obraId);}
-      catch(e){showToast('Erro');console.error(e);}}));
+      if(b.dataset.recebido==='1'){
+        // já recebido → desmarca (limpa a data)
+        try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido:false})});carregarMedicoes(obraId);}
+        catch(e){showToast('Erro');console.error(e);}
+      }else{
+        // ainda não recebido → pergunta a DATA do pagamento
+        document.getElementById('medreceb-id').value=b.dataset.med;
+        document.getElementById('medreceb-data').value=b.dataset.recdata||isoHoje();
+        openModal('ov-med-receb');
+      }}));
     el.querySelectorAll('.med-resg').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Marcar este valor retido como resgatado (recebido)?'))return;
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({retido_resgatado:true,hoje:isoHoje()})});showToast('Retido resgatado ✓');carregarMedicoes(obraId);if(typeof atualizarBadges==='function')atualizarBadges();}
@@ -2328,6 +2351,10 @@
     el.innerHTML=medDatas.length?medDatas.map(d=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px">${dtBR(d)}<button type="button" data-medrm="${d}" style="border:0;background:none;cursor:pointer;color:var(--danger);font-weight:800;margin-left:4px">×</button></span>`).join(''):'<span class="dv" style="color:var(--ink-3);font-size:11.5px">Nenhum dia adicionado — use "+ dia" pra listar todos os dias da nota (ou deixe 1 data só).</span>';
     el.querySelectorAll('[data-medrm]').forEach(b=>b.addEventListener('click',()=>{medDatas=medDatas.filter(x=>x!==b.dataset.medrm);renderMedChips();}));
   }
+  document.getElementById('med-recebido').addEventListener('change',e=>{
+    const w=document.getElementById('med-receb-data-wrap');w.style.display=e.target.checked?'':'none';
+    const di=document.getElementById('med-receb-data');if(e.target.checked&&!di.value)di.value=isoHoje();
+  });
   document.getElementById('med-add-dia').addEventListener('click',()=>{
     const inp=document.getElementById('med-data');const d=inp.value;if(!d){showToast('Escolha uma data');return;}
     if(!medDatas.includes(d)){medDatas.push(d);medDatas.sort();renderMedChips();}
@@ -2351,10 +2378,13 @@
     const unica=document.getElementById('med-data').value;
     if(!datas.length&&unica)datas=[unica];
     if(!datas.length){if(!silencioso)showToast('Adicione ao menos 1 data');return 'faltadata';}
-    const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:document.getElementById('med-recebido').checked,
+    const recebidoChk=document.getElementById('med-recebido').checked;
+    const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:recebidoChk,
+      data_recebimento:recebidoChk?(document.getElementById('med-receb-data').value||isoHoje()):null,
       valor_retido:parseFloat(document.getElementById('med-retido').value)||0,data_resgate:document.getElementById('med-resgate').value||null};
     await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    document.getElementById('med-receb-data').value='';document.getElementById('med-receb-data-wrap').style.display='none';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
     medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
     return 'ok';
@@ -2365,6 +2395,13 @@
       if(r==='vazio'){showToast('Informe o valor da medição');return;}
       if(r==='ok'){carregarMedicoes(id);showToast('Nota/medição adicionada');}}
     catch(e){showToast('Erro ao adicionar');console.error(e);}
+  });
+  document.getElementById('form-med-receb').addEventListener('submit',async e=>{
+    e.preventDefault();const medId=document.getElementById('medreceb-id').value;const dr=document.getElementById('medreceb-data').value||isoHoje();
+    try{await api('/api/financeiro/medicao/'+medId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido:true,data_recebimento:dr})});
+      document.getElementById('ov-med-receb').classList.remove('open');showToast('Recebimento registrado');
+      const oid=document.getElementById('oe-id').value;if(oid)carregarMedicoes(oid);
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Recebido: '+(m||'erro'));console.error(err);}
   });
   document.getElementById('oe-progresso').addEventListener('input',e=>{document.getElementById('oe-prog-lbl').textContent=e.target.value+'%';});
   document.getElementById('oe-lancar').addEventListener('click',()=>{
