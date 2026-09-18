@@ -289,6 +289,42 @@ export const db = {
     if (obra && l.tipo === 'saida') { if (l.categoria === 'insumo') obra.custo_insumos += l.valor; else obra.custo_mao_obra += l.valor; }
     return novo;
   },
+  async _obraCustoAjustar(obraId, col, delta) {
+    if (!obraId || !delta) return;
+    const { data: obra } = await sb('obras_financeiro').select(col).eq('id', obraId).single();
+    if (obra) await sb('obras_financeiro').update({ [col]: Math.max(0, (obra[col] || 0) + delta) }).eq('id', obraId);
+  },
+  async listLancamentosObra(obra_id) {
+    if (!USING_SUPABASE) return (mock.lancamentos || []).filter(l => l.obra_id === obra_id);
+    const { data } = await sb('lancamentos').select('*').eq('obra_id', obra_id).order('created_at', { ascending: false });
+    return data || [];
+  },
+  async updateLancamento(id, patch) {
+    if (!USING_SUPABASE) { const l = (mock.lancamentos || []).find(x => x.id === id); if (l) Object.assign(l, patch); return l || null; }
+    const { data: old } = await sb('lancamentos').select('*').eq('id', id).single();
+    if (!old) return null;
+    const { data: upd, error } = await sb('lancamentos').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    // acerta os custos denormalizados da obra: reverte o antigo e aplica o novo
+    if (old.tipo === 'saida' && old.obra_id) await this._obraCustoAjustar(old.obra_id, old.categoria === 'insumo' ? 'custo_insumos' : 'custo_mao_obra', -(old.valor || 0));
+    if (upd.tipo === 'saida' && upd.obra_id) await this._obraCustoAjustar(upd.obra_id, upd.categoria === 'insumo' ? 'custo_insumos' : 'custo_mao_obra', +(upd.valor || 0));
+    return upd;
+  },
+  async deleteLancamento(id) {
+    if (!USING_SUPABASE) { mock.lancamentos = (mock.lancamentos || []).filter(x => x.id !== id); return { ok: true }; }
+    const { data: old } = await sb('lancamentos').select('*').eq('id', id).single();
+    if (old && old.tipo === 'saida' && old.obra_id) await this._obraCustoAjustar(old.obra_id, old.categoria === 'insumo' ? 'custo_insumos' : 'custo_mao_obra', -(old.valor || 0));
+    const { error } = await sb('lancamentos').delete().eq('id', id);
+    if (error) throw error;
+    return { ok: true };
+  },
+  async deleteObra(id) {
+    if (!USING_SUPABASE) { mock.obras = mock.obras.filter(o => o.id !== id); mock.medicoesObra = (mock.medicoesObra || []).filter(m => m.obra_id !== id); return { ok: true }; }
+    await sb('medicoes_obra').delete().eq('obra_id', id);   // medicoes_obra não tem FK — apaga manual
+    const { error } = await sb('obras_financeiro').delete().eq('id', id);   // cascade: lancamentos, custos_obras, apontamentos; set null: movimentacoes
+    if (error) throw error;
+    return { ok: true };
+  },
 
   // ---- COLABORADORES ----
   async listColaboradores() {

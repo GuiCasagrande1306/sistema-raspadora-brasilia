@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v128</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v129</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1283,8 +1283,9 @@
 <!-- MODAL: Novo Lançamento -->
 <div class="overlay" id="ov-lanc">
   <div class="modal">
-    <header><h3>Novo Lançamento</h3><button class="x" data-close>×</button></header>
+    <header><h3 id="lanc-titulo">Novo Lançamento</h3><button class="x" data-close>×</button></header>
     <form id="form-lanc">
+      <input type="hidden" id="lanc-id">
       <div class="body">
         <div class="field"><label>Obra</label><select name="obra_id" id="lanc-obra" required><option value="">Selecione a obra…</option></select></div>
         <div class="grid2">
@@ -2056,9 +2057,10 @@
             <button type="button" class="btn-ghost" id="oe-lancar" style="min-height:38px">+ Lançar custo</button>
             <button type="button" class="btn-ghost" id="oe-dre" style="min-height:38px">Ver resultado (DRE)</button>
           </div>
+          <div id="oe-lanc-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
         </div>
       </div>
-      <footer><button type="button" class="btn-ghost" data-close>Fechar</button><button type="submit" class="primary">Salvar obra</button></footer>
+      <footer><button type="button" class="btn-ghost" id="oe-excluir" style="color:var(--danger);border-color:var(--danger);margin-right:auto;min-height:40px">🗑 Excluir obra</button><button type="button" class="btn-ghost" data-close>Fechar</button><button type="submit" class="primary">Salvar obra</button></footer>
     </form>
   </div>
 </div>
@@ -2293,6 +2295,7 @@
     document.getElementById('oe-maoobra').textContent=brl(o.custo_mao_obra||0);
     document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));
     carregarMedicoes(id);
+    carregarLancamentos(id);
     document.getElementById('med-data').value=isoHoje();document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
     medDatas=[];renderMedChips();
@@ -2405,10 +2408,49 @@
   document.getElementById('oe-progresso').addEventListener('input',e=>{document.getElementById('oe-prog-lbl').textContent=e.target.value+'%';});
   document.getElementById('oe-lancar').addEventListener('click',()=>{
     const id=document.getElementById('oe-id').value;document.getElementById('ov-obra-exec').classList.remove('open');
-    document.getElementById('lanc-tipo').value='saida';fillCats();openModal('ov-lanc');
+    document.getElementById('lanc-id').value='';document.getElementById('lanc-titulo').textContent='Novo Lançamento';
+    document.getElementById('form-lanc').reset();document.getElementById('lanc-tipo').value='saida';fillCats();openModal('ov-lanc');
     const sel=document.getElementById('lanc-obra');if(sel)sel.value=id;
   });
   document.getElementById('oe-dre').addEventListener('click',()=>{const id=document.getElementById('oe-id').value;document.getElementById('ov-obra-exec').classList.remove('open');abrirDre&&abrirDre(id);});
+  // ---- Lançamentos da obra: listar, editar, excluir ----
+  const catLancLbl=(tipo,v)=>{const it=(CATS[tipo]||[]).find(x=>x[0]===v);return it?it[1]:(v||'—');};
+  async function carregarLancamentos(obraId){
+    const el=document.getElementById('oe-lanc-lista');if(!el)return;
+    el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Carregando lançamentos…</div>';
+    let r;try{r=await api('/api/financeiro/obra/'+obraId+'/lancamentos');}catch(e){el.innerHTML='';console.error(e);return;}
+    const arr=r.lancamentos||[];
+    if(!arr.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhum lançamento nesta obra ainda.</div>';return;}
+    el.innerHTML='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin:2px 0">Lançamentos</div>'+arr.map(l=>`<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px">
+        <div style="flex:1;min-width:0"><b>${esc(l.descricao||catLancLbl(l.tipo,l.categoria))}</b><div style="font-size:11px;color:var(--ink-2)">${l.tipo==='entrada'?'Entrada':'Saída'} · ${esc(catLancLbl(l.tipo,l.categoria))}</div></div>
+        <b class="money" style="color:${l.tipo==='entrada'?'var(--ok)':'var(--danger)'}">${l.tipo==='entrada'?'+':'−'}${brl(l.valor||0)}</b>
+        <button type="button" class="btn-ghost lanc-edit" data-lid="${l.id}" data-obra="${l.obra_id}" data-tipo="${l.tipo}" data-cat="${esc(l.categoria||'')}" data-valor="${l.valor||0}" data-desc="${esc(l.descricao||'')}" title="Editar" style="padding:3px 10px;font-size:12px">✏️</button>
+        <button type="button" class="doc-cloud lanc-del" data-lid="${l.id}" title="Excluir">${DE_TRASH}</button>
+      </div>`).join('');
+    el.querySelectorAll('.lanc-edit').forEach(b=>b.addEventListener('click',()=>{
+      document.getElementById('lanc-id').value=b.dataset.lid;document.getElementById('lanc-titulo').textContent='Editar lançamento';
+      const f=document.getElementById('form-lanc');
+      document.getElementById('lanc-obra').value=b.dataset.obra;
+      document.getElementById('lanc-tipo').value=b.dataset.tipo;fillCats();document.getElementById('lanc-cat').value=b.dataset.cat;
+      f.valor.value=(Number(b.dataset.valor)||0)/100;f.descricao.value=b.dataset.desc||'';
+      openModal('ov-lanc');
+    }));
+    el.querySelectorAll('.lanc-del').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este lançamento? O custo da obra é recalculado.'))return;
+      try{await api('/api/financeiro/lancamento/'+b.dataset.lid,{method:'DELETE'});showToast('Lançamento excluído');
+        carregarLancamentos(obraId);
+        try{const o=await api('/api/financeiro/obra/'+obraId);document.getElementById('oe-insumos').textContent=brl(o.custo_insumos||0);document.getElementById('oe-maoobra').textContent=brl(o.custo_mao_obra||0);document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));}catch(_){}
+        loadFin();
+      }catch(e){showToast('Erro ao excluir');console.error(e);}
+    }));
+  }
+  document.getElementById('oe-excluir').addEventListener('click',async()=>{
+    const id=document.getElementById('oe-id').value;if(!id)return;
+    const nome=(document.getElementById('oe-titulo').textContent||'esta obra').replace('Obra — ','');
+    if(!confirm('Excluir a obra "'+nome+'"?\n\nIsso apaga a obra e todos os lançamentos, notas/medições e custos dela. Não dá pra desfazer.'))return;
+    try{await api('/api/financeiro/obra/'+id,{method:'DELETE'});document.getElementById('ov-obra-exec').classList.remove('open');showToast('Obra excluída');await loadFin();}
+    catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir obra: '+(m||'erro'));console.error(e);}
+  });
   document.getElementById('form-obra-exec').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('oe-id').value;
     const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null,
@@ -3699,7 +3741,7 @@
 
   // Botões primários de topo (Novo Colaborador / Novo Lançamento)
   document.querySelectorAll('#view-dp .primary').forEach(b=>b.addEventListener('click',()=>{document.getElementById('colab-id').value='';document.getElementById('colab-titulo').textContent='Novo Colaborador';openModal('ov-colab');}));
-  document.getElementById('btn-novo-lanc').addEventListener('click',()=>openModal('ov-lanc'));
+  document.getElementById('btn-novo-lanc').addEventListener('click',()=>{document.getElementById('lanc-id').value='';document.getElementById('lanc-titulo').textContent='Novo Lançamento';document.getElementById('form-lanc').reset();fillCats();openModal('ov-lanc');});
 
   // Categorias do lançamento dependem do tipo
   const CATS={entrada:[['sinal','Sinal / Entrada'],['saldo','Saldo final']],
@@ -3824,6 +3866,7 @@
   });
   document.getElementById('board-fin').addEventListener('click',e=>{
     const b=e.target.closest('[data-lancar]');if(!b)return;
+    document.getElementById('lanc-id').value='';document.getElementById('lanc-titulo').textContent='Novo Lançamento';document.getElementById('form-lanc').reset();
     document.getElementById('lanc-obra').value=b.dataset.lancar;
     document.getElementById('lanc-tipo').value='saida';fillCats();openModal('ov-lanc');
   });
@@ -3900,12 +3943,15 @@
 
   // Submit: Novo Lançamento
   document.getElementById('form-lanc').addEventListener('submit',async e=>{
-    e.preventDefault();const f=new FormData(e.target);
+    e.preventDefault();const f=new FormData(e.target);const id=document.getElementById('lanc-id').value;
     const payload={obra_id:f.get('obra_id'),tipo:f.get('tipo'),categoria:f.get('categoria'),
-      valor:Math.round(parseFloat(f.get('valor'))*100),descricao:f.get('descricao')||null};
-    try{await api('/api/financeiro/lancamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      e.target.reset();fillCats();document.getElementById('ov-lanc').classList.remove('open');
-      await loadFin();showToast((payload.tipo==='entrada'?'Entrada':'Custo')+' lançado — margem recalculada');
+      valor:id?parseFloat(f.get('valor'))||0:Math.round(parseFloat(f.get('valor'))*100),descricao:f.get('descricao')||null};
+    try{
+      if(id)await api('/api/financeiro/lancamento/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:payload.tipo,categoria:payload.categoria,valor:payload.valor,descricao:payload.descricao})});
+      else await api('/api/financeiro/lancamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('lanc-id').value='';e.target.reset();fillCats();document.getElementById('lanc-titulo').textContent='Novo Lançamento';document.getElementById('ov-lanc').classList.remove('open');
+      const oid=document.getElementById('oe-id')&&document.getElementById('oe-id').value;if(oid)carregarLancamentos(oid);
+      await loadFin();showToast(id?'Lançamento atualizado':((payload.tipo==='entrada'?'Entrada':'Custo')+' lançado — margem recalculada'));
     }catch(err){showToast('Erro ao lançar');console.error(err);}
   });
 

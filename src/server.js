@@ -1190,6 +1190,33 @@ app.post('/api/financeiro/lancamento', async (req, res, next) => {
     res.status(201).json(await db.createLancamento({ obra_id, tipo, categoria, valor, descricao: req.body.descricao }));
   } catch (e) { next(e); }
 });
+// Lista os lançamentos (custos/entradas) de uma obra — para editar/excluir
+app.get('/api/financeiro/obra/:id/lancamentos', async (req, res, next) => {
+  try { res.json({ lancamentos: await db.listLancamentosObra(req.params.id) }); }
+  catch (e) { next(e); }
+});
+// Editar um lançamento (valor em REAIS → centavos); ajusta os custos da obra
+app.patch('/api/financeiro/lancamento/:id', async (req, res, next) => {
+  try {
+    const patch = {};
+    for (const k of ['tipo', 'categoria', 'descricao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (patch.tipo !== undefined && !['entrada', 'saida'].includes(patch.tipo)) return res.status(400).json({ erro: "tipo inválido" });
+    if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
+    const l = await db.updateLancamento(req.params.id, patch);
+    if (!l) return res.status(404).json({ erro: 'lançamento não encontrado' });
+    res.json(l);
+  } catch (e) { next(e); }
+});
+// Excluir um lançamento (reverte o custo na obra)
+app.delete('/api/financeiro/lancamento/:id', async (req, res, next) => {
+  try { res.json(await db.deleteLancamento(req.params.id)); }
+  catch (e) { next(e); }
+});
+// Excluir uma obra (e medições/lançamentos/custos vinculados)
+app.delete('/api/financeiro/obra/:id', async (req, res, next) => {
+  try { res.json(await db.deleteObra(req.params.id)); }
+  catch (e) { next(e); }
+});
 
 // Cadastro de obra (valor em REAIS no corpo → centavos)
 app.post('/api/financeiro/obra', async (req, res, next) => {
