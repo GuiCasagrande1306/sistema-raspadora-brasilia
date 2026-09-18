@@ -1075,6 +1075,16 @@ export const db = {
     mock.lancDiarios.push(novo);
     return novo;
   },
+  // Vale que abate na folha SEM debitar o caixa (o caixa é o próprio lançamento diário)
+  async criarValeAbate(v) {
+    if (!USING_SUPABASE) return { id: uid(), ...v };
+    return insertSafe('vales_diaria', {   // tolerante: ignora lancamento_diario_id antes da migration
+      colaborador_id: v.colaborador_id, obra_id: null, tipo: 'ADIANTAMENTO_VALE',
+      valor: v.valor, observacao: v.observacao || null, status_pagamento: 'PAGO', abatido_folha: false,
+      movimentacao_id: null, lancamento_diario_id: v.lancamento_diario_id || null,
+      data_lancamento: v.data_lancamento || new Date().toISOString().slice(0, 10),
+    });
+  },
   async updateLancDiario(id, patch) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos_diarios').update(patch).eq('id', id).select().single();
@@ -1088,6 +1098,7 @@ export const db = {
   },
   async deleteLancDiario(id) {
     if (USING_SUPABASE) {
+      try { await sb('vales_diaria').delete().eq('lancamento_diario_id', id).eq('abatido_folha', false); } catch (_) {}   // remove o vale ligado (se ainda não abatido)
       const { error } = await sb('lancamentos_diarios').delete().eq('id', id);
       if (error) throw error;
       return { ok: true };

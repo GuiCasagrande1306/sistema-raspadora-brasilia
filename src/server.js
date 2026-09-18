@@ -578,7 +578,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
-const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'DESPESA_FUNCIONARIO', 'EDVARD', 'OUTRO'];
+const CAT_GASTO = ['ALIMENTACAO', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'DESPESA_FUNCIONARIO', 'EDVARD', 'VALE', 'OUTRO'];
 const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
@@ -896,13 +896,20 @@ app.post('/api/lancamentos-diarios', async (req, res, next) => {
   try {
     const { descricao, data } = req.body;
     if (!descricao) return res.status(400).json({ erro: 'descrição é obrigatória' });
-    res.status(201).json(await db.createLancDiario({
-      data: data || new Date().toISOString().slice(0, 10), descricao,
-      valor: cents(req.body.valor), categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
+    const dia = data || new Date().toISOString().slice(0, 10);
+    const categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO';
+    const valor = cents(req.body.valor);
+    const lanc = await db.createLancDiario({
+      data: dia, descricao, valor, categoria,
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
       forma: req.body.forma || 'PIX', pago: req.body.pago !== undefined ? !!req.body.pago : true,
-      data_pagamento: (req.body.pago === false ? null : (data || new Date().toISOString().slice(0, 10))),
-    }));
+      data_pagamento: (req.body.pago === false ? null : dia),
+    });
+    // Vale com colaborador → também abate na folha (sem debitar o caixa de novo; o caixa é este lançamento)
+    if (categoria === 'VALE' && req.body.colaborador_id) {
+      await db.criarValeAbate({ colaborador_id: req.body.colaborador_id, valor, data_lancamento: dia, observacao: descricao, lancamento_diario_id: lanc.id });
+    }
+    res.status(201).json(lanc);
   } catch (e) { next(e); }
 });
 app.patch('/api/lancamentos-diarios/:id', async (req, res, next) => {
