@@ -1046,7 +1046,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v138</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v139</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1537,6 +1537,7 @@
         <button class="btn-ghost" id="rel-prev" title="Semana anterior">◀</button>
         <b id="rel-periodo" style="font-size:13px">—</b>
         <button class="btn-ghost" id="rel-next" title="Próxima semana">▶</button>
+        <button class="btn-ghost" id="rel-pdf" style="min-height:34px" title="Exportar esta lista de presença em PDF (para o vale-transporte)">🖨️ Exportar PDF</button>
         <span style="font-size:11.5px;color:var(--ink-3);margin-left:auto"><b style="color:#12805c">P</b> = presente · <b style="color:var(--danger)">F</b> = falta · – = sem registro</span>
       </div>
       <div id="rel-conteudo" style="overflow-x:auto"></div>
@@ -3608,13 +3609,14 @@
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Alocar: '+(m||'erro'));console.error(err);}});
   document.getElementById('cron-data').addEventListener('change',loadCronograma);
   // ---- Relatório da semana (presença/falta) ----
-  let relRef=null;
+  let relRef=null, REL_STATE=null;
   function semanaDe(ref){const d=new Date(ref+'T00:00:00');const dow=(d.getDay()+6)%7;const seg=new Date(d);seg.setDate(d.getDate()-dow);const dom=new Date(seg);dom.setDate(seg.getDate()+6);return {desde:seg.toISOString().slice(0,10),ate:dom.toISOString().slice(0,10)};}
   async function carregarRelatorio(){
     const cont=document.getElementById('rel-conteudo');cont.innerHTML='<div class="dv" style="padding:12px">Carregando…</div>';
     const {desde,ate}=semanaDe(relRef);
     try{
       const r=await api('/api/cronograma/relatorio?desde='+desde+'&ate='+ate);
+      REL_STATE=r;
       document.getElementById('rel-periodo').textContent=dtBR(r.desde)+' a '+dtBR(r.ate);
       if(!r.linhas.length){cont.innerHTML='<div class="orc-empty">Ninguém alocado nem com falta nesta semana.</div>';return;}
       const dow=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
@@ -3633,6 +3635,25 @@
   document.getElementById('btn-relatorio-semana').addEventListener('click',()=>{relRef=document.getElementById('cron-data').value||isoHoje();carregarRelatorio();openModal('ov-relatorio');});
   document.getElementById('rel-prev').addEventListener('click',()=>{const d=new Date(relRef+'T00:00:00');d.setDate(d.getDate()-7);relRef=d.toISOString().slice(0,10);carregarRelatorio();});
   document.getElementById('rel-next').addEventListener('click',()=>{const d=new Date(relRef+'T00:00:00');d.setDate(d.getDate()+7);relRef=d.toISOString().slice(0,10);carregarRelatorio();});
+  document.getElementById('rel-pdf').addEventListener('click',()=>{
+    const r=REL_STATE;
+    if(!r||!r.linhas||!r.linhas.length){showToast('Sem presenças nesta semana para exportar');return;}
+    const dow=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    const head=r.dias.map(d=>{const dt=new Date(d+'T00:00:00');return `<th style="text-align:center">${dow[(dt.getDay()+6)%7]}<br><span style="font-weight:400;font-size:9px">${d.slice(8,10)}/${d.slice(5,7)}</span></th>`;}).join('');
+    const rows=r.linhas.map(l=>{
+      const cells=r.dias.map(d=>{const c=l.dias[d];
+        if(!c)return '<td class="c" style="color:#999">–</td>';
+        if(c.status==='F')return '<td class="c" style="color:#b91c1c;font-weight:800">F</td>';
+        return '<td class="c" style="color:#12805c;font-weight:800">P</td>';
+      }).join('');
+      const tag=l.is_diarista?' <span style="font-size:8px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:5px;font-weight:700;vertical-align:1px">DIARISTA</span>':'';
+      return `<tr><td style="white-space:nowrap">${esc(l.nome)}${tag}</td>${cells}<td class="c" style="color:#12805c;font-weight:800">${l.presencas}</td><td class="c" style="color:#b91c1c;font-weight:800">${l.faltas}</td></tr>`;
+    }).join('');
+    const periodo=dtBR(r.desde)+' a '+dtBR(r.ate);
+    finPrint('Presença e faltas — '+periodo,
+      `<h1>Relatório da semana — presença e faltas</h1><p class="sub">${periodo} &nbsp;·&nbsp; <b style="color:#12805c">P</b> = presente · <b style="color:#b91c1c">F</b> = falta · – = sem registro</p>`+
+      `<table><thead><tr><th>Colaborador</th>${head}<th style="text-align:center">Pres.</th><th style="text-align:center">Faltas</th></tr></thead><tbody>${rows}</tbody></table>`);
+  });
   // Funções & Diárias (editável)
   document.getElementById('btn-funcoes').addEventListener('click',()=>{renderFuncoes();openModal('ov-funcoes');});
   function renderFuncoes(){
