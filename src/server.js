@@ -1146,6 +1146,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
       obra_id: req.params.id, data: req.body.data || datas[0] || null, descricao: req.body.descricao || null,
       datas, valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
       data_recebimento: (req.body.recebido === true || req.body.recebido === 'true') ? (req.body.data_recebimento || null) : null,
+      forma_pagamento: req.body.forma_pagamento || null,
       valor_retido: Math.round((Number(req.body.valor_retido) || 0) * 100), data_resgate: req.body.data_resgate || null,
     }));
   } catch (e) { next(e); }
@@ -1153,7 +1154,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
 app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['data', 'descricao', 'data_resgate']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    for (const k of ['data', 'descricao', 'data_resgate', 'forma_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
     if (req.body.valor_retido !== undefined) patch.valor_retido = Math.round((Number(req.body.valor_retido) || 0) * 100);
     if (req.body.recebido !== undefined) {
