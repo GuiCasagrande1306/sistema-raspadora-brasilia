@@ -114,15 +114,25 @@ function agentOpts(acc) {
 }
 
 // Saldo da conta.
-export async function getSaldo(acc) {
+const _saldoCache = {};   // por conta: { data, ts } — TTL curto p/ não estourar o rate limit do Sicoob
+const SALDO_TTL = 45000;
+export async function getSaldo(acc, { cache = true } = {}) {
   if (!CONTAS[acc]) throw new Error('conta inválida');
+  if (cache && _saldoCache[acc] && (Date.now() - _saldoCache[acc].ts) < SALDO_TTL) return _saldoCache[acc].data;
   const conta = env(acc, 'CONTA'); if (!conta) throw new Error(`Sicoob ${acc}: SICOOB_${acc.toUpperCase()}_CONTA não configurada`);
   const token = await getToken(acc);
   const url = `${SICOOB_BASE[ambiente()]}/saldo?numeroContaCorrente=${encodeURIComponent(conta)}`;
   const r = await request('GET', url, { headers: baseHeaders(acc, token), ...agentOpts(acc) });
   if (r.status !== 200) throw new Error(`Sicoob saldo (${acc}): HTTP ${r.status} ${r.texto?.slice(0, 300) || ''}`);
   const d = (r.json && r.json.resultado) ? r.json.resultado : (r.json || {});   // produção aninha em resultado (strings); sandbox vem plano
-  return { saldo: Number(d.saldo) || 0, saldoLimite: Number(d.saldoLimite) || 0, saldoBloqueado: Number(d.saldoBloqueado) || 0 };
+  const out = { saldo: Number(d.saldo) || 0, saldoLimite: Number(d.saldoLimite) || 0, saldoBloqueado: Number(d.saldoBloqueado) || 0 };
+  _saldoCache[acc] = { data: out, ts: Date.now() };
+  return out;
+}
+// Saldo da conta principal em CENTAVOS (0 se não configurado/indisponível) — usado no consolidado/fluxo, com cache
+export async function saldoPrincipalCentavos() {
+  try { const s = await getSaldo('principal'); return Math.round((Number(s.saldo) || 0) * 100); }
+  catch (_) { return 0; }
 }
 
 // Extrato de um período. { mes, ano, diaInicial, diaFinal }

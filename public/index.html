@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v129</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v130</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4712,14 +4712,7 @@
       const principalHtml=p.status==='fulfilled'?sicCardOk('Conta Principal','ECO PISOS',p.value):cardErr('Conta Principal','ECO PISOS',p);
       box.innerHTML=`<div class="sic-wrap">${principalHtml}${cofreCardHtml()}</div><div class="sic-hint">Saldo em tempo real do Sicoob · consultado ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
       bindCofreCard();
-      // Reflete o saldo REAL do Sicoob (Conta Principal) no Saldo Consolidado e no Saldo Projetado
-      if(p.status==='fulfilled'&&BANCOS_STATE){
-        const principalCent=Math.round((Number(p.value.saldo)||0)*100);
-        const consol=((BANCOS_STATE.saldos&&BANCOS_STATE.saldos.total_consolidado)||0)+principalCent;
-        const proj=((BANCOS_STATE.fluxo&&BANCOS_STATE.fluxo.resumo&&BANCOS_STATE.fluxo.resumo.saldo_final_projetado)||0)+principalCent;
-        const bt=document.getElementById('bancos-total');if(bt)bt.textContent=brl(consol);
-        const bp=document.getElementById('bancos-proj');if(bp)bp.textContent=brl(proj);
-      }
+      // Saldo Consolidado / Projetado já vêm do servidor com o saldo real do Sicoob incluído (não somar aqui de novo)
     }catch(err){box.innerHTML='<div class="orc-empty">Erro ao consultar o Sicoob.</div>';console.error(err);}
   }
   document.getElementById('btn-sicoob-saldo').addEventListener('click',carregarSaldosSicoob);

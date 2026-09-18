@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db, USING_SUPABASE, docStatus, supabase, BUCKET, categorizarMov } from './db.js';
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
-import { sicoobStatus, getSaldo as sicoobSaldo, getExtrato as sicoobExtrato, CONTAS as SICOOB_CONTAS } from './sicoobService.js';
+import { sicoobStatus, getSaldo as sicoobSaldo, getExtrato as sicoobExtrato, CONTAS as SICOOB_CONTAS, saldoPrincipalCentavos } from './sicoobService.js';
 import { createZip } from './zip.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1372,11 +1372,12 @@ app.post('/api/cofre/desbloquear', requireAdmin, (req, res) => {
 // Bancos — saldos consolidados
 app.get('/api/bancos/saldos', async (_req, res, next) => {
   try {
-    // Contas-espelho do Sicoob (sicoob_ref) ficam fora do consolidado das contas cadastradas —
-    // o saldo real do Sicoob é somado no cliente (Conta Principal ao vivo); o Cofre fica bloqueado.
+    // Contas-espelho do Sicoob (sicoob_ref) ficam fora da soma das contas cadastradas;
+    // o saldo REAL da Conta Principal (Sicoob, ao vivo) entra no consolidado. Cofre fica bloqueado (fora).
     const contas = (await db.listContas()).filter(c => !c.sicoob_ref);
-    const total = contas.reduce((s, c) => s + c.saldo_atual, 0);
-    res.json({ contas, total_consolidado: total });
+    const totalContas = contas.reduce((s, c) => s + c.saldo_atual, 0);
+    const sicoobPrincipal = await saldoPrincipalCentavos();
+    res.json({ contas, total_consolidado: totalContas + sicoobPrincipal, sicoob_principal: sicoobPrincipal });
   } catch (e) { next(e); }
 });
 
@@ -1423,8 +1424,17 @@ app.post('/api/bancos/transferencia-interna', async (req, res, next) => {
 
 // Fluxo de caixa projetado (próximos N dias)
 app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
-  try { res.json(await db.fluxoProjetado(Number(req.query.dias) || 30, req.query.hoje)); }
-  catch (e) { next(e); }
+  try {
+    const r = await db.fluxoProjetado(Number(req.query.dias) || 30, req.query.hoje);
+    // base do fluxo parte do saldo REAL da Conta Principal (Sicoob), não só das contas cadastradas
+    const base = await saldoPrincipalCentavos();
+    if (base) {
+      r.saldo_atual = (r.saldo_atual || 0) + base;
+      if (r.resumo) r.resumo.saldo_final_projetado = (r.resumo.saldo_final_projetado || 0) + base;
+      (r.dias || []).forEach(d => { d.saldo_projetado = (d.saldo_projetado || 0) + base; });
+    }
+    res.json(r);
+  } catch (e) { next(e); }
 });
 
 // ---------- GESTÃO DE DOCUMENTOS (padrão Inmeta) ----------
