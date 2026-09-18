@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v133</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v134</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4230,7 +4230,31 @@
   document.getElementById('docs-relatorio').addEventListener('click',async()=>{
     try{const r=await api('/api/documentos/relatorio-pendencias'+(docsState.empresa?'?empresa='+docsState.empresa:''));
       showToast(r.total_pendentes+' colaborador(es) com pendências');}catch(err){showToast('Erro no relatório');}});
-  document.getElementById('docs-export').addEventListener('click',()=>showToast('Exportação CSV/PDF — em breve'));
+  document.getElementById('docs-export').addEventListener('click',async()=>{
+    try{
+      const q=document.getElementById('docs-q').value;
+      const pend=document.getElementById('docs-pend').checked;
+      const st=document.getElementById('docs-status').value;
+      const emp=(docsState.nivel==='colaboradores'&&docsState.empresa)?docsState.empresa:'TODAS';
+      const lista=await api('/api/documentos/colaboradores?empresa='+emp+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
+      if(!lista.length){showToast('Nenhum colaborador para exportar');return;}
+      const ordem={RB_PISOS:0,ECO_PISOS:1};
+      const ord=lista.slice().sort((a,b)=>{const ea=ordem[a.empresa]??9,eb=ordem[b.empresa]??9;if(ea!==eb)return ea-eb;return (a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'});});
+      const empLabel=id=>(EMPRESAS.find(e=>e.id===id)||{}).label||id||'—';
+      const n=ord.length;
+      let corpo='<h1>Lista de Colaboradores</h1><p class="sub">'+(emp==='TODAS'?'Todas as empresas':esc(empLabel(emp)))+' · '+n+' colaborador'+(n===1?'':'es')+'</p>';
+      const grupos=emp==='TODAS'?[...new Set(ord.map(c=>c.empresa))]:[emp];
+      grupos.forEach(g=>{
+        const itens=ord.filter(c=>c.empresa===g);
+        if(!itens.length)return;
+        if(emp==='TODAS')corpo+='<h2 style="font-size:13px;margin:18px 0 6px;color:#1E1E1E">'+esc(empLabel(g))+' <span style="color:#888;font-weight:400">('+itens.length+')</span></h2>';
+        corpo+='<table><thead><tr><th style="width:46px" class="c">#</th><th>Nome</th><th style="width:34%">Função</th></tr></thead><tbody>'+
+          itens.map((c,i)=>'<tr><td class="c">'+(i+1)+'</td><td>'+esc(c.nome||'—')+'</td><td>'+esc(c.cargo||'—')+'</td></tr>').join('')+
+          '</tbody></table>';
+      });
+      finPrint('Lista de Colaboradores',corpo);
+    }catch(e){console.error(e);showToast('Erro ao gerar a lista');}
+  });
   document.getElementById('docs-novo-colab').addEventListener('click',()=>{
     const f=document.getElementById('form-colab');f.reset();
     document.getElementById('colab-id').value='';document.getElementById('colab-titulo').textContent='Novo Colaborador';
