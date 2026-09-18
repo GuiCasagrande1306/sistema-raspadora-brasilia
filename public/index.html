@@ -293,6 +293,8 @@
 
   /* ---- Tabela Vale-Transporte ---- */
   .vt-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+  /* Folha: se a tabela (10 colunas + detalhe) passar da largura, rola na horizontal em vez de cortar */
+  #folha-content .vt-wrap{overflow-x:auto;overflow-y:hidden;}
   .vt-table{width:100%;border-collapse:collapse;font-size:13px;}
   .vt-table thead th{text-align:left;padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
     color:var(--ink-3);font-weight:800;background:var(--surface-2);border-bottom:1px solid var(--line);}
@@ -1044,7 +1046,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v136</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v137</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
