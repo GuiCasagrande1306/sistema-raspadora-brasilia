@@ -1147,6 +1147,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
       datas, valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
       data_recebimento: (req.body.recebido === true || req.body.recebido === 'true') ? (req.body.data_recebimento || null) : null,
       forma_pagamento: req.body.forma_pagamento || null,
+      sem_nota: req.body.sem_nota === true || req.body.sem_nota === 'true',
       valor_retido: Math.round((Number(req.body.valor_retido) || 0) * 100), data_resgate: req.body.data_resgate || null,
     }));
   } catch (e) { next(e); }

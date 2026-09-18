@@ -1044,7 +1044,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v131</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v132</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2048,6 +2048,19 @@
         </div>
 
         <div class="orc-block" style="margin-top:12px">
+          <div class="orc-block-head"><span class="orc-marca">RECEBIMENTOS SEM NOTA (PIX, transferência…)</span></div>
+          <div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">Serviços recebidos sem nota fiscal — registre o valor, a data que o dinheiro caiu e a forma.</div>
+          <div id="oe-receb-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="flex:1;min-width:120px"><label>Descrição</label><input id="rec-desc" placeholder="Ex.: PIX serviço X"></div>
+            <div class="field" style="flex:0 0 110px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="rec-valor" placeholder="0,00"></div>
+            <div class="field" style="flex:0 0 150px"><label>Data do recebimento</label><input type="date" id="rec-data"></div>
+            <div class="field" style="flex:0 0 140px"><label>Forma</label><select id="rec-forma"><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="OUTRO">Outro</option></select></div>
+            <button type="button" class="primary" id="btn-add-receb" style="min-height:40px">+ Adicionar</button>
+          </div>
+        </div>
+
+        <div class="orc-block" style="margin-top:12px">
           <div class="orc-block-head"><span class="orc-marca">CUSTOS & PAGAMENTO</span></div>
           <div class="fb-counts" style="grid-template-columns:repeat(3,1fr)">
             <div class="fb-count"><b class="money" id="oe-insumos">—</b><span>Insumos</span></div>
@@ -2311,8 +2324,9 @@
     document.getElementById('oe-recebido').textContent=brl(r.resumo.recebido||0);
     document.getElementById('oe-areceber').textContent=brl(r.resumo.a_receber||0);
     document.getElementById('oe-retido').textContent=brl(r.resumo.retido||0);
-    if(!r.medicoes.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';return;}
-    el.innerHTML=r.medicoes.map(m=>{
+    const notas=(r.medicoes||[]).filter(m=>!m.sem_nota);
+    const recsSemNota=(r.medicoes||[]).filter(m=>m.sem_nota);
+    el.innerHTML=notas.length?notas.map(m=>{
       const ds=((m.datas&&m.datas.length)?m.datas:(m.data?[m.data]:[])).slice().sort();
       const dLabel=ds.length>1?`${dtBR(ds[0])} → ${dtBR(ds[ds.length-1])} · ${ds.length} dias`:(ds.length?dtBR(ds[0]):'');
       const dTitle=ds.map(dtBR).join(', ');
@@ -2328,7 +2342,13 @@
         <b class="money">${brl(m.valor)}</b>
         <button type="button" class="btn-ghost med-receb" data-med="${m.id}" data-recebido="${m.recebido?1:0}" data-recdata="${m.data_recebimento||''}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'Marcar recebido'}</button>
         <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
-      </div>${retidoLinha}</div>`;}).join('');
+      </div>${retidoLinha}</div>`;}).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';
+    const rel=document.getElementById('oe-receb-lista');
+    if(rel)rel.innerHTML=recsSemNota.length?recsSemNota.map(m=>`<div style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Recebimento')}</b> <span style="color:var(--ink-3)">${m.data_recebimento?dtBR(m.data_recebimento):(m.data?dtBR(m.data):'')}</span>${m.forma_pagamento?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}</div>
+        <b class="money" style="color:var(--ok)">${brl(m.valor)}</b>
+        <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
+      </div>`).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhum recebimento sem nota ainda.</div>';
     el.querySelectorAll('.med-receb').forEach(b=>b.addEventListener('click',async()=>{
       if(b.dataset.recebido==='1'){
         // já recebido → desmarca (limpa a data)
@@ -2345,8 +2365,8 @@
       if(!confirm('Marcar este valor retido como resgatado (recebido)?'))return;
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({retido_resgatado:true,hoje:isoHoje()})});showToast('Retido resgatado ✓');carregarMedicoes(obraId);if(typeof atualizarBadges==='function')atualizarBadges();}
       catch(e){showToast('Erro');console.error(e);}}));
-    el.querySelectorAll('.med-del').forEach(b=>b.addEventListener('click',async()=>{
-      if(!confirm('Excluir esta medição?'))return;
+    document.querySelectorAll('#oe-medicoes-lista .med-del, #oe-receb-lista .med-del').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('Excluir este registro?'))return;
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'DELETE'});carregarMedicoes(obraId);}
       catch(e){showToast('Erro');console.error(e);}}));
   }
@@ -2401,6 +2421,19 @@
       if(r==='vazio'){showToast('Informe o valor da medição');return;}
       if(r==='ok'){carregarMedicoes(id);showToast('Nota/medição adicionada');}}
     catch(e){showToast('Erro ao adicionar');console.error(e);}
+  });
+  // Recebimento SEM nota (PIX etc.) — seção separada
+  document.getElementById('btn-add-receb').addEventListener('click',async()=>{
+    const id=document.getElementById('oe-id').value;if(!id)return;
+    const valor=parseFloat(document.getElementById('rec-valor').value)||0;
+    if(valor<=0){showToast('Informe o valor do recebimento');return;}
+    const data=document.getElementById('rec-data').value||isoHoje();
+    const payload={sem_nota:true,recebido:true,datas:[data],data:data,data_recebimento:data,
+      descricao:document.getElementById('rec-desc').value||null,valor,forma_pagamento:document.getElementById('rec-forma').value||'PIX',valor_retido:0};
+    try{await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('rec-desc').value='';document.getElementById('rec-valor').value='';document.getElementById('rec-data').value='';
+      carregarMedicoes(id);showToast('Recebimento registrado');
+    }catch(e){showToast('Erro ao adicionar');console.error(e);}
   });
   document.getElementById('form-med-receb').addEventListener('submit',async e=>{
     e.preventDefault();const medId=document.getElementById('medreceb-id').value;const dr=document.getElementById('medreceb-data').value||isoHoje();const fp=document.getElementById('medreceb-forma').value||null;
