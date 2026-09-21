@@ -889,6 +889,7 @@
       <div class="modhead"><h1>Obras &amp; Resultado</h1><p>Resultado por obra: contrato, custos (diárias + insumos) e margem líquida real por m².</p></div>
       <div class="tabsrow">
         <div class="seg" id="fin-viewmode"><button data-vm="quadro" class="on">▦ Quadro</button><button data-vm="lista">☰ Lista</button></div>
+        <input id="fin-busca" placeholder="🔍 Buscar obra por cliente ou local…" style="flex:1;min-width:170px;max-width:340px;padding:9px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13px">
         <div style="display:flex;gap:8px">
           <button class="btn-ghost" id="btn-nova-obra" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Nova Obra</button>
           <button class="primary" id="btn-novo-lanc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lançamento</button>
@@ -1083,7 +1084,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v150</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v151</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2344,11 +2345,16 @@
   }
   function renderFin(){
     const board=document.getElementById('board-fin'),tabs=document.getElementById('tabs-fin');
+    const q=(document.getElementById('fin-busca')?.value||'').trim().toLowerCase();
+    const match=o=>!q||((o.cliente||'').toLowerCase().includes(q)||(o.endereco||'').toLowerCase().includes(q));
+    const obrasF=(OBRAS||[]).filter(match);
+    const colunasF={};Object.keys(FIN_COLUNAS||{}).forEach(k=>colunasF[k]=((FIN_COLUNAS||{})[k]||[]).filter(match));
     if(finViewMode==='lista'){
       if(tabs)tabs.innerHTML='';
       board.classList.add('as-list');
       if(!OBRAS.length){board.innerHTML='<div class="orc-empty">Nenhuma obra cadastrada. Clique em <b>Nova Obra</b>.</div>';return;}
-      const rows=OBRAS.map(o=>{const mc=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
+      if(!obrasF.length){board.innerHTML='<div class="orc-empty">Nenhuma obra encontrada para “'+esc(q)+'”.</div>';return;}
+      const rows=obrasF.map(o=>{const mc=o.margem_pct>=35?'var(--ok)':o.margem_pct>=20?'var(--warn)':'var(--danger)';
         const sel=`<select class="fin-etapa" data-obra="${o.id}">${FIN_COLS.map(c=>`<option value="${c.k}"${c.k===o.coluna_kanban?' selected':''}>${c.t}</option>`).join('')}</select>`;
         return `<tr><td><b data-obraedit="${o.id}" style="cursor:pointer;color:var(--laranja-2)">${esc(o.cliente)}</b></td><td>${esc(o.endereco||'—')}</td><td>${o.metragem_m2||0} m²</td><td class="num">${brl(o.valor_contrato)}</td><td class="num">${brl(o.custo_operacional)}</td><td class="num" style="color:${mc}">${o.margem_pct}%</td><td>${sel}</td></tr>`;}).join('');
       board.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Cliente</th><th>Local</th><th>Metragem</th><th class="num">Contrato</th><th class="num">Custo</th><th class="num">Margem</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -2357,12 +2363,13 @@
         catch(err){showToast('Erro ao mudar etapa');console.error(err);}}));
     }else{
       board.classList.remove('as-list');
-      board.innerHTML=FIN_COLS.map(c=>renderCol(c,(FIN_COLUNAS&&FIN_COLUNAS[c.k])||[],obraCard,'Nova obra')).join('');
+      board.innerHTML=FIN_COLS.map(c=>renderCol(c,colunasF[c.k]||[],obraCard,'Nova obra')).join('');
       buildColTabs('tabs-fin','board-fin',FIN_COLS);
     }
   }
   document.getElementById('fin-viewmode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     finViewMode=b.dataset.vm;document.getElementById('fin-viewmode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderFin();}));
+  document.getElementById('fin-busca').addEventListener('input',()=>renderFin());
   function abrirNovaObra(){document.getElementById('form-obra').reset();openModal('ov-obra');}
   document.getElementById('btn-nova-obra').addEventListener('click',abrirNovaObra);
   document.getElementById('board-fin').addEventListener('click',e=>{if(e.target.closest('.addcard'))abrirNovaObra();});
@@ -5475,7 +5482,8 @@
     const mostra=admin?{dp:1,fin:1,novo:1,perfil:1}:{orc:1,vt:1,perfil:1};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(b=>b.style.display=mostra[b.dataset.bn]?'':'none');
     // esconde o atalho de VT na aba do DP para operacional (não usa DP)
-    irParaView(admin?'docs':'orc');
+    // Adelino (CAMPO) abre direto no Cronograma; Visita (Victor) abre na Visita Técnica
+    irParaView(admin?'docs':(role==='CAMPO'?'cronograma':'orc'));
     if(admin)loadFin().catch(e=>console.error(e)); // popula select do modal de lançamento
   }
 
