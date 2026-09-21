@@ -775,6 +775,29 @@
   .login-err{color:var(--danger);font-size:12.5px;font-weight:600;min-height:16px;}
   .login-btn{justify-content:center;width:100%;padding:12px;font-size:14px;min-height:48px;}
   .login-hint{font-size:11px;color:var(--ink-3);text-align:center;}
+  .login-voltar{background:none;border:0;color:var(--ink-3);font-size:12.5px;cursor:pointer;padding:4px;align-self:center;}
+  .login-voltar:hover{color:var(--laranja-esc);}
+
+  /* ---- Landing (LP pública → login → sistema) ---- */
+  .landing-screen{position:fixed;inset:0;z-index:100;overflow:auto;color:#fff;
+    background:radial-gradient(1200px 600px at 50% -10%, #24303f, #111827 60%);}
+  .landing-screen.hidden{display:none;}
+  .landing-wrap{max-width:980px;margin:0 auto;padding:30px 24px 56px;min-height:100%;display:flex;flex-direction:column;box-sizing:border-box;}
+  .landing-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .landing-brand{display:flex;align-items:center;gap:12px;}
+  .landing-logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--laranja),var(--laranja-2));display:grid;place-items:center;font-weight:800;font-size:18px;color:#fff;}
+  .landing-brand b{font-size:16px;font-weight:800;color:#fff;} .landing-brand small{display:block;font-size:11px;color:#9aa7b8;}
+  .landing-entrar{background:var(--laranja);color:#fff;border:0;border-radius:12px;padding:11px 22px;font-weight:800;font-size:14px;cursor:pointer;min-height:46px;box-shadow:0 8px 24px rgba(237,113,24,.35);font-family:inherit;}
+  .landing-entrar:hover{filter:brightness(1.06);}
+  .landing-hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:44px 0;}
+  .landing-hero h1{font-size:clamp(28px,6vw,50px);line-height:1.06;margin:0 0 16px;font-weight:800;letter-spacing:-.02em;max-width:17ch;}
+  .landing-hero h1 span{color:var(--laranja);}
+  .landing-hero p{font-size:clamp(15px,2.4vw,18px);color:#c7cfdb;max-width:56ch;margin:0 0 26px;line-height:1.55;}
+  .landing-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;width:100%;margin-top:10px;}
+  .landing-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 18px;}
+  .landing-card .ic{font-size:22px;margin-bottom:8px;}
+  .landing-card b{display:block;font-size:14.5px;margin-bottom:3px;color:#fff;} .landing-card span{font-size:12.5px;color:#aab4c2;line-height:1.4;}
+  .landing-foot{text-align:center;color:#6b7686;font-size:12px;margin-top:34px;}
 
   /* ---- Perfil ---- */
   .perfil-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);
@@ -799,6 +822,28 @@
   .avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
 </style>
 
+<!-- Landing pública (LP → login → sistema) -->
+<div class="landing-screen hidden" id="landing-screen">
+  <div class="landing-wrap">
+    <div class="landing-top">
+      <div class="landing-brand"><div class="landing-logo">RB</div><div><b>Raspadora Brasília</b><small>Gestão de obras &amp; equipe</small></div></div>
+      <button class="landing-entrar" id="landing-entrar-top">Entrar</button>
+    </div>
+    <div class="landing-hero">
+      <h1>Sua obra sob <span>controle</span>, do orçamento ao recebimento.</h1>
+      <p>Cronograma da equipe, folha e vale-transporte, financeiro e fluxo de caixa, obras com margem por m² e documentos — tudo num lugar só.</p>
+      <button class="landing-entrar" id="landing-entrar" style="font-size:15px;padding:14px 32px">Entrar no sistema →</button>
+      <div class="landing-cards">
+        <div class="landing-card"><div class="ic">🏗️</div><b>Obras &amp; Resultado</b><span>Contrato, custos e margem real por m².</span></div>
+        <div class="landing-card"><div class="ic">📅</div><b>Cronograma diário</b><span>Aloque a equipe e alimente a folha.</span></div>
+        <div class="landing-card"><div class="ic">💰</div><b>Financeiro &amp; Fluxo</b><span>Entradas, saídas e previsões.</span></div>
+        <div class="landing-card"><div class="ic">📄</div><b>Documentos &amp; RH</b><span>Prontuário, SST e vencimentos.</span></div>
+      </div>
+    </div>
+    <div class="landing-foot">Raspadora Brasília — Levando sucesso e experiência para sua obra.</div>
+  </div>
+</div>
+
 <!-- Tela de Login -->
 <div class="login-screen" id="login-screen">
   <div class="login-card">
@@ -814,6 +859,7 @@
         <div class="field"><label>Senha</label><input name="password" type="password" autocomplete="current-password" required placeholder="••••••••"></div>
         <div class="login-err" id="login-err"></div>
         <button type="submit" class="primary login-btn">Entrar</button>
+        <button type="button" class="login-voltar" id="login-voltar">← Voltar</button>
         <div class="login-hint">Levando sucesso e experiência para sua obra!</div>
       </form>
     </div>
@@ -1093,7 +1139,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v160</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v161</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5477,13 +5523,18 @@
 
   // ================= AUTENTICAÇÃO & ROLES =================
   const loginScreen=document.getElementById('login-screen');
+  const landingScreen=document.getElementById('landing-screen');
   const appEl=document.getElementById('app');
-  function mostrarLogin(){loginScreen.classList.remove('hidden');loginScreen.classList.add('ready');appEl.style.visibility='hidden';}
-  function esconderLogin(){loginScreen.classList.add('hidden');appEl.style.visibility='';}
+  function mostrarLanding(){if(landingScreen)landingScreen.classList.remove('hidden');loginScreen.classList.add('hidden');appEl.style.visibility='hidden';}
+  function mostrarLogin(){if(landingScreen)landingScreen.classList.add('hidden');loginScreen.classList.remove('hidden');loginScreen.classList.add('ready');appEl.style.visibility='hidden';}
+  function esconderLogin(){loginScreen.classList.add('hidden');if(landingScreen)landingScreen.classList.add('hidden');appEl.style.visibility='';}
   function salvarSessao(s){SESSAO=s;localStorage.setItem('rb_sessao',JSON.stringify(s));}
   function carregarSessaoLocal(){try{SESSAO=JSON.parse(localStorage.getItem('rb_sessao'));}catch{SESSAO=null;}}
   function sessaoValida(){return SESSAO&&SESSAO.access_token&&SESSAO.expires_at&&(SESSAO.expires_at*1000>Date.now()+5000);}
-  function sair(){localStorage.removeItem('rb_sessao');SESSAO=null;ROLE=null;mostrarLogin();}
+  function sair(){localStorage.removeItem('rb_sessao');SESSAO=null;ROLE=null;mostrarLanding();}
+  document.getElementById('landing-entrar')?.addEventListener('click',mostrarLogin);
+  document.getElementById('landing-entrar-top')?.addEventListener('click',mostrarLogin);
+  document.getElementById('login-voltar')?.addEventListener('click',mostrarLanding);
 
   async function fazerLogin(email,password){
     const r=await fetch(CFG.supabaseUrl+'/auth/v1/token?grant_type=password',{method:'POST',
@@ -5610,7 +5661,7 @@
     if(sessaoValida()||await refrescarSessao()){
       try{await carregarPerfilUsuario();esconderLogin();aplicarRole(ROLE);}
       catch{sair();}
-    }else{mostrarLogin();}
+    }else{mostrarLanding();}
   }
   boot();
 </script>
