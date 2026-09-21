@@ -1465,16 +1465,18 @@ export const db = {
   async listPrevistos() {
     if (!USING_SUPABASE) return [];
     const { data, error } = await sb('movimentacoes_caixa')
-      .select('id,data_movimento,descricao,categoria,tipo,valor').eq('status', 'PREVISTO').order('data_movimento');
+      .select('*').eq('status', 'PREVISTO').order('data_movimento');
     if (error) throw error;
     return data || [];
   },
   async criarPrevisto(p) {
     if (!USING_SUPABASE) return { id: uid(), status: 'PREVISTO', ...p };
-    return this.criarMovimentacao({
+    // insertSafe: se `forma_pagamento` ainda não existir na tabela, salva sem ela (degrada até a migration)
+    return insertSafe('movimentacoes_caixa', {
       conta_bancaria_id: null, obra_id: null, colaborador_id: null,
       data_movimento: p.data_movimento, descricao: p.descricao || null,
       categoria: p.categoria || 'PREVISAO_MANUAL', tipo: p.tipo, valor: p.valor,
+      forma_pagamento: p.forma || null,
       status: 'PREVISTO', conciliado: false,
     });
   },
@@ -1482,6 +1484,27 @@ export const db = {
     if (!USING_SUPABASE) return;
     const { error } = await sb('movimentacoes_caixa').delete().eq('id', id).eq('status', 'PREVISTO');
     if (error) throw error;
+  },
+  // Entradas/saídas REALIZADAS do mês (dinheiro que entrou/saiu de fato).
+  // Entradas: medições recebidas (data_recebimento no mês) + movimentações REALIZADO ENTRADA.
+  // Saídas: lançamentos diários pagos + boletos pagos + movimentações REALIZADO SAIDA.
+  async mesRealizado(mesStr) {
+    if (!USING_SUPABASE) return { mes: mesStr, entradas: 0, saidas: 0 };
+    const [y, m] = mesStr.split('-').map(Number);
+    const ini = mesStr + '-01';
+    const fim = new Date(y, m, 0).toISOString().slice(0, 10);
+    const [medR, ldR, boR, movR] = await Promise.all([
+      sb('medicoes_obra').select('valor,recebido,data_recebimento,data'),
+      sb('lancamentos_diarios').select('valor,pago,data').gte('data', ini).lte('data', fim),
+      sb('boletos').select('valor,pago,data_pagamento').gte('data_pagamento', ini).lte('data_pagamento', fim),
+      sb('movimentacoes_caixa').select('valor,tipo,status,data_movimento').eq('status', 'REALIZADO').gte('data_movimento', ini).lte('data_movimento', fim),
+    ]);
+    let entradas = 0, saidas = 0;
+    (medR.data || []).forEach(x => { if (!x.recebido) return; const d = x.data_recebimento || x.data; if (d && d >= ini && d <= fim) entradas += (x.valor || 0); });
+    (ldR.data || []).forEach(x => { if (x.pago) saidas += (x.valor || 0); });
+    (boR.data || []).forEach(x => { if (x.pago) saidas += (x.valor || 0); });
+    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    return { mes: mesStr, entradas, saidas };
   },
   // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos
   // (dedupe por sicoob_tx_id) e ajusta o saldo da conta para o saldo real do banco. Idempotente.

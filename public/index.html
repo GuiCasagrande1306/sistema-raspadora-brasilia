@@ -135,6 +135,7 @@
   .primary svg{width:16px;height:16px;}
 
   .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 26px 4px;}
+  .metrics.m5{grid-template-columns:repeat(5,1fr);}
   .metric{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
     padding:15px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
   .metric::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--laranja);}
@@ -629,7 +630,7 @@
   .coltabs{display:none;}
   .bottomnav{display:none;}
 
-  @media (max-width:1100px){ .metrics{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:1100px){ .metrics,.metrics.m5{grid-template-columns:repeat(2,1fr);} }
   @media (max-width:1000px) and (min-width:768px){
     .app{grid-template-columns:200px 1fr;}
     .search{display:none;}
@@ -928,12 +929,13 @@
         </div>
         <!-- Painel: Contas & Fluxo -->
         <div id="bancos-panel-contas">
-          <div style="display:flex;justify-content:flex-end;gap:8px;padding:0 26px;flex-wrap:wrap"><button class="btn-ghost" id="btn-previsto" style="min-height:38px;border-color:var(--laranja);color:var(--laranja-esc)">＋ Lançamento futuro</button><button class="btn-ghost" id="btn-cofre-ver" style="min-height:38px">🔐 Cofre</button><button class="btn-ghost" id="btn-sicoob-saldo" style="min-height:38px">🔄 Atualizar saldo</button><button class="btn-ghost" id="btn-sicoob-extrato" style="min-height:38px">📄 Extrato Sicoob</button><button class="btn-ghost" id="btn-contas-pdf" style="min-height:38px">🖨️ Exportar PDF</button></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;padding:0 26px;flex-wrap:wrap"><button class="btn-ghost" id="btn-previsto" style="min-height:38px;border-color:var(--laranja);color:var(--laranja-esc)">＋ Entradas</button><button class="btn-ghost" id="btn-cofre-ver" style="min-height:38px">🔐 Cofre</button><button class="btn-ghost" id="btn-sicoob-saldo" style="min-height:38px">🔄 Atualizar saldo</button><button class="btn-ghost" id="btn-sicoob-extrato" style="min-height:38px">📄 Extrato Sicoob</button><button class="btn-ghost" id="btn-contas-pdf" style="min-height:38px">🖨️ Exportar PDF</button></div>
           <div id="sicoob-saldos" style="padding:8px 26px 0"></div>
-          <div class="metrics">
-            <div class="metric"><div class="lbl">Saldo Consolidado</div><div class="val money" id="bancos-total">—</div><div class="sub">todas as contas</div></div>
-            <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis</div></div>
-            <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores</div></div>
+          <div class="metrics m5">
+            <div class="metric"><div class="lbl">Entradas do mês</div><div class="val money" id="bancos-ent-mes" style="color:#12805c">—</div><div class="sub">recebido no mês</div></div>
+            <div class="metric"><div class="lbl">Saídas do mês</div><div class="val money" id="bancos-sai-mes" style="color:var(--danger)">—</div><div class="sub">pago no mês</div></div>
+            <div class="metric"><div class="lbl">Entradas previstas (30d)</div><div class="val money" id="bancos-ent">—</div><div class="sub">medições / recebíveis / futuros</div></div>
+            <div class="metric"><div class="lbl">Saídas previstas (30d)</div><div class="val money" id="bancos-sai">—</div><div class="sub">folha / fornecedores / futuros</div></div>
             <div class="metric"><div class="lbl">Saldo projetado</div><div class="val money" id="bancos-proj">—</div><div class="sub">ao fim de 30 dias</div></div>
           </div>
           <div id="bancos-content" style="padding:18px 26px 96px;"></div>
@@ -1054,7 +1056,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v146</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v147</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2146,6 +2148,10 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
           <div class="field"><label>Data prevista *</label><input name="data_movimento" type="date" required></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field"><label>Categoria</label><select id="prev-cat"></select></div>
+          <div class="field"><label>Forma de pagamento</label><select id="prev-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="OUTRO">Outro</option></select></div>
         </div>
         <div class="field"><label>Descrição</label><input name="descricao" placeholder="Ex.: Recebimento obra Fulano, pagamento fornecedor…"></div>
       </div>
@@ -4434,9 +4440,10 @@
 
   let BANCOS_STATE=null;
   async function loadBancosData(){
-    const [saldos,fluxo,previstos]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30&hoje='+isoHoje()),api('/api/fluxo-caixa/previstos').catch(()=>[])]);
-    BANCOS_STATE={saldos,fluxo,previstos};
-    document.getElementById('bancos-total').textContent=brl(saldos.total_consolidado);
+    const [saldos,fluxo,previstos,mes]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30&hoje='+isoHoje()),api('/api/fluxo-caixa/previstos').catch(()=>[]),api('/api/fluxo-caixa/mes').catch(()=>({entradas:0,saidas:0}))]);
+    BANCOS_STATE={saldos,fluxo,previstos,mes};
+    document.getElementById('bancos-ent-mes').textContent=brl(mes.entradas||0);
+    document.getElementById('bancos-sai-mes').textContent=brl(mes.saidas||0);
     document.getElementById('bancos-ent').textContent=brl(fluxo.resumo.entradas_previstas||0);
     document.getElementById('bancos-sai').textContent=brl(fluxo.resumo.saidas_previstas||0);
     document.getElementById('bancos-proj').textContent=brl(fluxo.resumo.saldo_final_projetado||saldos.total_consolidado);
@@ -4455,18 +4462,19 @@
         <span class="sai">${d.saidas?'−'+brl(d.saidas):'—'}</span>
         <span class="sal">${brl(d.saldo_projetado)}</span></div>`).join('')
       :'<div class="fluxo-empty">Sem movimentações previstas nos próximos 30 dias.<br>Lançamentos com status PREVISTO aparecem aqui como projeção.</div>';
-    const prevList=(previstos||[]).slice().sort((a,b)=>String(a.data_movimento).localeCompare(String(b.data_movimento)));
-    const prevRows=prevList.length?prevList.map(p=>`<div class="fluxo-row" style="grid-template-columns:70px 1fr auto 30px">
+    const prevList=previstos&&previstos.length?previstos:[];
+    const prevTag=p=>{const c=(p.categoria&&p.categoria!=='PREVISAO_MANUAL')?(CAT_LABEL[p.categoria]||MOV_CAT_LABEL[p.categoria]||p.categoria):'';const fm=p.forma_pagamento?(FORMA_LBL[p.forma_pagamento]||p.forma_pagamento):'';return [c,fm].filter(Boolean).map(t=>`<span class="tag" style="font-size:9px;background:#eef1f5;color:#555;margin-left:6px">${esc(t)}</span>`).join('');};
+    const prevRows2=prevList.length?prevList.map(p=>`<div class="fluxo-row" style="grid-template-columns:64px 1fr auto 30px">
         <span>${new Date(p.data_movimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
-        <span style="text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.descricao||MOV_CAT_LABEL[p.categoria]||'Previsto')}</span>
+        <span style="text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.descricao||(p.categoria&&p.categoria!=='PREVISAO_MANUAL'?(CAT_LABEL[p.categoria]||p.categoria):'Previsto'))}${prevTag(p)}</span>
         <span class="${p.tipo==='ENTRADA'?'ent':'sai'}" style="font-weight:800">${p.tipo==='ENTRADA'?'+':'−'}${brl(p.valor)}</span>
         <span><button class="doc-cloud" data-prevdel="${p.id}" title="Excluir previsto" style="padding:2px">${DE_TRASH}</button></span></div>`).join('')
-      :'<div class="fluxo-empty">Nenhum lançamento futuro. Use <b>＋ Lançamento futuro</b> para prever entradas e saídas.</div>';
+      :'<div class="fluxo-empty">Nenhum lançamento futuro. Use <b>＋ Entradas</b> para prever entradas e saídas.</div>';
     document.getElementById('bancos-content').innerHTML=
       `<div class="conta-grid">${cards}</div>
        <div class="fluxo-list"><h5>Fluxo projetado — 30 dias</h5>
          <div class="fluxo-row head"><span>Data</span><span>Entradas</span><span>Saídas</span><span class="sal">Saldo</span></div>${rows}</div>
-       <div class="fluxo-list" style="margin-top:14px"><h5>Lançamentos futuros (previstos)</h5>${prevRows}</div>`;
+       <div class="fluxo-list" style="margin-top:14px"><h5>Lançamentos futuros (previstos)</h5>${prevRows2}</div>`;
     document.querySelectorAll('#bancos-content [data-prevdel]').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Excluir este lançamento previsto?'))return;
       try{await api('/api/fluxo-caixa/previsto/'+b.dataset.prevdel,{method:'DELETE'});showToast('Previsto excluído');loadBancos();}
@@ -4502,6 +4510,7 @@
   document.getElementById('btn-previsto').addEventListener('click',()=>{
     const f=document.getElementById('form-previsto');f.reset();
     prevTipo='ENTRADA';document.querySelectorAll('#prev-tipo button').forEach(x=>x.classList.toggle('on',x.dataset.tp==='ENTRADA'));
+    document.getElementById('prev-cat').innerHTML='<option value="">— categoria —</option>'+CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
     f.querySelector('[name=data_movimento]').value=isoHoje();
     openModal('ov-previsto');
   });
@@ -4511,7 +4520,7 @@
     if(!valor||valor<=0){showToast('Informe um valor válido');return;}
     try{
       await api('/api/fluxo-caixa/previsto',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({tipo:prevTipo,valor,data_movimento:f.get('data_movimento'),descricao:f.get('descricao')||null})});
+        body:JSON.stringify({tipo:prevTipo,valor,data_movimento:f.get('data_movimento'),descricao:f.get('descricao')||null,categoria:document.getElementById('prev-cat').value||null,forma:document.getElementById('prev-forma').value||null})});
       document.getElementById('ov-previsto').classList.remove('open');e.target.reset();
       await loadBancos();showToast(prevTipo==='ENTRADA'?'Entrada prevista lançada ✓':'Saída prevista lançada ✓');
     }catch(err){showToast('Erro ao lançar previsto');console.error(err);}
