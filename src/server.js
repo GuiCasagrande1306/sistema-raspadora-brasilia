@@ -1156,6 +1156,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
       forma_pagamento: req.body.forma_pagamento || null,
       sem_nota: req.body.sem_nota === true || req.body.sem_nota === 'true',
       valor_retido: Math.round((Number(req.body.valor_retido) || 0) * 100), data_resgate: req.body.data_resgate || null,
+      imposto_valor: Math.round((Number(req.body.imposto_valor) || 0) * 100),
     }));
   } catch (e) { next(e); }
 });
@@ -1165,6 +1166,7 @@ app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
     for (const k of ['data', 'descricao', 'data_resgate', 'forma_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
     if (req.body.valor_retido !== undefined) patch.valor_retido = Math.round((Number(req.body.valor_retido) || 0) * 100);
+    if (req.body.imposto_valor !== undefined) patch.imposto_valor = Math.round((Number(req.body.imposto_valor) || 0) * 100);
     if (req.body.recebido !== undefined) {
       patch.recebido = !!req.body.recebido;
       // ao marcar recebido, grava a data do pagamento; ao desmarcar, limpa

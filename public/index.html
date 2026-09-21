@@ -1093,7 +1093,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v158</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v159</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2100,10 +2100,12 @@
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
+              <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-com-retencao"> Retenção técnica (5%) + ISS (5%)</label>
               <div class="field" style="flex:0 0 150px"><label>Valor retido (R$) <span style="color:var(--ink-3);font-weight:400">opcional</span></label><input type="number" step="0.01" min="0" id="med-retido" placeholder="0,00"></div>
               <div class="field" style="flex:0 0 170px"><label>Data de resgate (lembrete)</label><input type="date" id="med-resgate"></div>
-              <div class="dv" style="flex:1;min-width:160px;font-size:11.5px;color:var(--ink-3);padding-bottom:10px">Retenção que a construtora só libera depois. Ao digitar o valor retido, a <b>data de resgate</b> é sugerida em <b>+6 meses</b> (dá pra ajustar). Ela vira lembrete em <b>Valores Retidos</b>.</div>
+              <div class="dv" style="flex:1;min-width:160px;font-size:11.5px;color:var(--ink-3);padding-bottom:10px">Retenção que a construtora só libera depois. Marque <b>Retenção técnica + ISS</b> pra calcular sozinho (5% + 5%) e ver o líquido. A <b>data de resgate</b> é sugerida em <b>+6 meses</b>.</div>
             </div>
+            <div id="med-breakdown" style="display:none;margin-top:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px"></div>
             <div id="med-datas-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
           </div>
         </div>
@@ -2425,6 +2427,14 @@
       const ds=((m.datas&&m.datas.length)?m.datas:(m.data?[m.data]:[])).slice().sort();
       const dLabel=ds.length>1?`${dtBR(ds[0])} → ${dtBR(ds[ds.length-1])} · ${ds.length} dias`:(ds.length?dtBR(ds[0]):'');
       const dTitle=ds.map(dtBR).join(', ');
+      const temDeducao=(m.valor_retido||0)>0||(m.imposto_valor||0)>0;
+      const liq=(m.valor||0)-(m.valor_retido||0)-(m.imposto_valor||0);
+      const liquidoLinha=temDeducao?`<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--ink-2);display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <span>Bruto <b>${brl(m.valor)}</b></span>
+        ${(m.valor_retido||0)>0?`<span style="color:var(--laranja-2)">Retenção téc. −${brl(m.valor_retido)}</span>`:''}
+        ${(m.imposto_valor||0)>0?`<span style="color:var(--danger)">ISS −${brl(m.imposto_valor)}</span>`:''}
+        <span>Líquido <b style="color:#12805c">${brl(liq)}</b></span>
+      </div>`:'';
       const retidoLinha=m.valor_retido?`<div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:12px">
         <span style="color:var(--laranja-2);font-weight:700">🔒 Retido ${brl(m.valor_retido)}</span>
         <span style="color:${(!m.retido_resgatado&&m.data_resgate&&m.data_resgate<=isoHoje())?'var(--danger)':'var(--ink-3)'}">${m.retido_resgatado?('✓ resgatado'+(m.data_retido_resgatado?' em '+dtBR(m.data_retido_resgatado):'')):(m.data_resgate?((m.data_resgate<=isoHoje()?'⚠ resgatar (venceu) ':'resgatar em ')+dtBR(m.data_resgate)):'sem data de resgate')}</span>
@@ -2437,7 +2447,7 @@
         <b class="money">${brl(m.valor)}</b>
         <button type="button" class="btn-ghost med-receb" data-med="${m.id}" data-recebido="${m.recebido?1:0}" data-recdata="${m.data_recebimento||''}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'Marcar recebido'}</button>
         <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
-      </div>${retidoLinha}</div>`;}).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';
+      </div>${liquidoLinha}${retidoLinha}</div>`;}).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';
     const rel=document.getElementById('oe-receb-lista');
     if(rel)rel.innerHTML=recsSemNota.length?recsSemNota.map(m=>`<div style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Recebimento')}</b> <span style="color:var(--ink-3)">${m.data_recebimento?dtBR(m.data_recebimento):(m.data?dtBR(m.data):'')}</span>${m.forma_pagamento?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}</div>
@@ -2490,6 +2500,23 @@
     if(ret>0&&!rg.value){const base=medDatas.length?medDatas[medDatas.length-1]:(document.getElementById('med-data').value||isoHoje());rg.value=add6meses(base);}
   }
   document.getElementById('med-retido').addEventListener('input',sugerirResgate);
+  // Detalhamento retenção técnica (5%) + ISS (5%) → líquido (90%)
+  function renderMedBreakdown(){
+    const box=document.getElementById('med-breakdown');if(!box)return;
+    const valor=parseFloat(document.getElementById('med-valor').value)||0;
+    const com=document.getElementById('med-com-retencao').checked;
+    if(!com||valor<=0){box.style.display='none';box.innerHTML='';return;}
+    const ret=Math.round(valor*5)/100, iss=Math.round(valor*5)/100, liq=Math.round((valor-ret-iss)*100)/100;
+    document.getElementById('med-retido').value=ret.toFixed(2);
+    const rg=document.getElementById('med-resgate');if(!rg.value){const base=medDatas.length?medDatas[medDatas.length-1]:(document.getElementById('med-data').value||isoHoje());rg.value=add6meses(base);}
+    box.style.display='';
+    box.innerHTML=`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Valor bruto da nota</span><b>${brlN(valor)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--laranja-2)"><span>Retenção técnica (5%) — resgata depois</span><b>− ${brlN(ret)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--danger)"><span>ISS (5%)</span><b>− ${brlN(iss)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px solid var(--line);font-size:14px"><span><b>Valor líquido a receber</b></span><b style="color:#12805c">${brlN(liq)}</b></div>`;
+  }
+  document.getElementById('med-valor').addEventListener('input',renderMedBreakdown);
+  document.getElementById('med-com-retencao').addEventListener('change',()=>{if(!document.getElementById('med-com-retencao').checked)document.getElementById('med-retido').value='';renderMedBreakdown();});
   // Salva a nota/medição se os campos estiverem preenchidos. Retorna 'ok' | 'vazio' | 'faltadata'.
   async function salvarMedicao(id,{silencioso=false}={}){
     const valor=parseFloat(document.getElementById('med-valor').value)||0;
@@ -2499,14 +2526,18 @@
     if(!datas.length&&unica)datas=[unica];
     if(!datas.length){if(!silencioso)showToast('Adicione ao menos 1 data');return 'faltadata';}
     const recebidoChk=document.getElementById('med-recebido').checked;
+    const comRet=document.getElementById('med-com-retencao').checked;
+    const impostoVal=comRet?Math.round(valor*5)/100:0;
     const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:recebidoChk,
       data_recebimento:recebidoChk?(document.getElementById('med-receb-data').value||isoHoje()):null,
       forma_pagamento:document.getElementById('med-forma').value||null,
-      valor_retido:parseFloat(document.getElementById('med-retido').value)||0,data_resgate:document.getElementById('med-resgate').value||null};
+      valor_retido:parseFloat(document.getElementById('med-retido').value)||0,data_resgate:document.getElementById('med-resgate').value||null,
+      imposto_valor:impostoVal};
     await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-receb-data').value='';document.getElementById('med-forma').value='';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';
+    document.getElementById('med-com-retencao').checked=false;const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}
     medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
     return 'ok';
   }
