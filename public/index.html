@@ -115,6 +115,14 @@
   .notif-item{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;align-items:center;}
   .notif-item:hover{background:var(--ground);} .notif-item:last-child{border-bottom:0;}
   .notif-item b{color:var(--laranja-2);} .notif-empty{padding:18px 14px;color:var(--ink-3);font-size:12.5px;text-align:center;}
+  /* Busca global (dropdown da barra do topo) */
+  .gs-pop{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:70;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);overflow:auto;max-height:60vh;}
+  .gs-pop.hidden{display:none;}
+  .gs-grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:800;padding:9px 14px 4px;background:var(--surface-2);}
+  .gs-item{display:flex;flex-direction:column;gap:1px;padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .gs-item:hover{background:var(--ground);}
+  .gs-item b{font-size:13px;color:var(--ink);} .gs-item span{font-size:11.5px;color:var(--ink-3);}
+  .gs-empty{padding:16px 14px;color:var(--ink-3);font-size:12.5px;text-align:center;}
   .avatar{width:38px;height:38px;border-radius:50%;background:var(--laranja);color:#fff;
     display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer;}
 
@@ -855,9 +863,10 @@
   <div class="main">
     <header class="top">
       <div class="brand"><span class="nm">Raspadora Brasília</span><span class="sl">Levando sucesso e experiência para sua obra!</span></div>
-      <div class="search">
+      <div class="search" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input placeholder="Buscar colaborador, obra ou cliente...">
+        <input id="global-search" placeholder="Buscar colaborador, obra ou cliente..." autocomplete="off">
+        <div class="gs-pop hidden" id="gs-pop"></div>
       </div>
       <div class="topact">
         <button class="iconbtn" id="btn-sino" title="Notificações"><span class="dot" id="sino-dot" style="display:none"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
@@ -1084,7 +1093,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v151</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v152</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2712,6 +2721,36 @@
     if(pop.classList.contains('hidden')){renderNotifPop();pop.classList.remove('hidden');}else pop.classList.add('hidden');});
   document.addEventListener('click',e=>{const pop=document.getElementById('notif-pop');
     if(pop&&!pop.classList.contains('hidden')&&!e.target.closest('#notif-pop')&&!e.target.closest('#btn-sino'))pop.classList.add('hidden');});
+
+  // ---------- BUSCA GLOBAL (barra do topo) ----------
+  const GS_GRUPOS=[['colaboradores','Colaboradores'],['obras','Obras'],['clientes','Clientes'],['leads','Leads']];
+  let gsTimer=null;
+  function fecharGs(){const p=document.getElementById('gs-pop');if(p)p.classList.add('hidden');}
+  function renderGs(r){
+    const pop=document.getElementById('gs-pop');if(!pop)return;
+    let html='';
+    GS_GRUPOS.forEach(([k,lbl])=>{const arr=r[k]||[];if(!arr.length)return;
+      html+=`<div class="gs-grp">${lbl}</div>`+arr.map(it=>`<div class="gs-item" data-gt="${k}" data-gid="${it.id}" data-glabel="${esc(it.label||'')}"><b>${esc(it.label||'—')}</b>${it.sub?`<span>${esc(it.sub)}</span>`:''}</div>`).join('');
+    });
+    pop.innerHTML=html||'<div class="gs-empty">Nada encontrado.</div>';
+    pop.classList.remove('hidden');
+    pop.querySelectorAll('.gs-item').forEach(it=>it.addEventListener('click',()=>abrirBuscaResultado(it.dataset.gt,it.dataset.gid,it.dataset.glabel)));
+  }
+  function abrirBuscaResultado(tipo,id,label){
+    fecharGs();const inp=document.getElementById('global-search');if(inp)inp.value='';
+    if(tipo==='obras'){irParaView('fin');abrirObraExec(id);}
+    else if(tipo==='colaboradores'){irParaView('docs');setTimeout(()=>abrirColab(id,label),300);}
+    else if(tipo==='clientes'){irParaView('clientes');setTimeout(()=>{const c=(CLIENTES||[]).find(x=>x.id===id);if(c)abrirCliente(c);},400);}
+    else if(tipo==='leads'){irParaView('leads');setTimeout(()=>{const l=(LEADS||[]).find(x=>x.id===id);if(l)abrirLead(l);},400);}
+  }
+  const gsInput=document.getElementById('global-search');
+  if(gsInput){
+    gsInput.addEventListener('input',()=>{const q=gsInput.value.trim();clearTimeout(gsTimer);
+      if(q.length<2){fecharGs();return;}
+      gsTimer=setTimeout(async()=>{try{renderGs(await api('/api/busca?q='+encodeURIComponent(q)));}catch(e){console.error(e);}},250);});
+    gsInput.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharGs();gsInput.blur();}});
+    document.addEventListener('click',e=>{if(!e.target.closest('.search'))fecharGs();});
+  }
 
   // --- Modal de Medição de Orçamento (campo, sem preços) ---
   let orcEditId=null;

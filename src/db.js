@@ -675,6 +675,28 @@ export const db = {
     meds.forEach(m => eventos.push({ tipo: 'medicao', data: m.data, titulo: (mapa[m.obra_id] || 'Obra') + (m.descricao ? ' — ' + m.descricao : ''), valor: m.valor || 0, recebido: !!m.recebido, id: m.id }));
     return eventos.filter(e => e.data).sort((a, b) => String(a.data).localeCompare(String(b.data)));
   },
+  // Busca global (barra do topo): colaboradores, obras, clientes e leads por nome.
+  async buscaGlobal(q) {
+    const vazio = { colaboradores: [], obras: [], clientes: [], leads: [] };
+    if (!USING_SUPABASE) return vazio;
+    const t = (q || '').trim();
+    if (t.length < 2) return vazio;
+    const s = t.replace(/[,%()]/g, ' ').trim(); // sanitiza para o filtro .or
+    if (!s) return vazio;
+    const like = `%${s}%`;
+    const [colR, obrR, cliR, leaR] = await Promise.all([
+      sb('colaboradores').select('id,nome,cargo,cpf,apelido').or(`nome.ilike.${like},cpf.ilike.${like},apelido.ilike.${like}`).limit(8),
+      sb('obras_financeiro').select('id,cliente,endereco').or(`cliente.ilike.${like},endereco.ilike.${like}`).limit(8),
+      sb('clientes').select('id,nome,telefone').or(`nome.ilike.${like},telefone.ilike.${like}`).limit(8),
+      sb('leads').select('id,nome,servico').or(`nome.ilike.${like},servico.ilike.${like}`).limit(8),
+    ]);
+    return {
+      colaboradores: (colR.data || []).map(c => ({ id: c.id, label: c.nome, sub: c.cargo || '' })),
+      obras: (obrR.data || []).map(o => ({ id: o.id, label: o.cliente, sub: o.endereco || '' })),
+      clientes: (cliR.data || []).map(c => ({ id: c.id, label: c.nome, sub: c.telefone || '' })),
+      leads: (leaR.data || []).map(l => ({ id: l.id, label: l.nome, sub: l.servico || '' })),
+    };
+  },
   // valida se um colaborador pode ser alocado numa obra (mesma empresa)
   async validarAlocacao(colaboradorIds, obraId) {
     if (!USING_SUPABASE) return { ok: true };
