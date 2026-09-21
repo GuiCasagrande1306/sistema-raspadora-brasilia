@@ -390,6 +390,33 @@
   .gasto-subleg{display:flex;align-items:center;gap:10px;font-size:12px;padding:5px 0;color:var(--ink-2);border-bottom:1px dashed var(--line);}
   .gasto-subleg .gl-val{color:var(--ink);}
   .gasto-subleg:last-child{border-bottom:0;}
+  /* ---- Agenda = calendário ---- */
+  .ag-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .ag-nav{display:flex;align-items:center;gap:8px;}
+  .ag-legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);flex-wrap:wrap;}
+  .ag-legend span{display:flex;align-items:center;gap:5px;}
+  .ag-dot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block;}
+  #ag-google{margin-left:auto;}
+  .ag-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .ag-head{margin-bottom:6px;}
+  .ag-dow{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);text-align:center;padding:4px 0;}
+  .ag-cell{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:96px;padding:6px;display:flex;flex-direction:column;gap:3px;cursor:pointer;overflow:hidden;}
+  .ag-cell.ag-empty{background:transparent;border:0;cursor:default;}
+  .ag-cell.ag-has:hover{border-color:var(--laranja);}
+  .ag-cell.ag-today{border-color:var(--laranja);box-shadow:0 0 0 1px var(--laranja) inset;}
+  .ag-num{font-size:12px;font-weight:700;color:var(--ink-2);}
+  .ag-cell.ag-today .ag-num{color:var(--laranja-esc);}
+  .ag-chip{font-size:10px;color:#fff;border-radius:5px;padding:1px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;}
+  .ag-more{font-size:10px;color:var(--ink-3);font-weight:700;}
+  .ag-evrow{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);}
+  .ag-evrow:last-child{border-bottom:0;}
+  @media (max-width:640px){
+    .ag-grid{gap:3px;}
+    .ag-cell{min-height:52px;padding:3px;border-radius:7px;}
+    .ag-chip{font-size:0;padding:0;height:6px;width:100%;border-radius:3px;line-height:0;}
+    .ag-more{font-size:9px;}
+    #ag-google{margin-left:0;}
+  }
   .colab-list,.doc-list{display:flex;flex-direction:column;gap:8px;}
   .colab-row{border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.12s;}
   .colab-row:hover{border-color:var(--laranja-100);background:var(--laranja-50);}
@@ -1056,7 +1083,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v148</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v149</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1139,7 +1166,7 @@
       <div id="prop-content" style="padding:18px 26px 96px;"></div>
     </section>
     <section id="view-agenda" class="hidden">
-      <div class="modhead"><h1>Agenda</h1><p>Agenda da equipe integrada ao Google Calendar (visitas técnicas, reuniões e prazos).</p></div>
+      <div class="modhead"><h1>Agenda</h1><p>Calendário do mês com vencimentos de pagamentos, vencimentos de documentos e datas de medições. Clique no dia para ver os detalhes.</p></div>
       <div id="agenda-content" style="padding:18px 26px 96px;"></div>
     </section>
     <section id="view-docemp" class="hidden"><div class="modhead"><h1>Documentos Empresariais</h1><p>Documentos da empresa (CNPJ, contrato social, certidões/CND, etc.) em PDF — por empresa e pasta.</p></div><div id="docemp" class="nf-wrap"></div></section>
@@ -1540,6 +1567,15 @@
 </div>
 
 <!-- MODAL: Relatório da semana (presença/falta) -->
+<!-- MODAL: eventos do dia (Agenda) -->
+<div class="overlay" id="ov-agenda-dia">
+  <div class="modal" style="max-width:520px">
+    <header><h3 id="agdia-titulo" style="text-transform:capitalize">Dia</h3><button class="x" data-close>×</button></header>
+    <div class="body"><div id="agdia-body"></div></div>
+    <footer><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
+  </div>
+</div>
+
 <div class="overlay" id="ov-relatorio">
   <div class="modal" style="max-width:920px;width:96vw">
     <header><h3>Relatório da semana — presença e faltas</h3><button class="x" data-close>×</button></header>
@@ -2648,6 +2684,15 @@
         setBadge('badge-retencoes',ret.resumo.vencidos||0);
         (ret.retencoes||[]).filter(x=>x.status==='VENCIDO').forEach(x=>NOTIFS.push({txt:`Valor retido a resgatar — ${esc(x.obra_cliente)}`,sub:brl(x.valor_retido)+' · resgate '+(x.data_resgate?dtBR(x.data_resgate):'—'),goto:'retencoes'}));
       }catch(_){/* silencioso */}
+      // pendências do dia (agenda): pagamentos/documentos/medições de hoje
+      try{const hoje=isoHoje();const evHoje=await api('/api/agenda/eventos?desde='+hoje+'&ate='+hoje);
+        (evHoje||[]).forEach(e=>{
+          if(e.tipo==='pagamento'&&e.pago)return;
+          if(e.tipo==='medicao'&&e.recebido)return;
+          const lbl=e.tipo==='pagamento'?'Pagamento vence hoje':e.tipo==='documento'?'Documento vence hoje':'Medição de hoje';
+          NOTIFS.push({txt:lbl+' — '+esc(e.titulo),sub:(e.valor?brl(e.valor)+' · ':'')+'agenda de hoje',goto:'agenda'});
+        });
+      }catch(_){/* silencioso */}
       const dot=document.getElementById('sino-dot');if(dot)dot.style.display=NOTIFS.length?'':'none';
     }catch(e){/* silencioso */}
   }
@@ -3743,26 +3788,68 @@
   let AGENDA_URL='';
   async function agendaFetch(){try{const c=await api('/api/config-app/agenda');AGENDA_URL=(c&&c.url)||'';}catch(e){AGENDA_URL='';console.error(e);}return AGENDA_URL;}
   async function agendaSave(url){return api('/api/config-app/agenda',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url||null})});}
+  // ---------- AGENDA = CALENDÁRIO (pagamentos, documentos, medições) ----------
+  const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#2563EB'},medicao:{lbl:'Medição',cor:'#12805c'}};
+  let agendaRef=null, AGENDA_EVENTOS=[];
+  const agDialabel=iso=>new Date(iso+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  function agEventoLinha(e){
+    const c=AG_TIPO[e.tipo]||{cor:'#999',lbl:e.tipo};
+    const vlr=(e.tipo!=='documento'&&e.valor)?`<b class="money">${brl(e.valor)}</b>`:'';
+    const stat=e.tipo==='pagamento'?(e.pago?'<span class="tag" style="background:#DCFCE7;color:#12805c">pago</span>':'<span class="tag" style="background:#FEE2E2;color:#b91c1c">a pagar</span>')
+      :e.tipo==='medicao'?(e.recebido?'<span class="tag" style="background:#DCFCE7;color:#12805c">recebido</span>':'<span class="tag" style="background:#FEF3C7;color:#92400e">a receber</span>'):'';
+    const emp=e.empresa?`<span class="emp-tag emp-${e.empresa==='ECO_PISOS'?'eco':'rb'}">${e.empresa==='ECO_PISOS'?'ECO':'R.B'}</span>`:'';
+    return `<div class="ag-evrow"><span class="ag-dot" style="background:${c.cor}"></span><span style="flex:1;min-width:0"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3)">${c.lbl}</span><div style="font-weight:600">${esc(e.titulo)}${emp}</div></span>${vlr}${stat}</div>`;
+  }
   async function loadAgenda(){
     const el=document.getElementById('agenda-content');if(!el)return;
-    el.innerHTML='<div class="orc-empty">Carregando agenda…</div>';
+    if(!agendaRef)agendaRef=isoHoje();
+    el.innerHTML='<div class="orc-empty">Carregando…</div>';
     await agendaFetch();
-    if(AGENDA_URL){
-      el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn-ghost" id="agenda-config" style="min-height:36px">⚙️ Trocar agenda</button></div>
-        <div style="border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
-        <iframe src="${esc(AGENDA_URL)}" style="border:0;width:100%;height:70vh;min-height:520px" loading="lazy"></iframe></div>`;
-      el.querySelector('#agenda-config').addEventListener('click',agendaConfig);
-    }else{agendaConfig();}
+    const d=new Date(agendaRef+'T00:00:00'),ini=new Date(d.getFullYear(),d.getMonth(),1),fim=new Date(d.getFullYear(),d.getMonth()+1,0);
+    const desde=ini.toISOString().slice(0,10),ate=fim.toISOString().slice(0,10);
+    let ev=[];try{ev=await api('/api/agenda/eventos?desde='+desde+'&ate='+ate);}catch(e){console.error(e);}
+    AGENDA_EVENTOS=ev;
+    const porDia={};ev.forEach(e=>{(porDia[e.data]=porDia[e.data]||[]).push(e);});
+    const mesLbl=ini.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const dow=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const hoje=isoHoje();const totalDias=fim.getDate();const primeiroDow=ini.getDay();
+    let cells='';for(let i=0;i<primeiroDow;i++)cells+='<div class="ag-cell ag-empty"></div>';
+    for(let dia=1;dia<=totalDias;dia++){
+      const ds=ini.getFullYear()+'-'+String(ini.getMonth()+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+      const evs=porDia[ds]||[];
+      const chips=evs.slice(0,3).map(e=>`<div class="ag-chip" style="background:${(AG_TIPO[e.tipo]||{}).cor||'#999'}">${esc(e.titulo)}</div>`).join('')+(evs.length>3?`<div class="ag-more">+${evs.length-3}</div>`:'');
+      cells+=`<div class="ag-cell${ds===hoje?' ag-today':''}${evs.length?' ag-has':''}" data-agdia="${ds}"><div class="ag-num">${dia}</div>${chips}</div>`;
+    }
+    el.innerHTML=`<div class="ag-toolbar">
+        <div class="ag-nav"><button class="btn-ghost" id="ag-prev" title="Mês anterior">◀</button><b id="ag-mes" style="min-width:150px;text-align:center;text-transform:capitalize">${mesLbl}</b><button class="btn-ghost" id="ag-next" title="Próximo mês">▶</button><button class="btn-ghost" id="ag-hoje">Hoje</button></div>
+        <div class="ag-legend">${Object.values(AG_TIPO).map(v=>`<span><span class="ag-dot" style="background:${v.cor}"></span>${v.lbl}</span>`).join('')}</div>
+        <button class="btn-ghost" id="ag-google" title="Google Calendar da equipe">📅 Google Calendar</button>
+      </div>
+      <div class="ag-grid ag-head">${dow.map(x=>`<div class="ag-dow">${x}</div>`).join('')}</div>
+      <div class="ag-grid ag-body">${cells}</div>`;
+    document.getElementById('ag-prev').addEventListener('click',()=>{const x=new Date(agendaRef+'T00:00:00');x.setMonth(x.getMonth()-1);agendaRef=x.toISOString().slice(0,10);loadAgenda();});
+    document.getElementById('ag-next').addEventListener('click',()=>{const x=new Date(agendaRef+'T00:00:00');x.setMonth(x.getMonth()+1);agendaRef=x.toISOString().slice(0,10);loadAgenda();});
+    document.getElementById('ag-hoje').addEventListener('click',()=>{agendaRef=isoHoje();loadAgenda();});
+    document.getElementById('ag-google').addEventListener('click',agendaConfig);
+    el.querySelectorAll('[data-agdia]').forEach(c=>c.addEventListener('click',()=>abrirAgendaDia(c.dataset.agdia)));
+  }
+  function abrirAgendaDia(ds){
+    const evs=(AGENDA_EVENTOS||[]).filter(e=>e.data===ds);
+    document.getElementById('agdia-titulo').textContent=agDialabel(ds);
+    document.getElementById('agdia-body').innerHTML=evs.length?evs.map(agEventoLinha).join(''):'<div class="orc-empty">Nada marcado neste dia.</div>';
+    openModal('ov-agenda-dia');
   }
   function agendaConfig(){
     const el=document.getElementById('agenda-content');
-    el.innerHTML=`<div class="orc-empty" style="text-align:left;max-width:680px">
-      <h3 style="margin:0 0 8px">Conectar o Google Calendar <span style="font-size:12px;color:var(--ink-3);font-weight:500">(vale para todo o time)</span></h3>
+    el.innerHTML=`<div style="margin-bottom:12px"><button class="btn-ghost" id="ag-voltar">← Voltar ao calendário</button></div>
+      ${AGENDA_URL?`<div style="border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px"><iframe src="${esc(AGENDA_URL)}" style="border:0;width:100%;height:60vh;min-height:460px" loading="lazy"></iframe></div>`:''}
+      <div class="orc-empty" style="text-align:left;max-width:680px">
+      <h3 style="margin:0 0 8px">Google Calendar da equipe <span style="font-size:12px;color:var(--ink-3);font-weight:500">(opcional, vale para todo o time)</span></h3>
       <p style="margin:0 0 10px">No Google Calendar (computador): <b>Configurações → sua agenda → Integrar agenda → Incorporar código</b>. Copie o link que aparece dentro de <code>src="..."</code> (começa com <code>https://calendar.google.com/calendar/embed?...</code>) e cole abaixo.</p>
-      <p style="margin:0 0 12px;font-size:12.5px;color:var(--ink-3)">Dica: para a equipe toda ver, deixe a agenda como <b>pública</b> ou compartilhada com os e-mails do time.</p>
       <div class="field"><label>Link de incorporação (embed)</label><input id="agenda-url-inp" placeholder="https://calendar.google.com/calendar/embed?src=..." value="${esc(AGENDA_URL)}"></div>
       <div style="display:flex;gap:8px;margin-top:12px"><button class="primary" id="agenda-salvar">Salvar agenda</button>${AGENDA_URL?'<button class="btn-ghost" id="agenda-remover">Remover</button>':''}</div>
     </div>`;
+    el.querySelector('#ag-voltar').addEventListener('click',loadAgenda);
     el.querySelector('#agenda-salvar').addEventListener('click',async()=>{
       let v=document.getElementById('agenda-url-inp').value.trim();
       const m=v.match(/src=["']([^"']+)["']/);if(m)v=m[1];

@@ -656,6 +656,25 @@ export const db = {
     vencidos.sort((a, b) => a.dias - b.dias); prestes.sort((a, b) => a.dias - b.dias);
     return { vencidos, prestes };
   },
+  // Eventos agregados para o calendário da Agenda (e o sino): vencimentos de pagamentos (boletos),
+  // vencimentos de documentos SST/RH e datas de medições, num intervalo [desde, ate].
+  async agendaEventos(desde, ate) {
+    if (!USING_SUPABASE) return [];
+    const [boR, sstR, medR] = await Promise.all([
+      sb('boletos').select('id,descricao,vencimento,valor,pago,empresa,categoria').gte('vencimento', desde).lte('vencimento', ate),
+      sb('documentos_sst').select('id,tipo_documento,data_vencimento, colaboradores(nome,empresa)').not('data_vencimento', 'is', null).gte('data_vencimento', desde).lte('data_vencimento', ate),
+      sb('medicoes_obra').select('id,obra_id,descricao,data,valor,recebido').gte('data', desde).lte('data', ate),
+    ]);
+    const eventos = [];
+    (boR.data || []).forEach(b => eventos.push({ tipo: 'pagamento', data: b.vencimento, titulo: b.descricao || 'Boleto', valor: b.valor || 0, empresa: b.empresa || null, pago: !!b.pago, id: b.id }));
+    (sstR.data || []).forEach(d => eventos.push({ tipo: 'documento', data: d.data_vencimento, titulo: (d.colaboradores?.nome || '—') + ' — ' + (d.tipo_documento || 'documento'), empresa: d.colaboradores?.empresa || null, id: d.id }));
+    const meds = medR.data || [];
+    const obraIds = [...new Set(meds.map(m => m.obra_id).filter(Boolean))];
+    let mapa = {};
+    if (obraIds.length) { const { data: obras } = await sb('obras_financeiro').select('id,cliente').in('id', obraIds); mapa = Object.fromEntries((obras || []).map(o => [o.id, o.cliente])); }
+    meds.forEach(m => eventos.push({ tipo: 'medicao', data: m.data, titulo: (mapa[m.obra_id] || 'Obra') + (m.descricao ? ' — ' + m.descricao : ''), valor: m.valor || 0, recebido: !!m.recebido, id: m.id }));
+    return eventos.filter(e => e.data).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  },
   // valida se um colaborador pode ser alocado numa obra (mesma empresa)
   async validarAlocacao(colaboradorIds, obraId) {
     if (!USING_SUPABASE) return { ok: true };
