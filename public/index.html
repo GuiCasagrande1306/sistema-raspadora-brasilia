@@ -385,7 +385,7 @@
   .gasto-leg:last-child{border-bottom:0;}
   .gasto-dot{width:12px;height:12px;border-radius:3px;flex:none;}
   .gl-nome{flex:1;} .gl-val{font-weight:700;font-variant-numeric:tabular-nums;} .gl-pct{color:var(--ink-3);min-width:56px;text-align:right;}
-  .gsub-arrow{font-size:10px;color:var(--ink-3);margin-left:4px;}
+  .gsub-arrow{font-size:15px;color:var(--ink);font-weight:800;margin-left:6px;cursor:pointer;line-height:1;}
   .gasto-sublist{margin:0 0 4px 24px;padding-left:10px;border-left:2px solid var(--laranja-50);}
   .gasto-subleg{display:flex;align-items:center;gap:10px;font-size:12px;padding:5px 0;color:var(--ink-2);border-bottom:1px dashed var(--line);}
   .gasto-subleg .gl-val{color:var(--ink);}
@@ -1056,7 +1056,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v147</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v148</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4802,15 +4802,15 @@
     const legenda=r.categorias.map((c,i)=>{
       const cor=GASTO_CORES[i%GASTO_CORES.length];const nome=CAT_LABEL[c.categoria]||c.categoria;
       const temSub=c.categoria==='OUTRO'&&c.subcategorias&&c.subcategorias.length;
-      const head=`<div class="gasto-leg" data-gcat="${c.categoria}" style="cursor:pointer" title="Ver itens desta categoria"><span class="gasto-dot" style="background:${cor}"></span><span class="gl-nome">${esc(nome)}${temSub?' <span class="gsub-arrow" data-gsub="1" title="Resumo por descrição">▾</span>':''}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`;
+      const COM_SETA=['OUTRO','DESPESA_FUNCIONARIO','EDVARD','INSUMO'];
+      const seta=(temSub||COM_SETA.includes(c.categoria))?` <span class="gsub-arrow"${temSub?' data-gsub="1"':''} title="Ver itens desta categoria">▾</span>`:'';
+      const head=`<div class="gasto-leg" data-gcat="${c.categoria}" style="cursor:pointer" title="Ver itens desta categoria"><span class="gasto-dot" style="background:${cor}"></span><span class="gl-nome">${esc(nome)}${seta}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`;
       if(!temSub)return head;
       const subrows=c.subcategorias.map(s=>`<div class="gasto-subleg"><span class="gl-nome">${esc(s.nome)}</span><span class="gl-val money">${brl(s.total)}</span><span class="gl-pct">${(s.total/c.total*100).toFixed(1)}%</span></div>`).join('');
       return head+`<div class="gasto-sublist hidden">${subrows}</div>`;
     }).join('');
     el.innerHTML=`<div class="gastos-wrap">
-      <div class="gastos-chart"><svg viewBox="0 0 200 200" aria-label="Gastos por categoria">${slices}</svg>
-        <div class="gastos-center"><span>${rg.rotulo}</span><b class="money">${brl(r.total_geral)}</b></div></div>
-      <div class="gastos-leg"><div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(rg.subt)}</div>${legenda}</div></div>`;
+      <div class="gastos-leg" style="flex:1 1 100%"><div class="dv" style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-3);margin-bottom:8px"><span>${esc(rg.subt)}</span><span><b class="money" style="font-size:15px">${brl(r.total_geral)}</b> <span style="color:var(--ink-3)">${rg.rotulo.toLowerCase()}</span></span></div>${legenda}</div></div>`;
     el.querySelectorAll('[data-gcat]').forEach(h=>h.addEventListener('click',()=>abrirGastoCat(h.dataset.gcat)));
     el.querySelectorAll('[data-gsub]').forEach(a=>a.addEventListener('click',e=>{e.stopPropagation();const row=a.closest('.gasto-leg');const l=row&&row.nextElementSibling;if(l&&l.classList.contains('gasto-sublist')){l.classList.toggle('hidden');a.textContent=l.classList.contains('hidden')?'▾':'▴';}}));
   }
