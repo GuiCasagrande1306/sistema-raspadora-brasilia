@@ -1485,6 +1485,16 @@ app.post('/api/fluxo-caixa/previsto', async (req, res, next) => {
     res.status(201).json(await db.criarPrevisto({ tipo, valor, data_movimento, descricao: req.body.descricao || null, categoria, forma: req.body.forma || null }));
   } catch (e) { next(e); }
 });
+app.patch('/api/fluxo-caixa/previsto/:id', async (req, res, next) => {
+  try {
+    const tipo = req.body.tipo === 'SAIDA' ? 'SAIDA' : 'ENTRADA';
+    const valor = cents(req.body.valor);
+    if (!valor || valor <= 0) return res.status(400).json({ erro: 'valor inválido' });
+    const data_movimento = /^\d{4}-\d{2}-\d{2}$/.test(req.body.data_movimento || '') ? req.body.data_movimento : new Date().toISOString().slice(0, 10);
+    const categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : null;
+    res.json(await db.updatePrevisto(req.params.id, { tipo, valor, data_movimento, descricao: req.body.descricao || null, categoria, forma: req.body.forma || null }));
+  } catch (e) { next(e); }
+});
 app.delete('/api/fluxo-caixa/previsto/:id', async (req, res, next) => {
   try { await db.deletePrevisto(req.params.id); res.json({ ok: true }); }
   catch (e) { next(e); }

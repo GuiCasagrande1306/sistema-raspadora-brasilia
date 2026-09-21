@@ -1093,7 +1093,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v152</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v153</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4597,11 +4597,11 @@
       :'<div class="fluxo-empty">Sem movimentações previstas nos próximos 30 dias.<br>Lançamentos com status PREVISTO aparecem aqui como projeção.</div>';
     const prevList=previstos&&previstos.length?previstos:[];
     const prevTag=p=>{const c=(p.categoria&&p.categoria!=='PREVISAO_MANUAL')?(CAT_LABEL[p.categoria]||MOV_CAT_LABEL[p.categoria]||p.categoria):'';const fm=p.forma_pagamento?(FORMA_LBL[p.forma_pagamento]||p.forma_pagamento):'';return [c,fm].filter(Boolean).map(t=>`<span class="tag" style="font-size:9px;background:#eef1f5;color:#555;margin-left:6px">${esc(t)}</span>`).join('');};
-    const prevRows2=prevList.length?prevList.map(p=>`<div class="fluxo-row" style="grid-template-columns:64px 1fr auto 30px">
+    const prevRows2=prevList.length?prevList.map(p=>`<div class="fluxo-row" style="grid-template-columns:64px 1fr auto 62px">
         <span>${new Date(p.data_movimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
         <span style="text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.descricao||(p.categoria&&p.categoria!=='PREVISAO_MANUAL'?(CAT_LABEL[p.categoria]||p.categoria):'Previsto'))}${prevTag(p)}</span>
         <span class="${p.tipo==='ENTRADA'?'ent':'sai'}" style="font-weight:800">${p.tipo==='ENTRADA'?'+':'−'}${brl(p.valor)}</span>
-        <span><button class="doc-cloud" data-prevdel="${p.id}" title="Excluir previsto" style="padding:2px">${DE_TRASH}</button></span></div>`).join('')
+        <span style="display:flex;gap:2px;justify-content:flex-end"><button class="doc-cloud" data-preved="${p.id}" title="Editar previsto" style="padding:2px">✏️</button><button class="doc-cloud" data-prevdel="${p.id}" title="Excluir previsto" style="padding:2px">${DE_TRASH}</button></span></div>`).join('')
       :'<div class="fluxo-empty">Nenhum lançamento futuro. Use <b>＋ Entradas</b> para prever entradas e saídas.</div>';
     document.getElementById('bancos-content').innerHTML=
       `<div class="conta-grid">${cards}</div>
@@ -4612,6 +4612,8 @@
       if(!confirm('Excluir este lançamento previsto?'))return;
       try{await api('/api/fluxo-caixa/previsto/'+b.dataset.prevdel,{method:'DELETE'});showToast('Previsto excluído');loadBancos();}
       catch(e){showToast('Erro ao excluir');console.error(e);}}));
+    document.querySelectorAll('#bancos-content [data-preved]').forEach(b=>b.addEventListener('click',()=>{
+      const p=((BANCOS_STATE&&BANCOS_STATE.previstos)||[]).find(x=>x.id===b.dataset.preved);if(p)abrirPrevistoEdit(p);}));
     const opt=saldos.contas.map(c=>`<option value="${c.id}">${esc(c.nome_instituicao)} — ${brl(c.saldo_atual)}</option>`).join('');
     document.getElementById('transfer-origem').innerHTML=opt;
     document.getElementById('transfer-destino').innerHTML=opt;
@@ -4637,26 +4639,41 @@
     }catch(err){showToast('Erro ao ajustar saldo');console.error(err);}
   });
   document.getElementById('btn-transfer').addEventListener('click',()=>openModal('ov-transfer'));
-  let prevTipo='ENTRADA';
+  let prevTipo='ENTRADA', prevEditId=null;
   document.querySelectorAll('#prev-tipo button').forEach(b=>b.addEventListener('click',()=>{
     prevTipo=b.dataset.tp;document.querySelectorAll('#prev-tipo button').forEach(x=>x.classList.toggle('on',x===b));}));
+  function popularPrevCat(sel){document.getElementById('prev-cat').innerHTML='<option value="">— categoria —</option>'+CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}"${v===sel?' selected':''}>${l}</option>`).join('');}
   document.getElementById('btn-previsto').addEventListener('click',()=>{
-    const f=document.getElementById('form-previsto');f.reset();
+    const f=document.getElementById('form-previsto');f.reset();prevEditId=null;
+    document.querySelector('#ov-previsto h3').textContent='Lançamento futuro';
     prevTipo='ENTRADA';document.querySelectorAll('#prev-tipo button').forEach(x=>x.classList.toggle('on',x.dataset.tp==='ENTRADA'));
-    document.getElementById('prev-cat').innerHTML='<option value="">— categoria —</option>'+CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    popularPrevCat('');
     f.querySelector('[name=data_movimento]').value=isoHoje();
     openModal('ov-previsto');
   });
+  function abrirPrevistoEdit(p){
+    const f=document.getElementById('form-previsto');f.reset();prevEditId=p.id;
+    document.querySelector('#ov-previsto h3').textContent='Editar lançamento futuro';
+    prevTipo=p.tipo==='SAIDA'?'SAIDA':'ENTRADA';
+    document.querySelectorAll('#prev-tipo button').forEach(x=>x.classList.toggle('on',x.dataset.tp===prevTipo));
+    popularPrevCat(p.categoria&&p.categoria!=='PREVISAO_MANUAL'?p.categoria:'');
+    f.querySelector('[name=valor]').value=p.valor?(p.valor/100).toFixed(2):'';
+    f.querySelector('[name=data_movimento]').value=p.data_movimento||isoHoje();
+    f.querySelector('[name=descricao]').value=p.descricao||'';
+    document.getElementById('prev-forma').value=p.forma_pagamento||'';
+    openModal('ov-previsto');
+  }
   document.getElementById('form-previsto').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     const valor=parseFloat(f.get('valor'));
     if(!valor||valor<=0){showToast('Informe um valor válido');return;}
+    const payload={tipo:prevTipo,valor,data_movimento:f.get('data_movimento'),descricao:f.get('descricao')||null,categoria:document.getElementById('prev-cat').value||null,forma:document.getElementById('prev-forma').value||null};
     try{
-      await api('/api/fluxo-caixa/previsto',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({tipo:prevTipo,valor,data_movimento:f.get('data_movimento'),descricao:f.get('descricao')||null,categoria:document.getElementById('prev-cat').value||null,forma:document.getElementById('prev-forma').value||null})});
-      document.getElementById('ov-previsto').classList.remove('open');e.target.reset();
-      await loadBancos();showToast(prevTipo==='ENTRADA'?'Entrada prevista lançada ✓':'Saída prevista lançada ✓');
-    }catch(err){showToast('Erro ao lançar previsto');console.error(err);}
+      if(prevEditId)await api('/api/fluxo-caixa/previsto/'+prevEditId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      else await api('/api/fluxo-caixa/previsto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-previsto').classList.remove('open');e.target.reset();prevEditId=null;
+      await loadBancos();showToast('Lançamento previsto salvo ✓');
+    }catch(err){showToast('Erro ao salvar previsto');console.error(err);}
   });
   document.getElementById('btn-nova-conta').addEventListener('click',()=>{document.getElementById('form-conta').reset();openModal('ov-conta');});
   document.getElementById('form-conta').addEventListener('submit',async e=>{

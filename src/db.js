@@ -1526,6 +1526,13 @@ export const db = {
     const { error } = await sb('movimentacoes_caixa').delete().eq('id', id).eq('status', 'PREVISTO');
     if (error) throw error;
   },
+  async updatePrevisto(id, p) {
+    if (!USING_SUPABASE) return { id, ...p };
+    return updateSafeById('movimentacoes_caixa', id, {
+      tipo: p.tipo, valor: p.valor, data_movimento: p.data_movimento,
+      descricao: p.descricao || null, categoria: p.categoria || 'PREVISAO_MANUAL', forma_pagamento: p.forma || null,
+    });
+  },
   // Entradas/saídas do mês = tudo que cai no mês, FEITO + PREVISTO (todas as obras).
   // Entradas: medições (recebidas pela data_recebimento; a receber pela data) + movimentações ENTRADA (qualquer status).
   // Saídas: lançamentos diários (pela data) + boletos (pelo vencimento) + movimentações SAIDA (qualquer status).
