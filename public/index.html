@@ -1046,7 +1046,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v139</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v140</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2179,6 +2179,8 @@
   const brl=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0});
   const ini=n=>n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  // Toda lista de nomes de pessoas sai em ordem alfabética (pt, ignora acento/caixa)
+  const ordNome=(arr,key='nome')=>(arr||[]).slice().sort((a,b)=>String(a&&a[key]||'').localeCompare(String(b&&b[key]||''),'pt',{sensitivity:'base'}));
   const hue=s=>['#6B7280','#2563EB','#F37021','#0EA5E9','#D97706','#16A34A','#7C3AED'][[...s].reduce((a,c)=>a+c.charCodeAt(0),0)%7];
   let SESSAO=null, ROLE=null, CFG=null;
   const authHeaders=()=>SESSAO&&SESSAO.access_token?{Authorization:'Bearer '+SESSAO.access_token}:{};
@@ -2305,7 +2307,7 @@
     f.responsavel.value=o.responsavel||'';
     f.comissao_responsavel.value=o.comissao_responsavel||'';
     // datalist de nomes p/ facilitar escolher quem recebe a comissão
-    (async()=>{try{if(!COLABS_NOMES){COLABS_NOMES=await api('/api/dp/vt/colaboradores');}document.getElementById('oe-comissao-list').innerHTML=(COLABS_NOMES||[]).map(c=>`<option value="${esc(c.nome)}">`).join('');}catch(_){} })();
+    (async()=>{try{if(!COLABS_NOMES){COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}document.getElementById('oe-comissao-list').innerHTML=(COLABS_NOMES||[]).map(c=>`<option value="${esc(c.nome)}">`).join('');}catch(_){} })();
     obraDias=Array.isArray(o.dias_servico)?o.dias_servico.slice().sort():[];renderObraDias();
     document.getElementById('oe-dia-servico').value='';
     f.coluna_kanban.value=o.coluna_kanban||'aprovado';f.status_pagamento.value=o.status_pagamento||'';
@@ -3519,6 +3521,7 @@
     const el=document.getElementById('cron-data');if(!el.value)el.value=isoHoje();
     try{FUNCOES=await api('/api/cronograma/funcoes');}catch(e){FUNCOES=[];console.error(e);}
     try{CRON=await api('/api/cronograma?data='+el.value);}catch(e){console.error(e);CRON={data:el.value,obras:[],colaboradores:[],alocacoes:[],total:0};}
+    CRON.colaboradores=ordNome(CRON.colaboradores);
     renderCron();
   }
   function renderCron(){
@@ -3616,6 +3619,7 @@
     const {desde,ate}=semanaDe(relRef);
     try{
       const r=await api('/api/cronograma/relatorio?desde='+desde+'&ate='+ate);
+      r.linhas=ordNome(r.linhas);
       REL_STATE=r;
       document.getElementById('rel-periodo').textContent=dtBR(r.desde)+' a '+dtBR(r.ate);
       if(!r.linhas.length){cont.innerHTML='<div class="orc-empty">Ninguém alocado nem com falta nesta semana.</div>';return;}
@@ -4351,7 +4355,7 @@
   const isoAtras=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
   let COLABS_NOMES=null;
   async function popularColabSelect(id){
-    if(!COLABS_NOMES){try{COLABS_NOMES=await api('/api/dp/vt/colaboradores');}catch{COLABS_NOMES=[];}}
+    if(!COLABS_NOMES){try{COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}catch{COLABS_NOMES=[];}}
     document.getElementById(id).innerHTML='<option value="">Selecione…</option>'+COLABS_NOMES.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   }
 
@@ -4653,7 +4657,7 @@
   let LANCDIA_COLABS=null;
   async function popularLancdiaColabs(){
     if(LANCDIA_COLABS)return;
-    try{LANCDIA_COLABS=await api('/api/dp/vt/colaboradores');document.getElementById('lancdia-colab').innerHTML='<option value="">Selecione…</option>'+(LANCDIA_COLABS||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');}catch(_){}
+    try{LANCDIA_COLABS=ordNome(await api('/api/dp/vt/colaboradores'));document.getElementById('lancdia-colab').innerHTML='<option value="">Selecione…</option>'+(LANCDIA_COLABS||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');}catch(_){}
   }
   const lancdiaOutroToggle=()=>{
     const cat=document.getElementById('lancdia-cat').value;
@@ -4911,6 +4915,7 @@
   async function calcularFolha(){
     const desde=document.getElementById('folha-desde').value,ate=document.getElementById('folha-ate').value;
     const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
+    r.colaboradores=ordNome(r.colaboradores);
     folhaAtual=r;
     document.getElementById('folha-total').textContent=brl(r.totais.a_pagar||0);
     document.getElementById('folha-diaristas').textContent=brl(r.totais.diaristas_pago||0);
@@ -5150,7 +5155,7 @@
     const {colunas}=await api('/api/financeiro/obras');const obras=Object.values(colunas).flat();
     document.getElementById('apont-obra').innerHTML='<option value="">Selecione…</option>'+obras.map(o=>`<option value="${o.id}">${esc(o.cliente)} — ${o.metragem_m2}m²</option>`).join('');
     document.querySelector('#form-apont [name=data]').value=isoHoje();
-    if(!COLABS_NOMES){try{COLABS_NOMES=await api('/api/dp/vt/colaboradores');}catch{COLABS_NOMES=[];}}
+    if(!COLABS_NOMES){try{COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}catch{COLABS_NOMES=[];}}
     document.getElementById('apont-equipe').innerHTML=COLABS_NOMES.map(c=>`<span class="apont-chip" data-cid="${c.id}">${esc(c.nome)}</span>`).join('');
     document.querySelectorAll('#apont-equipe .apont-chip').forEach(ch=>ch.addEventListener('click',()=>ch.classList.toggle('on')));
     openModal('ov-apont');
