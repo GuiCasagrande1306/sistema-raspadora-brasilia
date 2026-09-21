@@ -777,7 +777,7 @@ app.get('/api/cronograma', async (req, res, next) => {
     // Cronograma do Adelino: só Raspagem fica de fora. Limpeza e as demais (Fulget/Concreto/Cimento) aparecem.
     const FORA_CRONOGRAMA = ['RASPAGEM'];   // só Raspagem fica fora; Limpeza aparece no cronograma
     const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
-      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null }));
+      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null, cor: o.cor || null }));
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
@@ -1118,7 +1118,7 @@ app.get('/api/financeiro/obra/:id', async (req, res, next) => {
 app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
   try {
     const patch = {};
-    for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'comissao_responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento']) {
+    for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'comissao_responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento', 'cor']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
     if (req.body.dias_servico !== undefined) patch.dias_servico = Array.isArray(req.body.dias_servico) ? [...new Set(req.body.dias_servico.filter(Boolean))].sort() : [];
