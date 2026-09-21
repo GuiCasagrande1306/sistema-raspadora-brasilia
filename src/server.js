@@ -783,7 +783,7 @@ app.get('/api/cronograma', async (req, res, next) => {
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
       .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo, is_diarista: c.is_diarista || false }))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
-    const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor }));
+    const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor, observacao: f.observacao || null }));
     const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
     res.json({ data, obras: obrasAtivas, colaboradores: colabs, alocacoes, faltas, total });
   } catch (e) { next(e); }
@@ -820,7 +820,7 @@ app.post('/api/cronograma/falta', async (req, res, next) => {
   try {
     const { data, colaborador_id } = req.body;
     if (!data || !colaborador_id) return res.status(400).json({ erro: 'data e colaborador são obrigatórios' });
-    res.status(201).json(await db.criarFalta({ data, colaborador_id }));
+    res.status(201).json(await db.criarFalta({ data, colaborador_id, observacao: req.body.observacao }));
   } catch (e) { next(e); }
 });
 app.delete('/api/cronograma/falta/:id', async (req, res, next) => {

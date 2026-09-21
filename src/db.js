@@ -1672,13 +1672,21 @@ export const db = {
     return data;
   },
   // Falta lançada pelo Cronograma (valor 0, a lançar depois pela Bárbara). Idempotente por colaborador+dia.
-  async criarFalta({ data, colaborador_id }) {
-    if (!USING_SUPABASE) return { id: uid(), colaborador_id, tipo: 'FALTA', valor: 0, data_lancamento: data };
+  async criarFalta({ data, colaborador_id, observacao }) {
+    const obs = (observacao && observacao.trim()) || 'Falta (cronograma)';
+    if (!USING_SUPABASE) return { id: uid(), colaborador_id, tipo: 'FALTA', valor: 0, observacao: obs, data_lancamento: data };
     const { data: existe } = await sb('descontos_folha').select('*')
       .eq('colaborador_id', colaborador_id).eq('tipo', 'FALTA').eq('data_lancamento', data).eq('abatido_folha', false).limit(1).maybeSingle();
-    if (existe) return existe;
+    if (existe) {
+      // já existe falta nesse dia: se veio uma justificativa nova, atualiza
+      if (observacao && observacao.trim() && observacao.trim() !== existe.observacao) {
+        const { data: upd } = await sb('descontos_folha').update({ observacao: observacao.trim() }).eq('id', existe.id).select().single();
+        return upd || existe;
+      }
+      return existe;
+    }
     const { data: row, error } = await sb('descontos_folha').insert({
-      colaborador_id, tipo: 'FALTA', valor: 0, observacao: 'Falta (cronograma)',
+      colaborador_id, tipo: 'FALTA', valor: 0, observacao: obs,
       data_lancamento: data, abatido_folha: false,
     }).select().single();
     if (error) throw error;
@@ -1746,7 +1754,7 @@ export const db = {
       // Cronograma Diário: alocações do período (fonte principal das diárias)
       sb('cronograma_alocacoes').select('*').gte('data', desde).lte('data', ate),
       // Descontos manuais (FALTA / INSS / OUTRO) — valores variáveis lançados na folha
-      sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
+      sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento,observacao').eq('abatido_folha', false),
     ]);
     const descontos = descRes && descRes.data ? descRes.data : [];
     const porColab = {};
@@ -1760,9 +1768,9 @@ export const db = {
     for (const d of descontos) {
       const p = porColab[d.colaborador_id]; if (!p) continue;
       if (d.tipo === 'INSS') p.inss += d.valor;
-      else if (d.tipo === 'FALTA') { p.faltas += d.valor; p.faltas_itens.push({ id: d.id, data: d.data_lancamento, valor: d.valor }); }
+      else if (d.tipo === 'FALTA') { p.faltas += d.valor; p.faltas_itens.push({ id: d.id, data: d.data_lancamento, valor: d.valor, observacao: d.observacao || null }); }
       else p.outros_desc += d.valor;
-      p.lancamentos.push({ id: d.id, origem: 'desconto', tipo: d.tipo, data: d.data_lancamento, valor: d.valor });
+      p.lancamentos.push({ id: d.id, origem: 'desconto', tipo: d.tipo, data: d.data_lancamento, valor: d.valor, observacao: d.observacao || null });
     }
     for (const a of (alocs || [])) {
       const p = porColab[a.colaborador_id]; if (!p) continue;

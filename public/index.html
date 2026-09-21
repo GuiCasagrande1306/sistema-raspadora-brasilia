@@ -1139,7 +1139,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v161</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v162</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1616,7 +1616,8 @@
     <header><h3>Marcar falta</h3><button class="x" data-close>×</button></header>
     <div class="body">
       <div class="field"><label>Quem faltou hoje</label><select id="fpick-colab"></select></div>
-      <div class="login-hint" style="text-align:left">Entra na coluna <b>FALTA</b> do dia. O valor do desconto você lança depois na <b>Folha</b>.</div>
+      <div class="field"><label>Justificativa / motivo <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><textarea id="fpick-obs" rows="2" placeholder="Ex.: atestado médico, falta injustificada, meia diária…"></textarea></div>
+      <div class="login-hint" style="text-align:left">Entra na coluna <b>FALTA</b> do dia. A justificativa ajuda a Bárbara a saber o motivo e quanto lançar. O valor do desconto você lança depois na <b>Folha</b>.</div>
     </div>
     <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="fpick-confirm">Marcar falta</button></footer>
   </div>
@@ -1738,8 +1739,9 @@
       <input type="hidden" id="fv-id">
       <div class="body">
         <div id="fv-info" class="login-hint" style="text-align:left;margin-bottom:10px"></div>
+        <div class="field"><label>Justificativa / motivo</label><textarea id="fv-obs" rows="2" placeholder="Ex.: atestado médico, falta injustificada…"></textarea></div>
         <div class="field"><label>Valor do desconto (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="70,00"></div>
-        <div class="login-hint" style="text-align:left">Desconto abatido no líquido desta folha. Deixe 0 para não descontar.</div>
+        <div class="login-hint" style="text-align:left">Desconto abatido no líquido desta folha. Deixe 0 para não descontar (ex.: atestado).</div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar valor</button></footer>
     </form>
@@ -3742,7 +3744,7 @@
     // Coluna fixa FALTA: Adelino arrasta quem não veio; vira desconto (valor a lançar pela Bárbara na Folha)
     const faltaCards=(CRON.faltas||[]).map(f=>`<div class="card" style="border-color:var(--danger)">
         <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(f.colaborador_nome||'')}</h4><button class="doc-cloud" data-delfalta="${f.id}" title="Tirar falta" style="padding:2px">${DE_TRASH}</button></div>
-        ${f.valor?`<div class="tags" style="margin-top:6px"><span class="tag" style="background:var(--danger);color:#fff">−${brl(f.valor)}</span></div>`:`<div style="margin-top:6px;font-size:11px;color:var(--ink-3)">valor a lançar na folha</div>`}</div>`).join('');
+        ${f.valor?`<div class="tags" style="margin-top:6px"><span class="tag" style="background:var(--danger);color:#fff">−${brl(f.valor)}</span></div>`:`<div style="margin-top:6px;font-size:11px;color:var(--ink-3)">valor a lançar na folha</div>`}${(f.observacao&&f.observacao!=='Falta (cronograma)')?`<div style="margin-top:5px;font-size:11px;color:var(--ink-2)">📝 ${esc(f.observacao)}</div>`:''}</div>`).join('');
     const faltaCol=`<div class="col cron-col cron-falta" data-falta="1"><div class="colhead"><span class="swatch" style="background:var(--danger)"></span><div style="flex:1;min-width:0"><h3 style="margin:0">FALTA</h3><div class="cron-resp">quem não veio hoje</div></div><span class="count">${(CRON.faltas||[]).length}</span></div>
       <div class="cards">${faltaCards}<button class="addcard" data-addfalta="1">+ Marcar falta</button></div></div>`;
     const obrasHtml=(CRON.obras||[]).map(o=>{
@@ -3792,19 +3794,21 @@
       });
     });
   }
-  async function marcarFalta(colabId){
-    try{await api('/api/cronograma/falta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:CRON.data,colaborador_id:colabId})});
+  async function marcarFalta(colabId,observacao){
+    try{await api('/api/cronograma/falta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:CRON.data,colaborador_id:colabId,observacao:observacao||null})});
       showToast('Falta registrada — lance o valor na Folha de Pagamento');loadCronograma();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Falta: '+(m||'erro'));console.error(err);}
   }
   function abrirFaltaPick(){
     const sel=document.getElementById('fpick-colab');
-    sel.innerHTML=(CRON.colaboradores||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    sel.innerHTML=ordNome(CRON.colaboradores||[]).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    document.getElementById('fpick-obs').value='';
     openModal('ov-falta-pick');
   }
   document.getElementById('fpick-confirm').addEventListener('click',()=>{
     const id=document.getElementById('fpick-colab').value;if(!id)return;
-    document.getElementById('ov-falta-pick').classList.remove('open');marcarFalta(id);
+    const obs=document.getElementById('fpick-obs').value||'';
+    document.getElementById('ov-falta-pick').classList.remove('open');marcarFalta(id,obs);
   });
   function abrirAlocar(colabId,obraId,aloc){
     const f=document.getElementById('form-alocar');f.reset();
@@ -5286,10 +5290,10 @@
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:4px">Lançamentos do período — vales e descontos</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>${l.lancamentos.map(x=>{
           const isFalta=x.origem==='desconto'&&x.tipo==='FALTA';const semValor=isFalta&&!x.valor;
-          const setVal=isFalta?`<button class="btn-ghost" data-faltaval="${x.id}" data-faltanome="${esc(l.nome)}" data-faltadata="${x.data||''}" data-faltaatual="${x.valor||0}" style="padding:2px 8px;font-size:11px;margin-right:6px${x.valor?'':';border-color:var(--danger);color:var(--danger)'}">${x.valor?'Editar valor':'Lançar valor'}</button>`:'';
+          const setVal=isFalta?`<button class="btn-ghost" data-faltaval="${x.id}" data-faltanome="${esc(l.nome)}" data-faltadata="${x.data||''}" data-faltaatual="${x.valor||0}" data-faltaobs="${esc((x.observacao&&x.observacao!=='Falta (cronograma)')?x.observacao:'')}" style="padding:2px 8px;font-size:11px;margin-right:6px${x.valor?'':';border-color:var(--danger);color:var(--danger)'}">${x.valor?'Editar valor':'Lançar valor'}</button>`:'';
           return `<tr>
             <td style="padding:4px">${x.data?dtBR(x.data):'—'}</td>
-            <td style="padding:4px">${TIPO_LBL[x.tipo]||x.tipo}</td>
+            <td style="padding:4px">${TIPO_LBL[x.tipo]||x.tipo}${(isFalta&&x.observacao&&x.observacao!=='Falta (cronograma)')?`<div style="font-size:10.5px;color:var(--ink-3)">📝 ${esc(x.observacao)}</div>`:''}</td>
             <td style="padding:4px;text-align:right;color:var(--danger)">${x.valor?'−'+brl(x.valor):(semValor?'<span style="color:var(--ink-3)">sem valor</span>':'—')}</td>
             <td style="padding:4px;text-align:right;white-space:nowrap">${setVal}<button class="doc-cloud" data-lancdel="${x.id}" data-lancorigem="${x.origem}" title="Excluir lançamento" style="padding:2px">${DE_TRASH}</button></td>
           </tr>`;}).join('')}</tbody></table></div>`:'';
@@ -5311,7 +5315,7 @@
       finPrint('Recibo — '+l.nome,reciboBody(linhaToRecibo(l,ref)));
     }));
     document.querySelectorAll('#folha-content [data-faltaval]').forEach(b=>b.addEventListener('click',e=>{
-      e.stopPropagation();abrirFaltaValor(b.dataset.faltaval,b.dataset.faltanome,b.dataset.faltadata,+b.dataset.faltaatual);
+      e.stopPropagation();abrirFaltaValor(b.dataset.faltaval,b.dataset.faltanome,b.dataset.faltadata,+b.dataset.faltaatual,b.dataset.faltaobs||'');
     }));
     document.querySelectorAll('#folha-content [data-lancdel]').forEach(b=>b.addEventListener('click',async e=>{
       e.stopPropagation();if(!confirm('Excluir este lançamento? Não dá pra desfazer.'))return;
@@ -5327,15 +5331,17 @@
     }));
   }
   // Bárbara lança o valor da falta vinda do Cronograma
-  function abrirFaltaValor(id,nome,data,atual){
+  function abrirFaltaValor(id,nome,data,atual,obs){
     document.getElementById('fv-id').value=id;
     document.getElementById('fv-info').innerHTML=`<b>${esc(nome)}</b> — falta em <b>${data?dtBR(data):'—'}</b>`;
+    document.getElementById('fv-obs').value=obs||'';
     const inp=document.querySelector('#form-falta-valor [name=valor]');inp.value=atual?(atual/100).toFixed(2):'';
     openModal('ov-falta-valor');setTimeout(()=>inp.focus(),50);
   }
   document.getElementById('form-falta-valor').addEventListener('submit',async e=>{
     e.preventDefault();const id=document.getElementById('fv-id').value;const f=new FormData(e.target);
-    try{await api('/api/dp/desconto/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:parseFloat(f.get('valor'))||0})});
+    const obs=document.getElementById('fv-obs').value||null;
+    try{await api('/api/dp/desconto/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:parseFloat(f.get('valor'))||0,observacao:obs})});
       document.getElementById('ov-falta-valor').classList.remove('open');showToast('Valor da falta lançado');await calcularFolha();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Falta: '+(m||'erro'));console.error(err);}
   });
