@@ -1504,26 +1504,45 @@ export const db = {
     const { error } = await sb('movimentacoes_caixa').delete().eq('id', id).eq('status', 'PREVISTO');
     if (error) throw error;
   },
-  // Entradas/saídas REALIZADAS do mês (dinheiro que entrou/saiu de fato).
-  // Entradas: medições recebidas (data_recebimento no mês) + movimentações REALIZADO ENTRADA.
-  // Saídas: lançamentos diários pagos + boletos pagos + movimentações REALIZADO SAIDA.
+  // Entradas/saídas do mês = tudo que cai no mês, FEITO + PREVISTO (todas as obras).
+  // Entradas: medições (recebidas pela data_recebimento; a receber pela data) + movimentações ENTRADA (qualquer status).
+  // Saídas: lançamentos diários (pela data) + boletos (pelo vencimento) + movimentações SAIDA (qualquer status).
   async mesRealizado(mesStr) {
     if (!USING_SUPABASE) return { mes: mesStr, entradas: 0, saidas: 0 };
     const [y, m] = mesStr.split('-').map(Number);
     const ini = mesStr + '-01';
     const fim = new Date(y, m, 0).toISOString().slice(0, 10);
+    const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR] = await Promise.all([
       sb('medicoes_obra').select('valor,recebido,data_recebimento,data'),
-      sb('lancamentos_diarios').select('valor,pago,data').gte('data', ini).lte('data', fim),
-      sb('boletos').select('valor,pago,data_pagamento').gte('data_pagamento', ini).lte('data_pagamento', fim),
-      sb('movimentacoes_caixa').select('valor,tipo,status,data_movimento').eq('status', 'REALIZADO').gte('data_movimento', ini).lte('data_movimento', fim),
+      sb('lancamentos_diarios').select('valor,data').gte('data', ini).lte('data', fim),
+      sb('boletos').select('valor,vencimento').gte('vencimento', ini).lte('vencimento', fim),
+      sb('movimentacoes_caixa').select('valor,tipo,data_movimento').gte('data_movimento', ini).lte('data_movimento', fim),
     ]);
     let entradas = 0, saidas = 0;
-    (medR.data || []).forEach(x => { if (!x.recebido) return; const d = x.data_recebimento || x.data; if (d && d >= ini && d <= fim) entradas += (x.valor || 0); });
-    (ldR.data || []).forEach(x => { if (x.pago) saidas += (x.valor || 0); });
-    (boR.data || []).forEach(x => { if (x.pago) saidas += (x.valor || 0); });
+    (medR.data || []).forEach(x => { const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += (x.valor || 0); });
+    (ldR.data || []).forEach(x => { saidas += (x.valor || 0); });
+    (boR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
     return { mes: mesStr, entradas, saidas };
+  },
+  // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
+  // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
+  // Saídas: boletos não pagos + lançamentos diários não pagos + movimentações PREVISTO SAIDA.
+  async previstosTotais() {
+    if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
+    const [medR, boR, ldR, movR] = await Promise.all([
+      sb('medicoes_obra').select('valor,recebido').eq('recebido', false),
+      sb('boletos').select('valor,pago').eq('pago', false),
+      sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
+      sb('movimentacoes_caixa').select('valor,tipo,status').eq('status', 'PREVISTO'),
+    ]);
+    let entradas = 0, saidas = 0;
+    (medR.data || []).forEach(x => entradas += (x.valor || 0));
+    (boR.data || []).forEach(x => saidas += (x.valor || 0));
+    (ldR.data || []).forEach(x => saidas += (x.valor || 0));
+    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    return { entradas, saidas };
   },
   // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos
   // (dedupe por sicoob_tx_id) e ajusta o saldo da conta para o saldo real do banco. Idempotente.

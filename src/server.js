@@ -1457,6 +1457,10 @@ app.get('/api/fluxo-caixa/mes', async (req, res, next) => {
     res.json(await db.mesRealizado(mes));
   } catch (e) { next(e); }
 });
+app.get('/api/fluxo-caixa/previstos-totais', async (_req, res, next) => {
+  try { res.json(await db.previstosTotais()); }
+  catch (e) { next(e); }
+});
 // Calendário da Agenda / sino: eventos (pagamentos, documentos, medições) num intervalo
 app.get('/api/agenda/eventos', async (req, res, next) => {
   try {
