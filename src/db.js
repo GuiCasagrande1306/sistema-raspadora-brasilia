@@ -1461,6 +1461,28 @@ export const db = {
     if (m.status !== 'PREVISTO') await this._saldoAjustar(m.conta_bancaria_id, m.tipo === 'ENTRADA' ? m.valor : -m.valor);
     return data;
   },
+  // Lançamento futuro manual (entrada/saída previstas) — alimenta as previsões e o saldo projetado, sem mexer no saldo real.
+  async listPrevistos() {
+    if (!USING_SUPABASE) return [];
+    const { data, error } = await sb('movimentacoes_caixa')
+      .select('id,data_movimento,descricao,categoria,tipo,valor').eq('status', 'PREVISTO').order('data_movimento');
+    if (error) throw error;
+    return data || [];
+  },
+  async criarPrevisto(p) {
+    if (!USING_SUPABASE) return { id: uid(), status: 'PREVISTO', ...p };
+    return this.criarMovimentacao({
+      conta_bancaria_id: null, obra_id: null, colaborador_id: null,
+      data_movimento: p.data_movimento, descricao: p.descricao || null,
+      categoria: p.categoria || 'PREVISAO_MANUAL', tipo: p.tipo, valor: p.valor,
+      status: 'PREVISTO', conciliado: false,
+    });
+  },
+  async deletePrevisto(id) {
+    if (!USING_SUPABASE) return;
+    const { error } = await sb('movimentacoes_caixa').delete().eq('id', id).eq('status', 'PREVISTO');
+    if (error) throw error;
+  },
   // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos
   // (dedupe por sicoob_tx_id) e ajusta o saldo da conta para o saldo real do banco. Idempotente.
   async importarExtratoSicoob(ref, extrato, meta = {}) {

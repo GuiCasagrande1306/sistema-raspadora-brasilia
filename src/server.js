@@ -1446,6 +1446,25 @@ app.get('/api/fluxo-caixa/projetado', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Lançamentos futuros (previstos) — entradas/saídas que alimentam as previsões e o saldo projetado
+app.get('/api/fluxo-caixa/previstos', async (_req, res, next) => {
+  try { res.json(await db.listPrevistos()); }
+  catch (e) { next(e); }
+});
+app.post('/api/fluxo-caixa/previsto', async (req, res, next) => {
+  try {
+    const tipo = req.body.tipo === 'SAIDA' ? 'SAIDA' : 'ENTRADA';
+    const valor = cents(req.body.valor);
+    if (!valor || valor <= 0) return res.status(400).json({ erro: 'valor inválido' });
+    const data_movimento = /^\d{4}-\d{2}-\d{2}$/.test(req.body.data_movimento || '') ? req.body.data_movimento : new Date().toISOString().slice(0, 10);
+    res.status(201).json(await db.criarPrevisto({ tipo, valor, data_movimento, descricao: req.body.descricao || null }));
+  } catch (e) { next(e); }
+});
+app.delete('/api/fluxo-caixa/previsto/:id', async (req, res, next) => {
+  try { await db.deletePrevisto(req.params.id); res.json({ ok: true }); }
+  catch (e) { next(e); }
+});
+
 // ---------- GESTÃO DE DOCUMENTOS (padrão Inmeta) ----------
 app.get('/api/documentos/colaboradores', async (req, res, next) => {
   try {
