@@ -1046,7 +1046,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v140</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v141</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1099,6 +1099,7 @@
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="cron-data" class="dash-sel"></label>
         <button class="btn-ghost" id="btn-funcoes" style="min-height:40px">⚙️ Funções &amp; Diárias</button>
         <button class="btn-ghost" id="btn-relatorio-semana" style="min-height:40px">📋 Relatório da semana</button>
+        <button class="primary" id="cron-novo-diarista" style="min-height:40px">＋ Adicionar diarista</button>
         <div class="metric" style="margin-left:auto;min-width:170px"><div class="lbl">Total de diárias do dia</div><div class="val money" id="cron-total">—</div></div>
       </div>
       <div style="padding:16px 26px 0">
@@ -4302,12 +4303,14 @@
     if(docsState&&docsState.empresa){try{f.empresa.value=docsState.empresa;}catch(_){}}
     openModal('ov-colab');
   });
-  document.getElementById('docs-novo-diarista').addEventListener('click',()=>{
+  function abrirNovoDiarista(){
     const f=document.getElementById('form-diarista');f.reset();
     f.querySelector('[name=data_admissao]').value=isoHoje();
     if(docsState&&docsState.empresa){try{f.empresa.value=docsState.empresa;}catch(_){}}
     openModal('ov-diarista');
-  });
+  }
+  document.getElementById('docs-novo-diarista').addEventListener('click',abrirNovoDiarista);
+  document.getElementById('cron-novo-diarista').addEventListener('click',abrirNovoDiarista);
   document.getElementById('form-diarista').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     const payload={nome:f.get('nome'),cpf:f.get('cpf')||null,telefone:f.get('telefone')||null,
@@ -4316,6 +4319,7 @@
     try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       e.target.reset();document.getElementById('ov-diarista').classList.remove('open');
       if(!document.getElementById('view-docs').classList.contains('hidden'))await loadDocs();
+      if(!document.getElementById('view-cronograma').classList.contains('hidden'))await loadCronograma();
       showToast('Diarista cadastrado — já aparece no Cronograma ✓');
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Diarista: '+(m||'erro'));console.error(err);}
   });
