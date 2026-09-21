@@ -1093,7 +1093,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v155</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v156</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1748,7 +1748,7 @@
       <div class="body">
         <input type="hidden" id="medreceb-id">
         <div class="field"><label>Data do recebimento <span style="color:var(--ink-3);font-weight:400">(quando o pagamento caiu)</span></label><input type="date" id="medreceb-data" required></div>
-        <div class="field"><label>Forma de pagamento</label><select id="medreceb-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="OUTRO">Outro</option></select></div>
+        <div class="field"><label>Forma de pagamento</label><select id="medreceb-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
         <div class="hint" style="font-size:11.5px">A nota pode ser de um dia e o pagamento cair em outro — registre aqui a data em que você recebeu.</div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Confirmar recebimento</button></footer>
@@ -2096,7 +2096,7 @@
               <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
               <div class="field" style="flex:0 0 150px"><label>Data do recebimento</label><input type="date" id="med-receb-data"></div>
-              <div class="field" style="flex:0 0 150px"><label>Forma de pagamento</label><select id="med-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="OUTRO">Outro</option></select></div>
+              <div class="field" style="flex:0 0 150px"><label>Forma de pagamento</label><select id="med-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
@@ -2116,7 +2116,7 @@
             <div class="field" style="flex:1;min-width:120px"><label>Descrição</label><input id="rec-desc" placeholder="Ex.: PIX serviço X"></div>
             <div class="field" style="flex:0 0 110px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="rec-valor" placeholder="0,00"></div>
             <div class="field" style="flex:0 0 150px"><label>Data do recebimento</label><input type="date" id="rec-data"></div>
-            <div class="field" style="flex:0 0 140px"><label>Forma</label><select id="rec-forma"><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="OUTRO">Outro</option></select></div>
+            <div class="field" style="flex:0 0 140px"><label>Forma</label><select id="rec-forma"><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
             <button type="button" class="primary" id="btn-add-receb" style="min-height:40px">+ Adicionar</button>
           </div>
         </div>
@@ -2197,7 +2197,7 @@
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="field"><label>Categoria</label><select id="prev-cat"></select></div>
-          <div class="field"><label>Forma de pagamento</label><select id="prev-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="OUTRO">Outro</option></select></div>
+          <div class="field"><label>Forma de pagamento</label><select id="prev-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
         </div>
         <div class="field"><label>Descrição</label><input name="descricao" placeholder="Ex.: Recebimento obra Fulano, pagamento fornecedor…"></div>
       </div>
@@ -2411,7 +2411,7 @@
     medDatas=[];renderMedChips();
     openModal('ov-obra-exec');
   }
-  const FORMA_LBL={PIX:'PIX',TED_DOC:'Transferência',DINHEIRO:'Dinheiro',BOLETO:'Boleto',CHEQUE:'Cheque',OUTRO:'Outro'};
+  const FORMA_LBL={PIX:'PIX',TED_DOC:'Transferência',DINHEIRO:'Dinheiro',BOLETO:'Boleto',CHEQUE:'Cheque',CARTAO:'Cartão',OUTRO:'Outro'};
   async function carregarMedicoes(obraId){
     const el=document.getElementById('oe-medicoes-lista');el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Carregando…</div>';
     let r;try{r=await api('/api/financeiro/obra/'+obraId+'/medicoes');}catch(e){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Erro ao carregar.</div>';console.error(e);return;}
