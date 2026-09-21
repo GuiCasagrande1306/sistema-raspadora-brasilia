@@ -660,10 +660,11 @@ export const db = {
   // vencimentos de documentos SST/RH e datas de medições, num intervalo [desde, ate].
   async agendaEventos(desde, ate) {
     if (!USING_SUPABASE) return [];
-    const [boR, sstR, medR] = await Promise.all([
+    const [boR, sstR, medR, obrR] = await Promise.all([
       sb('boletos').select('id,descricao,vencimento,valor,pago,empresa,categoria').gte('vencimento', desde).lte('vencimento', ate),
       sb('documentos_sst').select('id,tipo_documento,data_vencimento, colaboradores(nome,empresa)').not('data_vencimento', 'is', null).gte('data_vencimento', desde).lte('data_vencimento', ate),
       sb('medicoes_obra').select('id,obra_id,descricao,data,valor,recebido').gte('data', desde).lte('data', ate),
+      sb('obras_financeiro').select('id,cliente,data_inicio,valor_contrato,coluna_kanban').not('data_inicio', 'is', null).gte('data_inicio', desde).lte('data_inicio', ate),
     ]);
     const eventos = [];
     (boR.data || []).forEach(b => eventos.push({ tipo: 'pagamento', data: b.vencimento, titulo: b.descricao || 'Boleto', valor: b.valor || 0, empresa: b.empresa || null, pago: !!b.pago, id: b.id }));
@@ -673,6 +674,8 @@ export const db = {
     let mapa = {};
     if (obraIds.length) { const { data: obras } = await sb('obras_financeiro').select('id,cliente').in('id', obraIds); mapa = Object.fromEntries((obras || []).map(o => [o.id, o.cliente])); }
     meds.forEach(m => eventos.push({ tipo: 'medicao', data: m.data, titulo: (mapa[m.obra_id] || 'Obra') + (m.descricao ? ' — ' + m.descricao : ''), valor: m.valor || 0, recebido: !!m.recebido, id: m.id }));
+    // Obras previstas (que vão iniciar): pela data_inicio, exceto as já liquidadas
+    (obrR.data || []).forEach(o => { if (o.coluna_kanban === 'liquidado') return; eventos.push({ tipo: 'obra', data: o.data_inicio, titulo: o.cliente || 'Obra', valor: o.valor_contrato || 0, id: o.id }); });
     return eventos.filter(e => e.data).sort((a, b) => String(a.data).localeCompare(String(b.data)));
   },
   // Busca global (barra do topo): colaboradores, obras, clientes e leads por nome.

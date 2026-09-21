@@ -1093,7 +1093,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v157</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v158</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3842,14 +3842,15 @@
   async function agendaFetch(){try{const c=await api('/api/config-app/agenda');AGENDA_URL=(c&&c.url)||'';}catch(e){AGENDA_URL='';console.error(e);}return AGENDA_URL;}
   async function agendaSave(url){return api('/api/config-app/agenda',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url||null})});}
   // ---------- AGENDA = CALENDÁRIO (pagamentos, documentos, medições) ----------
-  const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#2563EB'},medicao:{lbl:'Medição',cor:'#12805c'}};
+  const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#2563EB'},medicao:{lbl:'Recebidos',cor:'#12805c'},obra:{lbl:'Obras previstas',cor:'#EAB308'}};
   let agendaRef=null, AGENDA_EVENTOS=[];
   const agDialabel=iso=>new Date(iso+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
   function agEventoLinha(e){
     const c=AG_TIPO[e.tipo]||{cor:'#999',lbl:e.tipo};
     const vlr=(e.tipo!=='documento'&&e.valor)?`<b class="money">${brl(e.valor)}</b>`:'';
     const stat=e.tipo==='pagamento'?(e.pago?'<span class="tag" style="background:#DCFCE7;color:#12805c">pago</span>':'<span class="tag" style="background:#FEE2E2;color:#b91c1c">a pagar</span>')
-      :e.tipo==='medicao'?(e.recebido?'<span class="tag" style="background:#DCFCE7;color:#12805c">recebido</span>':'<span class="tag" style="background:#FEF3C7;color:#92400e">a receber</span>'):'';
+      :e.tipo==='medicao'?(e.recebido?'<span class="tag" style="background:#DCFCE7;color:#12805c">recebido</span>':'<span class="tag" style="background:#FEF3C7;color:#92400e">a receber</span>')
+      :e.tipo==='obra'?'<span class="tag" style="background:#FEF9C3;color:#854d0e">início previsto</span>':'';
     const emp=e.empresa?`<span class="emp-tag emp-${e.empresa==='ECO_PISOS'?'eco':'rb'}">${e.empresa==='ECO_PISOS'?'ECO':'R.B'}</span>`:'';
     return `<div class="ag-evrow"><span class="ag-dot" style="background:${c.cor}"></span><span style="flex:1;min-width:0"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3)">${c.lbl}</span><div style="font-weight:600">${esc(e.titulo)}${emp}</div></span>${vlr}${stat}</div>`;
   }
