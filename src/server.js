@@ -774,7 +774,7 @@ app.get('/api/cronograma', async (req, res, next) => {
     const [obras, colaboradores, alocacoes, faltasRaw] = await Promise.all([
       db.listObras(), db.listColaboradores(), db.listAlocacoes({ data }), db.listFaltas(data),
     ]);
-    // Cronograma do Adelino: só obras de campo (Fulget/Concreto/Cimento). Raspagem e Limpeza NÃO aparecem.
+    // Cronograma do Adelino: só Raspagem fica de fora. Limpeza e as demais (Fulget/Concreto/Cimento) aparecem.
     const FORA_CRONOGRAMA = ['RASPAGEM'];   // só Raspagem fica fora; Limpeza aparece no cronograma
     const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
       .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null }));
