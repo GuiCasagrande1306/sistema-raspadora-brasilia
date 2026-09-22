@@ -951,7 +951,7 @@ app.get('/api/dp/vt/balanco', async (_req, res, next) => {
 app.get('/api/dp/vt/colaboradores', async (_req, res, next) => {
   try {
     const cs = await db.listColaboradores();
-    res.json(cs.map(c => ({ id: c.id, nome: c.nome })));
+    res.json(cs.map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo || null })));
   } catch (e) { next(e); }
 });
 
@@ -1253,7 +1253,7 @@ app.post('/api/dp/apontamento', async (req, res, next) => {
     const { obra_id, metragem_dia_m2, equipe_ids } = req.body;
     if (!obra_id || !(Number(metragem_dia_m2) > 0)) return res.status(400).json({ erro: 'obra_id e metragem_dia_m2 (>0) são obrigatórios' });
     if (!Array.isArray(equipe_ids) || !equipe_ids.length) return res.status(400).json({ erro: 'equipe_ids deve ter ao menos 1 colaborador' });
-    res.status(201).json(await db.criarApontamento({ obra_id, metragem_dia_m2: Number(metragem_dia_m2), equipe_ids, data: req.body.data, observacoes_tecnicas: req.body.observacoes_tecnicas }));
+    res.status(201).json(await db.criarApontamento({ obra_id, metragem_dia_m2: Number(metragem_dia_m2), equipe_ids, data: req.body.data, observacoes_tecnicas: req.body.observacoes_tecnicas, valor_m2: Math.round((Number(req.body.valor_m2) || 0) * 100) }));
   } catch (e) { next(e); }
 });
 

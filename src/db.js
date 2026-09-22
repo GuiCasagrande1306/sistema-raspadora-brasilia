@@ -1737,19 +1737,23 @@ export const db = {
     }).select().single();
     if (error) throw error;
     const rateio = equipe.length ? Math.round((a.metragem_dia_m2 / equipe.length) * 100) / 100 : 0;
+    const valorM2 = Number(a.valor_m2) || 0;   // taxa do acabamento (centavos/m²): vassourado 170 / polido 200
     if (equipe.length) {
-      await sb('apontamento_equipe').insert(equipe.map(cid => ({
-        apontamento_id: ap.id, colaborador_id: cid, m2_rateado: rateio, data: ap.data,
-      })));
+      const rows = equipe.map(cid => ({ apontamento_id: ap.id, colaborador_id: cid, m2_rateado: rateio, data: ap.data, valor_m2: valorM2 || null }));
+      let { error: e2 } = await sb('apontamento_equipe').insert(rows);
+      if (e2 && _missingCol(e2) === 'valor_m2') { // coluna ainda não migrada: salva sem ela
+        ({ error: e2 } = await sb('apontamento_equipe').insert(rows.map(({ valor_m2, ...r }) => r)));
+      }
+      if (e2) throw e2;
     }
-    return { ...ap, m2_por_colaborador: rateio, equipe: equipe.length };
+    return { ...ap, m2_por_colaborador: rateio, valor_m2: valorM2, equipe: equipe.length };
   },
   // Fechamento de folha no período [desde, ate]
   async fecharFolha(desde, ate) {
     if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
     const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }, descRes] = await Promise.all([
       sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status,is_diarista'),
-      sb('apontamento_equipe').select('colaborador_id,m2_rateado,data').gte('data', desde).lte('data', ate),
+      sb('apontamento_equipe').select('*').gte('data', desde).lte('data', ate),
       sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
       // Cronograma Diário: alocações do período (fonte principal das diárias)
       sb('cronograma_alocacoes').select('*').gte('data', desde).lte('data', ate),
@@ -1758,8 +1762,8 @@ export const db = {
     ]);
     const descontos = descRes && descRes.data ? descRes.data : [];
     const porColab = {};
-    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
-    for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); p.m2 += Number(r.m2_rateado); }
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, comissaoProd: 0, m2SemRate: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
+    for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); const m = Number(r.m2_rateado) || 0; p.m2 += m; if (r.valor_m2) p.comissaoProd += Math.round(m * Number(r.valor_m2)); else p.m2SemRate += m; }
     for (const v of (vales || [])) {
       const p = porColab[v.colaborador_id]; if (!p) continue;
       p.vales += v.valor;
@@ -1785,7 +1789,8 @@ export const db = {
       // Diárias: preferir o Cronograma; se não houver alocação, cai no antigo (dias de apontamento × diária base)
       const dias = temCron ? p.cronDias.size : p.dias.size;
       const diarias = temCron ? p.cronDiarias : (p.dias.size * (p.valor_diaria || 0));
-      const comissao = Math.round(p.m2 * (p.comissao_por_m2 || 0));
+      // comissão de produção: taxa do acabamento (vassourado/polido) × m²; apontamentos antigos sem taxa caem no comissao_por_m2 do colaborador
+      const comissao = p.comissaoProd + Math.round(p.m2SemRate * (p.comissao_por_m2 || 0));
       const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade)
       const bruto = diarias + comissao + bonus_assiduidade;
       const total_liquido = bruto - p.vales - p.faltas - p.inss - p.outros_desc;

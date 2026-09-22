@@ -1139,7 +1139,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v164</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v165</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1770,9 +1770,16 @@
         <div class="field"><label>Obra</label><select name="obra_id" id="apont-obra" required><option value="">Selecione…</option></select></div>
         <div class="grid2">
           <div class="field"><label>Data</label><input name="data" type="date" required></div>
-          <div class="field"><label>Metragem do dia (m²)</label><input name="metragem_dia_m2" type="number" step="0.01" min="0" required placeholder="180"></div>
+          <div class="field"><label>Metragem do dia (m²)</label><input name="metragem_dia_m2" id="apont-metragem" type="number" step="0.01" min="0" required placeholder="180"></div>
         </div>
-        <div class="field"><label>Equipe alocada (rateio automático do m²)</label><div id="apont-equipe" class="apont-equipe"></div></div>
+        <div class="field"><label>Acabamento (valor por m²)</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <label class="docs-toggle"><input type="checkbox" id="apont-vassourado"> Vassourado <b style="margin-left:4px">R$ 1,70/m²</b></label>
+            <label class="docs-toggle"><input type="checkbox" id="apont-polido"> Polido <b style="margin-left:4px">R$ 2,00/m²</b></label>
+          </div>
+          <div id="apont-valor-prod" style="margin-top:6px;font-size:12.5px;color:var(--ink-2)"></div>
+        </div>
+        <div class="field"><label>Equipe alocada — só pedreiros (rateio automático do m²)</label><div id="apont-equipe" class="apont-equipe"></div></div>
         <div class="field"><label>Observações técnicas</label><input name="observacoes_tecnicas" placeholder="Ex: calafetagem concluída, 1ª demão"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Registrar apontamento</button></footer>
@@ -5493,19 +5500,35 @@
     document.getElementById('apont-obra').innerHTML='<option value="">Selecione…</option>'+obras.map(o=>`<option value="${o.id}">${esc(o.cliente)} — ${o.metragem_m2}m²</option>`).join('');
     document.querySelector('#form-apont [name=data]').value=isoHoje();
     if(!COLABS_NOMES){try{COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}catch{COLABS_NOMES=[];}}
-    document.getElementById('apont-equipe').innerHTML=COLABS_NOMES.map(c=>`<span class="apont-chip" data-cid="${c.id}">${esc(c.nome)}</span>`).join('');
-    document.querySelectorAll('#apont-equipe .apont-chip').forEach(ch=>ch.addEventListener('click',()=>ch.classList.toggle('on')));
+    // só pedreiros (fallback: todos, se não vier o cargo)
+    const peds=(COLABS_NOMES||[]).filter(c=>(c.cargo||'').toUpperCase()==='PEDREIRO');
+    const lista=peds.length?peds:(COLABS_NOMES||[]);
+    document.getElementById('apont-equipe').innerHTML=lista.map(c=>`<span class="apont-chip" data-cid="${c.id}">${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3);font-size:12px">Nenhum pedreiro cadastrado.</span>';
+    document.querySelectorAll('#apont-equipe .apont-chip').forEach(ch=>ch.addEventListener('click',()=>{ch.classList.toggle('on');apontValorProd();}));
+    document.getElementById('apont-vassourado').checked=false;document.getElementById('apont-polido').checked=false;
+    document.getElementById('apont-valor-prod').textContent='';
     openModal('ov-apont');
   }
+  function apontRate(){return document.getElementById('apont-vassourado').checked?1.70:(document.getElementById('apont-polido').checked?2.00:0);}
+  function apontValorProd(){
+    const m=parseFloat(document.getElementById('apont-metragem').value)||0,r=apontRate();
+    const n=document.querySelectorAll('#apont-equipe .apont-chip.on').length;
+    const el=document.getElementById('apont-valor-prod');if(!el)return;
+    if(!r||!m){el.textContent='';return;}
+    el.innerHTML=`Produção: <b style="color:#12805c">${brlN(m*r)}</b> (${m} m² × ${brlN(r)}/m²)${n?` · rateado entre ${n} pedreiro(s)`:''}`;
+  }
+  document.getElementById('apont-vassourado').addEventListener('change',e=>{if(e.target.checked)document.getElementById('apont-polido').checked=false;apontValorProd();});
+  document.getElementById('apont-polido').addEventListener('change',e=>{if(e.target.checked)document.getElementById('apont-vassourado').checked=false;apontValorProd();});
+  document.getElementById('apont-metragem').addEventListener('input',apontValorProd);
   document.getElementById('btn-apont').addEventListener('click',()=>abrirApont().catch(e=>{showToast('Erro ao abrir');console.error(e);}));
   document.getElementById('form-apont').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     const equipe_ids=[...document.querySelectorAll('#apont-equipe .apont-chip.on')].map(c=>c.dataset.cid);
-    if(!equipe_ids.length){showToast('Selecione ao menos 1 na equipe');return;}
+    if(!equipe_ids.length){showToast('Selecione ao menos 1 pedreiro');return;}
     try{const r=await api('/api/dp/apontamento',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({obra_id:f.get('obra_id'),data:f.get('data'),metragem_dia_m2:parseFloat(f.get('metragem_dia_m2')),equipe_ids,observacoes_tecnicas:f.get('observacoes_tecnicas')||null})});
-      document.getElementById('ov-apont').classList.remove('open');e.target.reset();
-      showToast('Apontamento salvo — '+r.m2_por_colaborador+' m²/colaborador');
+      body:JSON.stringify({obra_id:f.get('obra_id'),data:f.get('data'),metragem_dia_m2:parseFloat(f.get('metragem_dia_m2')),equipe_ids,observacoes_tecnicas:f.get('observacoes_tecnicas')||null,valor_m2:apontRate()})});
+      document.getElementById('ov-apont').classList.remove('open');e.target.reset();document.getElementById('apont-valor-prod').textContent='';
+      showToast('Apontamento salvo — '+r.m2_por_colaborador+' m²/pedreiro');
       if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Apontamento: '+(m||'erro'));console.error(err);}
   });
