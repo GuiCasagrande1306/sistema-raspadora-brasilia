@@ -805,7 +805,13 @@ app.patch('/api/cronograma/alocacao/:id', async (req, res, next) => {
     const patch = {};
     for (const k of ['obra_id', 'obra_nome', 'funcao', 'colaborador_id', 'colaborador_nome', 'data', 'observacao']) if (req.body[k] !== undefined) patch[k] = req.body[k];
     if (req.body.valor_diaria !== undefined) patch.valor_diaria = cents(req.body.valor_diaria);
-    if (req.body.gratificacao_paga !== undefined) patch.gratificacao_paga = !!req.body.gratificacao_paga;
+    // Gratificação paga → debita o caixa + registra no Pagamento Diário (desmarcar remove)
+    if (req.body.gratificacao_paga !== undefined) {
+      const a = await db.setGratificacaoPaga(req.params.id, !!req.body.gratificacao_paga);
+      if (!a) return res.status(404).json({ erro: 'alocação não encontrada' });
+      if (Object.keys(patch).length) await db.updateAlocacao(req.params.id, patch);
+      return res.json(a);
+    }
     const a = await db.updateAlocacao(req.params.id, patch);
     if (!a) return res.status(404).json({ erro: 'alocação não encontrada' });
     res.json(a);

@@ -1252,6 +1252,29 @@ export const db = {
     const a = mock.cronogramaAloc.find(x => x.id === id);
     if (!a) return null; Object.assign(a, patch); return a;
   },
+  // Gratificação paga na Folha → debita o caixa e registra no Pagamento Diário (e desmarcar remove).
+  async setGratificacaoPaga(id, paga) {
+    if (!USING_SUPABASE) { const a = mock.cronogramaAloc.find(x => x.id === id); if (a) a.gratificacao_paga = paga; return a || null; }
+    const { data: a } = await sb('cronograma_alocacoes').select('*').eq('id', id).single();
+    if (!a) return null;
+    if (paga) {
+      if (a.gratif_lancamento_id) return updateSafeById('cronograma_alocacoes', id, { gratificacao_paga: true });
+      const dia = a.data || new Date().toISOString().slice(0, 10);
+      const desc = 'Gratificação — ' + (a.colaborador_nome || 'colaborador');
+      // dedupe: se já existe o lançamento dessa gratificação nesse dia, só religa (evita duplicar antes/depois da migration)
+      const { data: ja } = await sb('lancamentos_diarios').select('id').eq('categoria', 'GRATIFICACAO_SERVENTE').eq('data', dia).ilike('descricao', desc).limit(1);
+      if (ja && ja.length) return updateSafeById('cronograma_alocacoes', id, { gratificacao_paga: true, gratif_lancamento_id: ja[0].id });
+      const lanc = await this.createLancDiario({
+        data: dia, descricao: desc,
+        valor: a.valor_diaria || 0, categoria: 'GRATIFICACAO_SERVENTE',
+        forma: 'PIX', pago: true, data_pagamento: dia,
+      });
+      return updateSafeById('cronograma_alocacoes', id, { gratificacao_paga: true, gratif_lancamento_id: lanc.id });
+    } else {
+      if (a.gratif_lancamento_id) { try { await this.deleteLancDiario(a.gratif_lancamento_id); } catch (_) {} }
+      return updateSafeById('cronograma_alocacoes', id, { gratificacao_paga: false, gratif_lancamento_id: null });
+    }
+  },
   async deleteAlocacao(id) {
     if (USING_SUPABASE) { const { error } = await sb('cronograma_alocacoes').delete().eq('id', id); if (error) throw error; return { ok: true }; }
     mock.cronogramaAloc = mock.cronogramaAloc.filter(a => a.id !== id); return { ok: true };
