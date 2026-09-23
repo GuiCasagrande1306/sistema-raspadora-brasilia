@@ -579,6 +579,8 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
 const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'VALE', 'OUTRO'];
+const FORMAS_PAG = ['PIX', 'TED_DOC', 'DINHEIRO', 'BOLETO', 'CHEQUE', 'CARTAO', 'OUTRO'];
+const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
 const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
@@ -605,6 +607,7 @@ app.post('/api/boletos', async (req, res, next) => {
       valor: cents(req.body.valor), categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
       empresa: EMP_VALID.includes(req.body.empresa) ? req.body.empresa : null,
+      forma_pagamento: formaPag(req.body.forma_pagamento),
       pago: false,
     }));
   } catch (e) { next(e); }
@@ -616,6 +619,7 @@ app.patch('/api/boletos/:id', async (req, res, next) => {
     if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
     if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = patch.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
     if (req.body.empresa !== undefined) patch.empresa = EMP_VALID.includes(req.body.empresa) ? req.body.empresa : null;
+    if (req.body.forma_pagamento !== undefined) patch.forma_pagamento = formaPag(req.body.forma_pagamento);
     if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
     const b = await db.updateBoleto(req.params.id, patch);
     if (!b) return res.status(404).json({ erro: 'boleto não encontrado' });
@@ -655,6 +659,7 @@ app.post('/api/fixos', async (req, res, next) => {
       valor: cents(req.body.valor), dia_vencimento: diaMes(req.body.dia_vencimento),
       categoria: CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO',
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
+      forma_pagamento: formaPag(req.body.forma_pagamento),
       observacao: req.body.observacao || null, ativo: req.body.ativo === undefined ? true : !!req.body.ativo,
     }));
   } catch (e) { next(e); }
@@ -666,6 +671,7 @@ app.patch('/api/fixos/:id', async (req, res, next) => {
     if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
     if (req.body.dia_vencimento !== undefined) patch.dia_vencimento = diaMes(req.body.dia_vencimento);
     if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
+    if (req.body.forma_pagamento !== undefined) patch.forma_pagamento = formaPag(req.body.forma_pagamento);
     if (req.body.ativo !== undefined) patch.ativo = !!req.body.ativo;
     res.json(await db.updateFixo(req.params.id, patch));
   } catch (e) { next(e); }

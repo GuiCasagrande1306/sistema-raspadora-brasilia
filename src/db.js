@@ -1056,9 +1056,7 @@ export const db = {
   },
   async updateFixo(id, patch) {
     if (!USING_SUPABASE) return { id, ...patch };
-    const { data, error } = await sb('pagamentos_fixos').update(patch).eq('id', id).select().single();
-    if (error) throw error;
-    return data;
+    return updateSafeById('pagamentos_fixos', id, patch);   // tolerante: ignora forma_pagamento antes da migration
   },
   async deleteFixo(id) {
     if (USING_SUPABASE) { const { error } = await sb('pagamentos_fixos').delete().eq('id', id); if (error) throw error; }
@@ -1080,11 +1078,13 @@ export const db = {
       novos.push({
         descricao: f.descricao, fornecedor: f.fornecedor || null, valor: f.valor,
         categoria: f.categoria || 'OUTRO', categoria_custom: f.categoria_custom || null,
+        forma_pagamento: f.forma_pagamento || null,
         vencimento: competencia + '-' + String(dia).padStart(2, '0'),
         pago: false, fixo_id: f.id, competencia,
       });
     }
-    if (novos.length) { const { error } = await sb('boletos').insert(novos); if (error) throw error; }
+    // insertSafe por linha: tolera a coluna forma_pagamento ainda não existir (degrada até a migration)
+    for (const n of novos) await insertSafe('boletos', n);
     return { gerados: novos.length };
   },
   // Transforma um boleto já lançado em pagamento fixo mensal (sem relançar o mês atual).
@@ -1097,6 +1097,7 @@ export const db = {
     const fixo = await this.createFixo({
       descricao: b.descricao, fornecedor: b.fornecedor || null,
       categoria: b.categoria || 'OUTRO', categoria_custom: b.categoria_custom || null,
+      forma_pagamento: b.forma_pagamento || null,
       valor: b.valor, dia_vencimento: dia, ativo: true,
     });
     // vincula este boleto ao fixo e marca a competência para não duplicar no mês atual

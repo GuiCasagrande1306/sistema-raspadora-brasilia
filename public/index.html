@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v170</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v171</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1576,7 +1576,10 @@
           <div class="field"><label>Vencimento *</label><input name="vencimento" type="date" required></div>
           <div class="field"><label>Categoria</label><select name="categoria" id="boleto-cat"></select></div>
         </div>
-        <div class="field"><label>Empresa</label><select name="empresa" id="boleto-empresa"><option value="">— não definida —</option><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
+        <div class="grid2">
+          <div class="field"><label>Empresa</label><select name="empresa" id="boleto-empresa"><option value="">— não definida —</option><option value="RB_PISOS">R.B PISOS LTDA</option><option value="ECO_PISOS">ECO PISOS</option></select></div>
+          <div class="field"><label>Forma de pagamento</label><select name="forma_pagamento" id="boleto-forma"><option value="">—</option><option value="BOLETO">Boleto</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
+        </div>
         <div class="field" id="boleto-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="boleto-outro" placeholder="Ex.: reforma do galpão"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar boleto</button></footer>
@@ -1600,8 +1603,9 @@
         </div>
         <div class="grid2">
           <div class="field"><label>Categoria</label><select name="categoria" id="fixo-cat"></select></div>
-          <div class="field"><label>Fornecedor</label><input name="fornecedor" placeholder="Opcional"></div>
+          <div class="field"><label>Forma de pagamento</label><select name="forma_pagamento" id="fixo-forma"><option value="BOLETO">Boleto</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
         </div>
+        <div class="field"><label>Fornecedor</label><input name="fornecedor" placeholder="Opcional"></div>
         <div class="field" id="fixo-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="fixo-outro" placeholder="Ex.: mensalidade do sistema"></div>
         <footer style="padding:0;margin-top:4px"><button type="submit" class="primary">Adicionar fixo</button></footer>
       </form>
@@ -4938,9 +4942,10 @@
     const st=b.pago?'<span class="tag t-ok">Pago</span>':(atrasado?'<span class="tag t-danger">Vencido</span>':'<span class="tag t-wait">A vencer</span>');
     const comp=b.comprovante_url?`<a class="doc-open" href="${b.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
     const fixoTag=b.fixo_id?'<span class="tag t-lar" style="margin-left:6px;font-size:9.5px">fixo</span>':'';
+    const formaTag=(b.forma_pagamento&&b.forma_pagamento!=='BOLETO')?`<span class="tag" style="margin-left:6px;font-size:9.5px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[b.forma_pagamento]||b.forma_pagamento)}</span>`:'';
     const empTag=b.empresa?`<span class="emp-tag emp-${b.empresa==='ECO_PISOS'?'eco':'rb'}">${b.empresa==='ECO_PISOS'?'ECO PISOS':'R.B PISOS'}</span>`:'';
     return `<div class="fin-item">
-      <div class="fi-main"><h4>${esc(b.descricao)}${empTag}${fixoTag}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
+      <div class="fi-main"><h4>${esc(b.descricao)}${empTag}${fixoTag}${formaTag}</h4><div class="fi-sub">Venc. ${venc}${b.fornecedor?' · '+esc(b.fornecedor):''} · ${b.categoria==='OUTRO'&&b.categoria_custom?esc(b.categoria_custom):(CAT_LABEL[b.categoria]||b.categoria||'')}</div></div>
       <div class="fi-val">${brl(b.valor)}</div>${st}
       <div class="fi-act">${comp}
         ${b.pago?'':`<button class="btn-ghost" data-pagar="${b.id}">Marcar pago</button>`}
@@ -4970,7 +4975,7 @@
       const f=document.getElementById('form-boleto');f.reset();
       document.getElementById('boleto-id').value=bo.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
       f.descricao.value=bo.descricao||'';f.fornecedor.value=bo.fornecedor||'';f.valor.value=bo.valor?(bo.valor/100).toFixed(2):'';f.vencimento.value=bo.vencimento||'';
-      f.categoria.value=bo.categoria||'OUTRO';document.getElementById('boleto-outro').value=bo.categoria_custom||'';f.empresa.value=bo.empresa||'';boletoOutroToggle();
+      f.categoria.value=bo.categoria||'OUTRO';if(!f.categoria.value)f.categoria.value='OUTRO';document.getElementById('boleto-outro').value=bo.categoria_custom||'';f.empresa.value=bo.empresa||'';document.getElementById('boleto-forma').value=bo.forma_pagamento||'';boletoOutroToggle();
       openModal('ov-boleto');
     }));
     el.querySelectorAll('[data-pagar]').forEach(b=>b.addEventListener('click',async()=>{
@@ -4997,7 +5002,8 @@
   document.getElementById('form-boleto').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
     const id=document.getElementById('boleto-id').value;
-    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('boleto-outro').value||null):null,empresa:f.empresa.value||null};
+    const cat=f.categoria.value||'OUTRO'; // guarda: nunca envia categoria vazia (evitava "voltar pra OUTRO")
+    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:cat,categoria_custom:cat==='OUTRO'?(document.getElementById('boleto-outro').value||null):null,empresa:f.empresa.value||null,forma_pagamento:document.getElementById('boleto-forma').value||null};
     try{
       if(id)await api('/api/boletos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -5018,8 +5024,9 @@
     if(!lista.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12.5px">Nenhum pagamento fixo ainda. Adicione abaixo.</div>';return;}
     el.innerHTML='<div class="doc-list">'+lista.map(f=>{
       const cat=f.categoria==='OUTRO'&&f.categoria_custom?esc(f.categoria_custom):(CAT_LABEL[f.categoria]||f.categoria||'');
+      const formaLbl=f.forma_pagamento?(FORMA_LBL[f.forma_pagamento]||f.forma_pagamento):'Boleto';
       return `<div class="fin-item" style="${f.ativo?'':'opacity:.5'}">
-        <div class="fi-main"><h4>${esc(f.descricao)}${f.ativo?'':' <span class="tag" style="font-size:9.5px">inativo</span>'}</h4><div class="fi-sub">Todo dia ${f.dia_vencimento}${f.fornecedor?' · '+esc(f.fornecedor):''} · ${cat}</div></div>
+        <div class="fi-main"><h4>${esc(f.descricao)}${f.ativo?'':' <span class="tag" style="font-size:9.5px">inativo</span>'} <span class="tag" style="font-size:9.5px;${f.forma_pagamento&&f.forma_pagamento!=='BOLETO'?'background:#E7F0FF;color:#1D4ED8':'background:var(--concreto);color:var(--ink-2)'}">${esc(formaLbl)}</span></h4><div class="fi-sub">Todo dia ${f.dia_vencimento}${f.fornecedor?' · '+esc(f.fornecedor):''} · ${cat}</div></div>
         <div class="fi-val">${brl(f.valor)}</div>
         <div class="fi-act">
           <button class="btn-ghost" data-fixotoggle="${f.id}" data-ativo="${f.ativo?1:0}" style="padding:3px 9px;font-size:11.5px">${f.ativo?'Pausar':'Ativar'}</button>
@@ -5035,7 +5042,7 @@
   }
   document.getElementById('form-fixo').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
-    const payload={descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,dia_vencimento:parseInt(f.dia_vencimento.value,10)||5,categoria:f.categoria.value,fornecedor:f.fornecedor.value||null,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('fixo-outro').value||null):null};
+    const payload={descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,dia_vencimento:parseInt(f.dia_vencimento.value,10)||5,categoria:f.categoria.value,fornecedor:f.fornecedor.value||null,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('fixo-outro').value||null):null,forma_pagamento:document.getElementById('fixo-forma').value||null};
     try{await api('/api/fixos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       f.reset();document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();showToast('Pagamento fixo cadastrado');
       // gera já o boleto do mês atual e atualiza a lista de boletos por trás do modal
@@ -5105,7 +5112,7 @@
         const f=document.getElementById('form-boleto');f.reset();
         document.getElementById('boleto-id').value=it.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
         f.descricao.value=it.descricao||'';f.fornecedor.value=it.fornecedor||'';f.valor.value=it.valor?(it.valor/100).toFixed(2):'';f.vencimento.value=it.vencimento||'';
-        f.categoria.value=it.categoria||'OUTRO';document.getElementById('boleto-outro').value=it.categoria_custom||'';f.empresa.value=it.empresa||'';boletoOutroToggle();
+        f.categoria.value=it.categoria||'OUTRO';if(!f.categoria.value)f.categoria.value='OUTRO';document.getElementById('boleto-outro').value=it.categoria_custom||'';f.empresa.value=it.empresa||'';document.getElementById('boleto-forma').value=it.forma_pagamento||'';boletoOutroToggle();
         openModal('ov-boleto');
       }
     }));
