@@ -1786,7 +1786,7 @@ export const db = {
   // Fechamento de folha no período [desde, ate]
   async fecharFolha(desde, ate) {
     if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
-    const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }, descRes] = await Promise.all([
+    const [{ data: colabs }, { data: apeq }, { data: vales }, { data: alocs }, descRes, { data: apds }, { data: obrasF }] = await Promise.all([
       sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2,status,is_diarista'),
       sb('apontamento_equipe').select('*').gte('data', desde).lte('data', ate),
       sb('vales_diaria').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento').eq('abatido_folha', false),
@@ -1794,11 +1794,24 @@ export const db = {
       sb('cronograma_alocacoes').select('*').gte('data', desde).lte('data', ate),
       // Descontos manuais (FALTA / INSS / OUTRO) — valores variáveis lançados na folha
       sb('descontos_folha').select('id,colaborador_id,valor,tipo,abatido_folha,data_lancamento,observacao').eq('abatido_folha', false),
+      // apontamentos de produção (p/ saber a obra de cada apontamento) + obras (nome)
+      sb('apontamentos_diarios').select('id,obra_id,data').gte('data', desde).lte('data', ate),
+      sb('obras_financeiro').select('id,cliente'),
     ]);
     const descontos = descRes && descRes.data ? descRes.data : [];
+    const obraNome = Object.fromEntries((obrasF || []).map(o => [o.id, o.cliente]));
+    const apObra = Object.fromEntries((apds || []).map(a => [a.id, obraNome[a.obra_id] || null]));
     const porColab = {};
     for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, comissaoProd: 0, m2SemRate: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
-    for (const r of (apeq || [])) { const p = porColab[r.colaborador_id]; if (!p) continue; p.dias.add(r.data); const m = Number(r.m2_rateado) || 0; p.m2 += m; if (r.valor_m2) p.comissaoProd += Math.round(m * Number(r.valor_m2)); else p.m2SemRate += m; }
+    for (const r of (apeq || [])) {
+      const p = porColab[r.colaborador_id]; if (!p) continue;
+      p.dias.add(r.data);
+      const m = Number(r.m2_rateado) || 0; p.m2 += m;
+      const rate = r.valor_m2 ? Number(r.valor_m2) : (p.comissao_por_m2 || 0);
+      if (r.valor_m2) p.comissaoProd += Math.round(m * Number(r.valor_m2)); else p.m2SemRate += m;
+      // linha de produção no detalhe: mostra por dia/obra o valor que o pedreiro ganha pelo m²
+      p.detalhe.push({ id: 'ap-' + r.id, data: r.data, obra: apObra[r.apontamento_id] || '—', funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
+    }
     for (const v of (vales || [])) {
       const p = porColab[v.colaborador_id]; if (!p) continue;
       p.vales += v.valor;

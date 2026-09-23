@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v176</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v177</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5510,7 +5510,8 @@
   async function calcularFolha(){
     const desde=document.getElementById('folha-desde').value,ate=document.getElementById('folha-ate').value;
     const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
-    r.colaboradores=ordNome(r.colaboradores);
+    // Folha lista só fichados — diarista recebe no dia (não entra nesta divisão)
+    r.colaboradores=ordNome((r.colaboradores||[]).filter(c=>!c.is_diarista));
     folhaAtual=r;
     document.getElementById('folha-total').textContent=brl(r.totais.a_pagar||0);
     document.getElementById('folha-diaristas').textContent=brl(r.totais.diaristas_pago||0);
