@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v172</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v173</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1400,7 +1400,7 @@
             <select name="categoria" id="lanc-cat" required></select>
           </div>
         </div>
-        <div class="field"><label>Valor (R$)</label><input name="valor" type="number" min="0" step="0.01" required placeholder="1500,00"></div>
+        <div class="field"><label>Valor (R$)</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="R$ 0,00"></div>
         <div class="field"><label>Descrição</label><input name="descricao" placeholder="Opcional"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Lançar</button></footer>
@@ -1493,7 +1493,7 @@
       <div class="body">
         <div class="field"><label>De</label><select name="origem_id" id="transfer-origem" required></select></div>
         <div class="field"><label>Para</label><select name="destino_id" id="transfer-destino" required></select></div>
-        <div class="field"><label>Valor (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="1000,00"></div>
+        <div class="field"><label>Valor (R$)</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="1000,00"></div>
         <div class="field"><label>Descrição</label><input name="descricao" placeholder="Ex: recarga da caixinha"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Transferir</button></footer>
@@ -1570,7 +1570,7 @@
         <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Energia, Fornecedor de resina…"></div>
         <div class="grid2">
           <div class="field"><label>Fornecedor</label><input name="fornecedor" placeholder="Quem emitiu o boleto"></div>
-          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="0,00"></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Vencimento *</label><input name="vencimento" type="date" required></div>
@@ -1598,7 +1598,7 @@
       <form id="form-fixo">
         <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Aluguel do galpão"></div>
         <div class="grid2">
-          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="0,00"></div>
           <div class="field"><label>Dia do vencimento *</label><input name="dia_vencimento" type="number" min="1" max="31" value="5" required></div>
         </div>
         <div class="grid2">
@@ -1624,7 +1624,7 @@
         <div class="field"><label>Obra *</label><select name="obra_id" id="alocar-obra" required></select></div>
         <div class="grid2">
           <div class="field"><label>Função / equipamento</label><select name="funcao" id="alocar-funcao"></select></div>
-          <div class="field"><label>Diária (R$)</label><input name="valor_diaria" id="alocar-valor" type="number" step="0.01" min="0" placeholder="0,00"></div>
+          <div class="field"><label>Diária (R$)</label><input name="valor_diaria" id="alocar-valor" type="text" inputmode="decimal" class="money-mask" placeholder="R$ 0,00"></div>
         </div>
         <div class="hint">A diária vem da função escolhida, mas você pode ajustar aqui. Sem função na lista? Abra “Funções &amp; Diárias”.</div>
         <div class="field"><label>Observação (sobre o funcionário neste dia)</label><textarea name="observacao" id="alocar-obs" rows="2" placeholder="Ex.: chegou atrasado, saiu mais cedo, meia diária…"></textarea></div>
@@ -1683,7 +1683,7 @@
       <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
         <div class="grid2">
           <div class="field"><label>Nova função / equipamento</label><input id="funcao-nome" placeholder="Ex.: Servente, Mangote, Máquina…"></div>
-          <div class="field"><label>Diária (R$)</label><input id="funcao-valor" type="number" step="0.01" min="0" placeholder="0,00"></div>
+          <div class="field"><label>Diária (R$)</label><input id="funcao-valor" type="text" inputmode="decimal" class="money-mask" placeholder="R$ 0,00"></div>
         </div>
         <button type="button" class="primary" id="btn-add-funcao" style="min-height:40px">+ Adicionar função</button>
       </div>
@@ -1701,7 +1701,7 @@
       <div class="body">
         <div class="grid2">
           <div class="field"><label>Data</label><input name="data" type="date" required></div>
-          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="0,00"></div>
         </div>
         <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Almoço equipe, PIX fornecedor…"></div>
         <div class="grid2">
@@ -1726,7 +1726,7 @@
         <div class="field"><label>Colaborador</label><select name="colaborador_id" id="vale-colab" required><option value="">Selecione…</option></select></div>
         <div class="grid2">
           <div class="field"><label>Tipo</label><select name="tipo"><option value="ADIANTAMENTO_VALE">Adiantamento/Vale</option><option value="REEMBOLSO_COMBUSTIVEL">Reembolso combustível</option><option value="BONUS_METRAGEM">Bônus metragem</option></select></div>
-          <div class="field"><label>Valor (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="200,00"></div>
+          <div class="field"><label>Valor (R$)</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="200,00"></div>
         </div>
         <div class="field"><label>Observação</label><input name="observacao" placeholder="Opcional"></div>
         <div class="login-hint" style="text-align:left">Debita da <b>Caixinha PIX Campo</b> e fica pendente de abate na próxima folha.</div>
@@ -1745,7 +1745,7 @@
         <div class="field"><label>Colaborador</label><select name="colaborador_id" id="desc-colab" required><option value="">Selecione…</option></select></div>
         <div class="grid2">
           <div class="field"><label>Tipo</label><select name="tipo"><option value="FALTA">Falta</option><option value="INSS">INSS</option><option value="OUTRO">Outro desconto</option></select></div>
-          <div class="field"><label>Valor (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="150,00"></div>
+          <div class="field"><label>Valor (R$)</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="150,00"></div>
         </div>
         <div class="field"><label>Observação</label><input name="observacao" placeholder="Ex.: falta dia 22 / INSS competência 08"></div>
         <div class="login-hint" style="text-align:left">Desconto <b>abatido no líquido</b> ao fechar a folha. Não mexe no caixa. Como o valor varia, é lançado manualmente aqui.</div>
@@ -1764,7 +1764,7 @@
       <div class="body">
         <div id="fv-info" class="login-hint" style="text-align:left;margin-bottom:10px"></div>
         <div class="field"><label>Justificativa / motivo</label><textarea id="fv-obs" rows="2" placeholder="Ex.: atestado médico, falta injustificada…"></textarea></div>
-        <div class="field"><label>Valor do desconto (R$)</label><input name="valor" type="number" step="0.01" min="0" required placeholder="70,00"></div>
+        <div class="field"><label>Valor do desconto (R$)</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="70,00"></div>
         <div class="login-hint" style="text-align:left">Desconto abatido no líquido desta folha. Deixe 0 para não descontar (ex.: atestado).</div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar valor</button></footer>
@@ -1844,12 +1844,12 @@
         <input type="hidden" id="mede-id">
         <div class="field"><label>Descrição / Nº nota</label><input id="mede-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
         <div class="grid2">
-          <div class="field"><label>Valor bruto (R$)</label><input type="number" step="0.01" min="0" id="mede-valor"></div>
+          <div class="field"><label>Valor bruto (R$)</label><input type="text" inputmode="decimal" class="money-mask" id="mede-valor" placeholder="R$ 0,00"></div>
           <div class="field"><label>Forma de pagamento</label><select id="mede-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Imposto (R$) <span style="color:var(--ink-3);font-weight:400">retido na nota</span></label><input type="number" step="0.01" min="0" id="mede-imposto"></div>
-          <div class="field"><label>Retenção técnica (R$)</label><input type="number" step="0.01" min="0" id="mede-retido"></div>
+          <div class="field"><label>Imposto (R$) <span style="color:var(--ink-3);font-weight:400">retido na nota</span></label><input type="text" inputmode="decimal" class="money-mask" id="mede-imposto" placeholder="R$ 0,00"></div>
+          <div class="field"><label>Retenção técnica (R$)</label><input type="text" inputmode="decimal" class="money-mask" id="mede-retido" placeholder="R$ 0,00"></div>
         </div>
         <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" id="mede-recebido"> Já foi recebido</label>
         <div class="field" id="mede-recdata-wrap" style="display:none"><label>Data do recebimento</label><input type="date" id="mede-recdata"></div>
@@ -2100,7 +2100,7 @@
         <div class="field"><label>Endereço / local</label><input name="endereco" placeholder="Endereço, quadra, cidade"></div>
         <div class="grid2">
           <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" type="number" step="0.01" min="0" placeholder="0"></div>
-          <div class="field"><label>Valor do contrato (opcional)</label><input name="valor_contrato" type="number" step="0.01" min="0" placeholder="0,00"></div>
+          <div class="field"><label>Valor do contrato (opcional)</label><input name="valor_contrato" type="text" inputmode="decimal" class="money-mask" placeholder="R$ 0,00"></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Tipo de piso / serviço</label><input name="tipo_piso" placeholder="Ex.: Fulget, Concreto Polido, Epóxi…"></div>
@@ -2150,7 +2150,7 @@
           </div>
           <div class="grid2">
             <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" id="oe-metragem" type="number" step="0.01" min="0"></div>
-            <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" id="oe-valor" type="number" step="0.01" min="0"></div>
+            <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" id="oe-valor" type="text" inputmode="decimal" class="money-mask" placeholder="R$ 0,00"></div>
           </div>
         </div>
 
@@ -2197,15 +2197,15 @@
                 </div>
               </div>
               <div class="field" style="flex:1;min-width:120px"><label>Descrição / Nº nota</label><input id="med-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
-              <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
+              <div class="field" style="flex:0 0 130px"><label>Valor (R$)</label><input type="text" inputmode="decimal" class="money-mask" id="med-valor" placeholder="R$ 0,00"></div>
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
               <div class="field" style="flex:0 0 150px;display:none" id="med-receb-data-wrap"><label>Data do recebimento</label><input type="date" id="med-receb-data"></div>
               <div class="field" style="flex:0 0 150px"><label>Forma de pagamento</label><select id="med-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
-              <div class="field" style="flex:0 0 140px"><label>Imposto (R$) <span style="color:var(--ink-3);font-weight:400">retido na nota</span></label><input type="number" step="0.01" min="0" id="med-imposto" placeholder="0,00"></div>
-              <div class="field" style="flex:0 0 160px"><label>Retenção técnica (R$)</label><input type="number" step="0.01" min="0" id="med-retido" placeholder="0,00"></div>
+              <div class="field" style="flex:0 0 150px"><label>Imposto (R$) <span style="color:var(--ink-3);font-weight:400">retido na nota</span></label><input type="text" inputmode="decimal" class="money-mask" id="med-imposto" placeholder="R$ 0,00"></div>
+              <div class="field" style="flex:0 0 170px"><label>Retenção técnica (R$)</label><input type="text" inputmode="decimal" class="money-mask" id="med-retido" placeholder="R$ 0,00"></div>
               <div class="field" style="flex:0 0 170px"><label>Data de resgate (lembrete)</label><input type="date" id="med-resgate"></div>
               <div class="dv" style="flex:1;min-width:160px;font-size:11.5px;color:var(--ink-3);padding-bottom:10px">Digite o <b>imposto</b> retido e a <b>retenção técnica</b> — o sistema soma e mostra o <b>líquido</b>. A retenção técnica vira lembrete em <b>Valores Retidos</b> (data de resgate sugerida em +6 meses).</div>
             </div>
@@ -2220,7 +2220,7 @@
           <div id="oe-receb-lista" style="display:flex;flex-direction:column;gap:6px"></div>
           <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
             <div class="field" style="flex:1;min-width:120px"><label>Descrição</label><input id="rec-desc" placeholder="Ex.: PIX serviço X"></div>
-            <div class="field" style="flex:0 0 110px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="rec-valor" placeholder="0,00"></div>
+            <div class="field" style="flex:0 0 130px"><label>Valor (R$)</label><input type="text" inputmode="decimal" class="money-mask" id="rec-valor" placeholder="R$ 0,00"></div>
             <div class="field" style="flex:0 0 150px"><label>Data do recebimento</label><input type="date" id="rec-data"></div>
             <div class="field" style="flex:0 0 140px"><label>Forma</label><select id="rec-forma"><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
             <button type="button" class="primary" id="btn-add-receb" style="min-height:40px">+ Adicionar</button>
@@ -2298,7 +2298,7 @@
           <button type="button" data-tp="SAIDA">− Saída</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="field"><label>Valor (R$) *</label><input name="valor" type="number" step="0.01" min="0" required placeholder="0,00"></div>
+          <div class="field"><label>Valor (R$) *</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="0,00"></div>
           <div class="field"><label>Data prevista *</label><input name="data_movimento" type="date" required></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2366,6 +2366,16 @@
 
   // ---------- API ----------
   const brl=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0});
+  // ---- Máscara de dinheiro nos inputs (R$ 1.234,56) ----
+  // parseBRL: aceita "R$ 1.234,56", "1.234,56", "1234.56" ou "1234" e devolve REAIS (number). Compatível com campos mascarados e não mascarados.
+  function parseBRL(v){ if(typeof v==='number')return v||0; let s=String(v==null?'':v).trim(); if(!s)return 0; s=s.replace(/[^\d.,-]/g,''); if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');} const n=parseFloat(s); return isNaN(n)?0:n; }
+  const fmtMoneyStr=cents=>'R$ '+(cents/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  // aplica a máscara "por centavos" (digita da direita p/ esquerda): "12345" -> "R$ 123,45"
+  function maskMoneyInput(el){ if(!el)return; const digits=(el.value||'').replace(/\D/g,''); el.value=digits?fmtMoneyStr(parseInt(digits,10)):''; }
+  // coloca um valor em REAIS já formatado no input (usado ao abrir/editar)
+  function setMoneyInput(el, reais){ if(!el)return; if(reais==null||reais===''||isNaN(Number(reais))){el.value='';return;} el.value=fmtMoneyStr(Math.round(Number(reais)*100)); }
+  // delega o mascaramento p/ qualquer input .money-mask
+  document.addEventListener('input',e=>{ const t=e.target; if(t&&t.classList&&t.classList.contains('money-mask'))maskMoneyInput(t); },true);
   const ini=n=>n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   // Toda lista de nomes de pessoas sai em ordem alfabética (pt, ignora acento/caixa)
@@ -2620,16 +2630,16 @@
   // sugere a data de resgate = último dia da nota + 6 meses (só se ainda estiver vazia)
   function add6meses(ds){if(!ds)return '';const [y,m,day]=ds.split('-').map(Number);let ny=y,nm=m+6;if(nm>12){ny+=Math.floor((nm-1)/12);nm=((nm-1)%12)+1;}const ult=new Date(ny,nm,0).getDate();return `${ny}-${String(nm).padStart(2,'0')}-${String(Math.min(day,ult)).padStart(2,'0')}`;}
   function sugerirResgate(){
-    const ret=parseFloat(document.getElementById('med-retido').value)||0;
+    const ret=parseBRL(document.getElementById('med-retido').value);
     const rg=document.getElementById('med-resgate');
     if(ret>0&&!rg.value){const base=medDatas.length?medDatas[medDatas.length-1]:(document.getElementById('med-data').value||isoHoje());rg.value=add6meses(base);}
   }
   // Detalhamento: Bruto − Imposto − Retenção técnica = Líquido
   function renderMedBreakdown(){
     const box=document.getElementById('med-breakdown');if(!box)return;
-    const valor=parseFloat(document.getElementById('med-valor').value)||0;
-    const imp=parseFloat(document.getElementById('med-imposto').value)||0;
-    const ret=parseFloat(document.getElementById('med-retido').value)||0;
+    const valor=parseBRL(document.getElementById('med-valor').value);
+    const imp=parseBRL(document.getElementById('med-imposto').value);
+    const ret=parseBRL(document.getElementById('med-retido').value);
     if(valor<=0||(imp<=0&&ret<=0)){box.style.display='none';box.innerHTML='';return;}
     const liq=Math.round((valor-imp-ret)*100)/100;
     box.style.display='';
@@ -2643,7 +2653,7 @@
   document.getElementById('med-retido').addEventListener('input',()=>{sugerirResgate();renderMedBreakdown();});
   // Salva a nota/medição se os campos estiverem preenchidos. Retorna 'ok' | 'vazio' | 'faltadata'.
   async function salvarMedicao(id,{silencioso=false}={}){
-    const valor=parseFloat(document.getElementById('med-valor').value)||0;
+    const valor=parseBRL(document.getElementById('med-valor').value);
     if(valor<=0)return 'vazio';   // nenhuma nota preenchida
     let datas=medDatas.slice();
     const unica=document.getElementById('med-data').value;
@@ -2653,8 +2663,8 @@
     const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:recebidoChk,
       data_recebimento:recebidoChk?(document.getElementById('med-receb-data').value||isoHoje()):null,
       forma_pagamento:document.getElementById('med-forma').value||null,
-      valor_retido:parseFloat(document.getElementById('med-retido').value)||0,data_resgate:document.getElementById('med-resgate').value||null,
-      imposto_valor:parseFloat(document.getElementById('med-imposto').value)||0};
+      valor_retido:parseBRL(document.getElementById('med-retido').value),data_resgate:document.getElementById('med-resgate').value||null,
+      imposto_valor:parseBRL(document.getElementById('med-imposto').value)};
     await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-receb-data').value='';document.getElementById('med-forma').value='';document.getElementById('med-receb-data-wrap').style.display='none';
@@ -2673,9 +2683,9 @@
   // ---- Editar medição/nota (valor, imposto, retenção, recebido) ----
   let MED_CACHE=[], MED_OBRA_ID=null;
   function medEditBreakdown(){
-    const v=parseFloat(document.getElementById('mede-valor').value)||0;
-    const imp=parseFloat(document.getElementById('mede-imposto').value)||0;
-    const ret=parseFloat(document.getElementById('mede-retido').value)||0;
+    const v=parseBRL(document.getElementById('mede-valor').value);
+    const imp=parseBRL(document.getElementById('mede-imposto').value);
+    const ret=parseBRL(document.getElementById('mede-retido').value);
     const box=document.getElementById('mede-breakdown');
     if(v<=0||(imp<=0&&ret<=0)){box.style.display='none';box.innerHTML='';return;}
     const liq=Math.round((v-imp-ret)*100)/100;box.style.display='';
@@ -2688,10 +2698,10 @@
     const m=(MED_CACHE||[]).find(x=>String(x.id)===String(medId));if(!m){showToast('Medição não encontrada');return;}
     document.getElementById('mede-id').value=m.id;
     document.getElementById('mede-desc').value=m.descricao||'';
-    document.getElementById('mede-valor').value=m.valor?(m.valor/100).toFixed(2):'';
+    setMoneyInput(document.getElementById('mede-valor'),m.valor?m.valor/100:'');
     document.getElementById('mede-forma').value=m.forma_pagamento||'';
-    document.getElementById('mede-imposto').value=m.imposto_valor?(m.imposto_valor/100).toFixed(2):'';
-    document.getElementById('mede-retido').value=m.valor_retido?(m.valor_retido/100).toFixed(2):'';
+    setMoneyInput(document.getElementById('mede-imposto'),m.imposto_valor?m.imposto_valor/100:'');
+    setMoneyInput(document.getElementById('mede-retido'),m.valor_retido?m.valor_retido/100:'');
     document.getElementById('mede-recebido').checked=!!m.recebido;
     document.getElementById('mede-recdata').value=m.data_recebimento||'';
     document.getElementById('mede-recdata-wrap').style.display=m.recebido?'':'none';
@@ -2706,10 +2716,10 @@
     e.preventDefault();const medId=document.getElementById('mede-id').value;if(!medId)return;
     const recebido=document.getElementById('mede-recebido').checked;
     const payload={descricao:document.getElementById('mede-desc').value||null,
-      valor:parseFloat(document.getElementById('mede-valor').value)||0,
+      valor:parseBRL(document.getElementById('mede-valor').value),
       forma_pagamento:document.getElementById('mede-forma').value||null,
-      imposto_valor:parseFloat(document.getElementById('mede-imposto').value)||0,
-      valor_retido:parseFloat(document.getElementById('mede-retido').value)||0,
+      imposto_valor:parseBRL(document.getElementById('mede-imposto').value),
+      valor_retido:parseBRL(document.getElementById('mede-retido').value),
       recebido,data_recebimento:recebido?(document.getElementById('mede-recdata').value||isoHoje()):null};
     try{await api('/api/financeiro/medicao/'+medId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-med-edit').classList.remove('open');showToast('Medição atualizada ✓');
@@ -2719,7 +2729,7 @@
   // Recebimento SEM nota (PIX etc.) — seção separada
   document.getElementById('btn-add-receb').addEventListener('click',async()=>{
     const id=document.getElementById('oe-id').value;if(!id)return;
-    const valor=parseFloat(document.getElementById('rec-valor').value)||0;
+    const valor=parseBRL(document.getElementById('rec-valor').value);
     if(valor<=0){showToast('Informe o valor do recebimento');return;}
     const data=document.getElementById('rec-data').value||isoHoje();
     const payload={sem_nota:true,recebido:true,datas:[data],data:data,data_recebimento:data,
@@ -2764,7 +2774,7 @@
       const f=document.getElementById('form-lanc');
       document.getElementById('lanc-obra').value=b.dataset.obra;
       document.getElementById('lanc-tipo').value=b.dataset.tipo;fillCats();document.getElementById('lanc-cat').value=b.dataset.cat;
-      f.valor.value=(Number(b.dataset.valor)||0)/100;f.descricao.value=b.dataset.desc||'';
+      setMoneyInput(f.valor,(Number(b.dataset.valor)||0)/100);f.descricao.value=b.dataset.desc||'';
       openModal('ov-lanc');
     }));
     el.querySelectorAll('.lanc-del').forEach(b=>b.addEventListener('click',async()=>{
@@ -2786,7 +2796,7 @@
   document.getElementById('form-obra-exec').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('oe-id').value;
     const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null,
-      metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,
+      metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseBRL(f.valor_contrato.value)||0,
       data_inicio:f.data_inicio.value||null,data_prevista_termino:f.data_prevista_termino.value||null,
       responsavel:f.responsavel.value||null,comissao_responsavel:f.comissao_responsavel.value||null,dias_servico:obraDias,
       coluna_kanban:f.coluna_kanban.value,progresso:parseInt(f.progresso.value,10)||0,status_pagamento:f.status_pagamento.value||null};
@@ -2816,7 +2826,7 @@
     // 1) salva a obra
     try{
       await api('/api/financeiro/obra',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({cliente:f.cliente.value,endereco:f.endereco.value||null,metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseFloat(f.valor_contrato.value)||0,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null})});
+        body:JSON.stringify({cliente:f.cliente.value,endereco:f.endereco.value||null,metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseBRL(f.valor_contrato.value)||0,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null})});
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Erro ao cadastrar obra: '+(m||'tente de novo'));console.error(err);return;}
     // 2) obra salva com sucesso — fecha e avisa (mesmo que a lista demore a recarregar)
     document.getElementById('ov-obra').classList.remove('open');showToast('Obra cadastrada');
@@ -3971,13 +3981,13 @@
   }
   document.getElementById('alocar-funcao').addEventListener('change',e=>{
     const opt=e.target.selectedOptions[0];const v=opt&&opt.dataset.val?(+opt.dataset.val/100):null;
-    if(v!=null)document.getElementById('alocar-valor').value=v.toFixed(2);
+    if(v!=null)setMoneyInput(document.getElementById('alocar-valor'),v);
   });
   document.getElementById('form-alocar').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('alocar-id').value;
     const colab=(CRON.colaboradores||[]).find(c=>c.id===f.colaborador_id.value);
     const obra=(CRON.obras||[]).find(o=>o.id===f.obra_id.value);
-    const payload={data:CRON.data,colaborador_id:f.colaborador_id.value,colaborador_nome:colab?colab.nome:null,obra_id:f.obra_id.value,obra_nome:obra?obra.cliente:null,funcao:f.funcao.value||null,valor_diaria:parseFloat(f.valor_diaria.value)||0,observacao:f.observacao.value||null};
+    const payload={data:CRON.data,colaborador_id:f.colaborador_id.value,colaborador_nome:colab?colab.nome:null,obra_id:f.obra_id.value,obra_nome:obra?obra.cliente:null,funcao:f.funcao.value||null,valor_diaria:parseBRL(f.valor_diaria.value)||0,observacao:f.observacao.value||null};
     try{
       if(id)await api('/api/cronograma/alocacao/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/cronograma/alocacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -4055,7 +4065,7 @@
     catch(e){showToast('Erro ao salvar função');console.error(e);}
   }
   document.getElementById('btn-add-funcao').addEventListener('click',async()=>{
-    const nome=document.getElementById('funcao-nome').value.trim();const valor=parseFloat(document.getElementById('funcao-valor').value)||0;
+    const nome=document.getElementById('funcao-nome').value.trim();const valor=parseBRL(document.getElementById('funcao-valor').value)||0;
     if(!nome){showToast('Informe o nome da função');return;}
     try{await api('/api/cronograma/funcao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,valor})});
       document.getElementById('funcao-nome').value='';document.getElementById('funcao-valor').value='';
@@ -4218,7 +4228,9 @@
   function openModal(id){const o=document.getElementById(id);if(!o)return;
     // empilha: o modal recém-aberto fica acima de qualquer outro já aberto (modal sobre modal)
     const maxZ=Math.max(50,...[...document.querySelectorAll('.overlay.open')].map(x=>parseInt(x.style.zIndex,10)||50));
-    o.style.zIndex=String(maxZ+1);o.classList.add('open');}
+    o.style.zIndex=String(maxZ+1);o.classList.add('open');
+    // formata os campos de dinheiro (R$ 1.234,56) que já vieram preenchidos
+    o.querySelectorAll('input.money-mask').forEach(maskMoneyInput);}
   function closeModal(el){el.closest('.overlay').classList.remove('open');}
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b)));
   document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
@@ -4430,7 +4442,7 @@
   document.getElementById('form-lanc').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);const id=document.getElementById('lanc-id').value;
     const payload={obra_id:f.get('obra_id'),tipo:f.get('tipo'),categoria:f.get('categoria'),
-      valor:id?parseFloat(f.get('valor'))||0:Math.round(parseFloat(f.get('valor'))*100),descricao:f.get('descricao')||null};
+      valor:id?parseBRL(f.get('valor'))||0:Math.round(parseBRL(f.get('valor'))*100),descricao:f.get('descricao')||null};
     try{
       if(id)await api('/api/financeiro/lancamento/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:payload.tipo,categoria:payload.categoria,valor:payload.valor,descricao:payload.descricao})});
       else await api('/api/financeiro/lancamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -4914,7 +4926,7 @@
   }
   document.getElementById('form-previsto').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
-    const valor=parseFloat(f.get('valor'));
+    const valor=parseBRL(f.get('valor'));
     if(!valor||valor<=0){showToast('Informe um valor válido');return;}
     const payload={tipo:prevTipo,valor,data_movimento:f.get('data_movimento'),descricao:f.get('descricao')||null,categoria:document.getElementById('prev-cat').value||null,forma:document.getElementById('prev-forma').value||null};
     try{
@@ -4937,7 +4949,7 @@
   document.getElementById('form-transfer').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     try{await api('/api/bancos/transferencia-interna',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({origem_id:f.get('origem_id'),destino_id:f.get('destino_id'),valor:parseFloat(f.get('valor')),descricao:f.get('descricao')||null})});
+      body:JSON.stringify({origem_id:f.get('origem_id'),destino_id:f.get('destino_id'),valor:parseBRL(f.get('valor')),descricao:f.get('descricao')||null})});
       document.getElementById('ov-transfer').classList.remove('open');e.target.reset();
       await loadBancos();showToast('Transferência realizada');
     }catch(err){showToast('Erro: '+((err.message||'').includes('insuficiente')?'saldo insuficiente':'transferência'));console.error(err);}
@@ -5028,7 +5040,7 @@
     e.preventDefault();const f=e.target;
     const id=document.getElementById('boleto-id').value;
     const cat=f.categoria.value||'OUTRO'; // guarda: nunca envia categoria vazia (evitava "voltar pra OUTRO")
-    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseFloat(f.valor.value)||0,vencimento:f.vencimento.value,categoria:cat,categoria_custom:cat==='OUTRO'?(document.getElementById('boleto-outro').value||null):null,empresa:f.empresa.value||null,forma_pagamento:document.getElementById('boleto-forma').value||null};
+    const payload={descricao:f.descricao.value,fornecedor:f.fornecedor.value||null,valor:parseBRL(f.valor.value)||0,vencimento:f.vencimento.value,categoria:cat,categoria_custom:cat==='OUTRO'?(document.getElementById('boleto-outro').value||null):null,empresa:f.empresa.value||null,forma_pagamento:document.getElementById('boleto-forma').value||null};
     try{
       if(id)await api('/api/boletos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -5067,7 +5079,7 @@
   }
   document.getElementById('form-fixo').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
-    const payload={descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,dia_vencimento:parseInt(f.dia_vencimento.value,10)||5,categoria:f.categoria.value,fornecedor:f.fornecedor.value||null,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('fixo-outro').value||null):null,forma_pagamento:document.getElementById('fixo-forma').value||null};
+    const payload={descricao:f.descricao.value,valor:parseBRL(f.valor.value)||0,dia_vencimento:parseInt(f.dia_vencimento.value,10)||5,categoria:f.categoria.value,fornecedor:f.fornecedor.value||null,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('fixo-outro').value||null):null,forma_pagamento:document.getElementById('fixo-forma').value||null};
     try{await api('/api/fixos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       f.reset();document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();showToast('Pagamento fixo cadastrado');
       // gera já o boleto do mês atual e atualiza a lista de boletos por trás do modal
@@ -5163,7 +5175,7 @@
     const ehVale=f.categoria.value==='VALE';
     const colabVale=document.getElementById('lancdia-colab').value;
     if(ehVale&&!id&&!colabVale){showToast('Selecione o colaborador do vale');return;}
-    const payload={data:f.data.value,descricao:f.descricao.value,valor:parseFloat(f.valor.value)||0,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('lancdia-outro').value||null):null,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
+    const payload={data:f.data.value,descricao:f.descricao.value,valor:parseBRL(f.valor.value)||0,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('lancdia-outro').value||null):null,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
     if(ehVale&&colabVale)payload.colaborador_id=colabVale;
     try{
       if(id)await api('/api/lancamentos-diarios/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -5513,7 +5525,7 @@
   document.getElementById('form-falta-valor').addEventListener('submit',async e=>{
     e.preventDefault();const id=document.getElementById('fv-id').value;const f=new FormData(e.target);
     const obs=document.getElementById('fv-obs').value||null;
-    try{await api('/api/dp/desconto/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:parseFloat(f.get('valor'))||0,observacao:obs})});
+    try{await api('/api/dp/desconto/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:parseBRL(f.get('valor'))||0,observacao:obs})});
       document.getElementById('ov-falta-valor').classList.remove('open');showToast('Falta atualizada');
       if(!document.getElementById('view-folha').classList.contains('hidden'))await calcularFolha();
       if(!document.getElementById('view-cronograma').classList.contains('hidden'))await loadCronograma();
@@ -5634,7 +5646,7 @@
   document.getElementById('form-vale').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     try{const r=await api('/api/dp/vale',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseFloat(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
+      body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseBRL(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
       document.getElementById('ov-vale').classList.remove('open');e.target.reset();
       showToast(r.sem_caixinha?'Vale registrado (sem Caixinha PIX — abate na próxima folha)':(r.alerta_liquidez?'Vale pago — ⚠ Caixinha abaixo de R$ 1.000!':'Vale pago via PIX'));
       if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
@@ -5647,7 +5659,7 @@
   document.getElementById('form-desconto').addEventListener('submit',async e=>{
     e.preventDefault();const f=new FormData(e.target);
     try{await api('/api/dp/desconto',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseFloat(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
+      body:JSON.stringify({colaborador_id:f.get('colaborador_id'),valor:parseBRL(f.get('valor')),tipo:f.get('tipo'),observacao:f.get('observacao')||null})});
       document.getElementById('ov-desconto').classList.remove('open');e.target.reset();
       showToast('Desconto lançado — abate no próximo fechamento');
       if(!document.getElementById('view-folha').classList.contains('hidden'))calcularFolha();
@@ -5735,7 +5747,7 @@
       document.getElementById('lanc-id').value=b.dataset.lid;document.getElementById('lanc-titulo').textContent='Editar lançamento';
       const f=document.getElementById('form-lanc');document.getElementById('lanc-obra').value=b.dataset.obra;
       document.getElementById('lanc-tipo').value=b.dataset.tipo;fillCats();document.getElementById('lanc-cat').value=b.dataset.cat;
-      f.valor.value=(Number(b.dataset.valor)||0)/100;f.descricao.value=b.dataset.desc||'';openModal('ov-lanc');
+      setMoneyInput(f.valor,(Number(b.dataset.valor)||0)/100);f.descricao.value=b.dataset.desc||'';openModal('ov-lanc');
     }));
     el.querySelectorAll('.drelanc-del').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Excluir este lançamento? O resultado é recalculado.'))return;
