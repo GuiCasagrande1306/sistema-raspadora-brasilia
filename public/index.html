@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v171</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v172</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3111,10 +3111,16 @@
     semEl.value=Math.min(atual,semanas.length)||1;
   }
   async function loadVT(){vtInitFiltros();await vtFetch();}
+  // diaristas incluídos manualmente na semana de VT (por padrão diarista não aparece na lista)
+  let vtDiaristasIncl=new Set();
+  const vtInclKey=()=>`vt_diaristas_${VT_STATE.ano_mes}_S${VT_STATE.semana}`;
+  function vtLoadIncl(){try{vtDiaristasIncl=new Set(JSON.parse(localStorage.getItem(vtInclKey())||'[]'));}catch(_){vtDiaristasIncl=new Set();}}
+  function vtSaveIncl(){try{localStorage.setItem(vtInclKey(),JSON.stringify([...vtDiaristasIncl]));}catch(_){}}
+  function vtVisiveis(){return (VT_STATE.linhas||[]).map((l,i)=>[l,i]).filter(([l])=>!l.is_diarista||vtDiaristasIncl.has(l.colaborador_id));}
   async function vtFetch(){
     const ano_mes=document.getElementById('vt-mes').value,semana=parseInt(document.getElementById('vt-semana').value,10)||1;
     const r=await api('/api/dp/vt/semana?ano_mes='+ano_mes+'&semana='+semana);
-    VT_STATE={ano_mes,semana,linhas:r.linhas,resumo:r.resumo};vtRenderCards();vtRenderTabela();
+    VT_STATE={ano_mes,semana,linhas:r.linhas,resumo:r.resumo};vtLoadIncl();vtRecalc();vtRenderTabela();
   }
   function vtRenderCards(){const R=VT_STATE.resumo;
     document.getElementById('vt-total').textContent=brlN(R.total_semanal||0);
@@ -3123,24 +3129,36 @@
     document.getElementById('vt-colabs').textContent=R.total_colaboradores||0;
     document.getElementById('vt-mensal').textContent=brlN(R.balanco_mensal||0);
   }
-  function vtRecalc(){const L=VT_STATE.linhas,R=VT_STATE.resumo;
+  function vtRecalc(){const L=vtVisiveis().map(([l])=>l),R=VT_STATE.resumo;
     R.total_semanal=+L.reduce((s,l)=>s+l.total,0).toFixed(2);
     R.total_carteirinha=+L.filter(l=>l.forma_pagamento==='CARTEIRINHA').reduce((s,l)=>s+l.total,0).toFixed(2);
     R.total_conta=+L.filter(l=>l.forma_pagamento==='CONTA').reduce((s,l)=>s+l.total,0).toFixed(2);
+    R.total_colaboradores=L.length;
     vtRenderCards();
   }
   function vtRenderTabela(){
-    const rows=VT_STATE.linhas.map((l,i)=>`<tr data-i="${i}">
-      <td><div class="vte-nome"><div class="ini" style="background:${hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}</div></td>
+    const rows=vtVisiveis().map(([l,i])=>`<tr data-i="${i}">
+      <td><div class="vte-nome"><div class="ini" style="background:${l.is_diarista?'#2563EB':hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${l.is_diarista?' <span class="tag" style="font-size:8.5px;background:#2563EB;color:#fff">diarista</span> <button type="button" class="vt-rm-diar" data-rm="'+l.colaborador_id+'" title="Tirar da lista" style="border:0;background:none;color:var(--danger);font-weight:800;cursor:pointer">×</button>':''}</div></td>
       <td><input class="vte-obs" data-f="cart" value="${esc(l.carteirinha||'')}" placeholder="Nº carteirinha" style="min-width:120px"></td>
       <td><input class="vte-inp" type="number" min="0" step="1" data-f="qtd" value="${l.qtd_viagens}"></td>
       <td class="num">${brlN(l.valor_passagem)}</td>
       <td class="num vte-total" data-total>${brlN(l.total)}</td>
       <td><span class="pgtoggle"><button data-pg="CARTEIRINHA" class="${l.forma_pagamento==='CARTEIRINHA'?'on-cart':''}">Carteirinha</button><button data-pg="CONTA" class="${l.forma_pagamento==='CONTA'?'on-conta':''}">Conta</button></span></td>
       <td><input class="vte-obs" data-f="obs" value="${esc(l.observacao||'')}" placeholder="Obs. fixa — fica salva (ex.: só volta das obras)" title="Fica salva no colaborador e aparece toda semana. Edite quando mudar."></td></tr>`).join('');
+    // barra do rodapé: incluir diaristas (que por padrão não aparecem)
+    const diarFora=ordNome((VT_STATE.linhas||[]).filter(l=>l.is_diarista&&!vtDiaristasIncl.has(l.colaborador_id)));
+    const barra=`<div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--line-2);border-radius:12px;background:var(--surface-2);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:12.5px;font-weight:700;color:var(--ink-2)">➕ Incluir diarista na semana:</span>
+      <select id="vt-diar-sel" class="dash-sel" style="min-width:200px">${diarFora.length?('<option value="">Selecione um diarista…</option>'+diarFora.map(l=>`<option value="${l.colaborador_id}">${esc(l.nome)}</option>`).join('')):'<option value="">Nenhum diarista disponível</option>'}</select>
+      <button type="button" class="btn-ghost" id="vt-diar-add" style="min-height:38px"${diarFora.length?'':' disabled'}>Incluir</button>
+      <span style="font-size:11.5px;color:var(--ink-3)">Diaristas não entram na lista automaticamente — inclua só quem recebeu vale nesta semana.</span>
+    </div>`;
     document.getElementById('vt-content').innerHTML=`<div class="vte-wrap"><table class="vte"><thead><tr>
       <th>Funcionário</th><th>Carteirinha</th><th>Qtd. Viagens</th><th class="num">Passagem</th><th class="num">Total</th><th>Pagamento</th><th>Observações</th>
-      </tr></thead><tbody>${rows}</tbody></table></div>`;
+      </tr></thead><tbody>${rows}</tbody></table></div>`+barra;
+    const addBtn=document.getElementById('vt-diar-add');
+    if(addBtn)addBtn.addEventListener('click',()=>{const sel=document.getElementById('vt-diar-sel');const id=sel&&sel.value;if(!id)return;vtDiaristasIncl.add(id);vtSaveIncl();vtRecalc();vtRenderTabela();});
+    document.getElementById('vt-content').querySelectorAll('.vt-rm-diar').forEach(b=>b.addEventListener('click',()=>{vtDiaristasIncl.delete(b.dataset.rm);vtSaveIncl();vtRecalc();vtRenderTabela();}));
   }
   function vtSave(l){api('/api/dp/vt/semana',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({colaborador_id:l.colaborador_id,ano_mes:VT_STATE.ano_mes,semana:VT_STATE.semana,qtd_viagens:l.qtd_viagens,forma_pagamento:l.forma_pagamento})})
@@ -3177,7 +3195,7 @@
     const [y,m]=(mesEl.value||'').split('-');
     const mesNome=y?new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'';
     const R=VT_STATE.resumo||{};
-    const rows=VT_STATE.linhas.map(l=>`<tr class="${l.forma_pagamento==='CARTEIRINHA'?'cart':''}">
+    const rows=vtVisiveis().map(([l])=>`<tr class="${l.forma_pagamento==='CARTEIRINHA'?'cart':''}">
       <td>${esc(l.nome)}</td>
       <td>${esc(l.carteirinha||'—')}</td>
       <td class="c">${l.qtd_viagens}</td>
@@ -4434,7 +4452,10 @@
   const STATUS_COLAB={ATIVO:['an-val','🟢 Ativo'],DESLIGADO:['an-rep','🔴 Desligado'],DIARIA:['an-aten','🟡 Diária'],FERIAS:['an-fer','🔵 Férias'],INSS:['an-inss','🟣 INSS']};
   const DOC_TABS=[['unico','Docs. Únicos'],['mensal','Docs. Mensais'],['desligamento','Docs. Desligamento']];
   let docTabAtiva='unico';
-  let docsViewMode='lista', docsGroupBy='status_colaborador';
+  let docsViewMode='lista', docsGroupBy='status_colaborador', docsSetor='TODOS';
+  // Administrativo = cargo ADMINISTRATIVO (ou is_diarista=false + cargos de escritório); produção = o resto (pedreiro, servente, motorista…)
+  const setorDe=c=>{const cg=String(c.cargo||'').toUpperCase();return (cg.includes('ADMINISTR')||cg.includes('ESCRIT')||cg.includes('FINANC')||cg.includes('GERENT')||cg.includes('RH')||cg.includes('SECRET'))?'ADM':'PROD';};
+  const setorSegHTML=()=>`<div class="seg" id="docs-setor"><button data-setor="TODOS" class="${docsSetor==='TODOS'?'on':''}">Todos</button><button data-setor="PROD" class="${docsSetor==='PROD'?'on':''}">Produção</button><button data-setor="ADM" class="${docsSetor==='ADM'?'on':''}">Administrativo</button></div>`;
   const stTag=c=>{const[s,l]=STATUS_COLAB[c.status_colaborador]||STATUS_COLAB.ATIVO;return `<span class="an ${s}">${l}</span>`;};
   const farolTag=c=>{const[,l,fan]=FAROL[c.pasta.status]||FAROL.BLOQUEADO;return `<span class="an ${fan}">${l}</span>`;};
   const empresaTag=emp=>{const map={RB_PISOS:['R.B PISOS','emp-rb'],ECO_PISOS:['ECO PISOS','emp-eco']};const[l,cls]=map[emp]||[emp||'—','emp-nd'];return `<span class="emp-tag ${cls}">${esc(l)}</span>`;};
@@ -4480,6 +4501,8 @@
   let docsListaCache=[];
   const EMP_ORDEM={RB_PISOS:0,ECO_PISOS:1};
   function renderColabView(lista){
+    // filtro de setor (Produção × Administrativo)
+    if(docsSetor!=='TODOS')lista=(lista||[]).filter(c=>setorDe(c)===docsSetor);
     // ordena por empresa (RB primeiro, depois ECO) e, dentro de cada, alfabética
     lista=(lista||[]).slice().sort((a,b)=>{
       const ea=EMP_ORDEM[a.empresa]??9,eb=EMP_ORDEM[b.empresa]??9;
@@ -4563,11 +4586,12 @@
       const cards='<div class="empresa-grid">'+EMPRESAS.map(e=>{const n=lista.filter(c=>c.empresa===e.id).length;return `<div class="empresa-card" data-emp="${e.id}"><div class="ec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg></div><div><h4>${e.label}</h4><div class="dv">${n} colaborador${n===1?'':'es'} · documentos</div></div></div>`;}).join('')+'</div>';
       el.innerHTML=`<div class="colab-toolbar">
         <div class="seg" id="docs-viewmode"><button data-vm="lista" class="${docsViewMode==='lista'?'on':''}">☰ Lista</button><button data-vm="quadro" class="${docsViewMode==='quadro'?'on':''}">▦ Quadro</button></div>
-        <div class="colab-tr">${groupSel}${colsBtn}</div></div>
+        <div class="colab-tr">${setorSegHTML()}${groupSel}${colsBtn}</div></div>
         <div id="colab-view"></div>
         <h3 class="doc-sub" style="margin:22px 0 10px;font-size:14px;color:var(--ink-2)">Empresas</h3>
         ${cards}`;
       el.querySelectorAll('#docs-viewmode button').forEach(b=>b.addEventListener('click',()=>{docsViewMode=b.dataset.vm;renderDocs();}));
+      el.querySelectorAll('#docs-setor button').forEach(b=>b.addEventListener('click',()=>{docsSetor=b.dataset.setor;renderDocs();}));
       const gb=document.getElementById('docs-groupby');if(gb)gb.addEventListener('change',()=>{docsGroupBy=gb.value;renderColabView(lista);});
       const cb=document.getElementById('docs-cols-btn');
       if(cb)cb.addEventListener('click',()=>{const m=document.getElementById('docs-cols-menu');m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderColsMenu();});
@@ -4580,10 +4604,11 @@
       const colsBtn=docsViewMode==='lista'?`<button class="btn-ghost" id="docs-cols-btn" style="min-height:38px">⚙️ Colunas</button><div class="cols-menu hidden" id="docs-cols-menu"></div>`:'';
       el.innerHTML=`<div class="colab-toolbar">
         <div class="seg" id="docs-viewmode"><button data-vm="lista" class="${docsViewMode==='lista'?'on':''}">☰ Lista</button><button data-vm="quadro" class="${docsViewMode==='quadro'?'on':''}">▦ Quadro</button></div>
-        <div class="colab-tr">${groupSel}${colsBtn}</div></div>
+        <div class="colab-tr">${setorSegHTML()}${groupSel}${colsBtn}</div></div>
         <div id="colab-view"></div>`;
       // toolbar wiring
       el.querySelectorAll('#docs-viewmode button').forEach(b=>b.addEventListener('click',()=>{docsViewMode=b.dataset.vm;renderDocs();}));
+      el.querySelectorAll('#docs-setor button').forEach(b=>b.addEventListener('click',()=>{docsSetor=b.dataset.setor;renderDocs();}));
       const gb=document.getElementById('docs-groupby');if(gb)gb.addEventListener('change',()=>{docsGroupBy=gb.value;renderColabView(lista);});
       const cb=document.getElementById('docs-cols-btn');
       if(cb)cb.addEventListener('click',()=>{const m=document.getElementById('docs-cols-menu');m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderColsMenu();});

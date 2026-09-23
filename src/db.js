@@ -1405,20 +1405,20 @@ export const db = {
   async getVTSemana(ano_mes, semana) {
     if (!USING_SUPABASE) return { linhas: [], resumo: {} };
     const [colabsR, { data: semRows }, { data: mesRows }] = await Promise.all([
-      sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt,observacao_vt').neq('status_colaborador', 'DESLIGADO').order('nome'),
+      sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt,observacao_vt,is_diarista').neq('status_colaborador', 'DESLIGADO').order('nome'),
       sb('vt_semanal').select('*').eq('ano_mes', ano_mes).eq('semana', semana),
       sb('vt_semanal').select('qtd_viagens,valor_passagem').eq('ano_mes', ano_mes),
     ]);
     // se a coluna observacao_vt ainda não existe (migration não rodada), refaz sem ela
     let colabs = colabsR.data;
-    if (colabsR.error) { const alt = await sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt').neq('status_colaborador', 'DESLIGADO').order('nome'); colabs = alt.data; }
+    if (colabsR.error) { const alt = await sb('colaboradores').select('id,nome,status_colaborador,carteirinha_vt,is_diarista').neq('status_colaborador', 'DESLIGADO').order('nome'); colabs = alt.data; }
     const porColab = Object.fromEntries((semRows || []).map(r => [r.colaborador_id, r]));
     const linhas = (colabs || []).map(c => {
       const r = porColab[c.id];
       const qtd = r ? r.qtd_viagens : 0;
       const vp = r ? Number(r.valor_passagem) : 4.30;
       return {
-        colaborador_id: c.id, nome: c.nome, carteirinha: c.carteirinha_vt || '',
+        colaborador_id: c.id, nome: c.nome, carteirinha: c.carteirinha_vt || '', is_diarista: !!c.is_diarista,
         qtd_viagens: qtd, valor_passagem: vp, total: +(qtd * vp).toFixed(2),
         forma_pagamento: r ? r.forma_pagamento : 'CARTEIRINHA', observacao: c.observacao_vt || '',
       };
