@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v175</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v176</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3516,12 +3516,29 @@
   function gefipUpload(geral){
     const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';inp.multiple=true;
     inp.onchange=async()=>{const fs=[...inp.files];if(!fs.length)return;
-      try{showToast('Enviando '+fs.length+' arquivo(s)…');
-        for(const f of fs){const fd=new FormData();fd.append('arquivo',f);fd.append('ano',gState.ano);fd.append('mes',gState.mes);fd.append('nome',f.name);
-          if(!geral)fd.append('obra',gState.obra);   // geral = sem obra
-          await api('/api/gefip/doc',{method:'POST',body:fd});}
-        showToast('Enviado!');renderGefip();
-      }catch(e){showToast('Erro ao enviar');console.error(e);}};
+      let ok=0;
+      for(const f of fs){
+        try{
+          showToast('Enviando "'+f.name+'"…');
+          const meta={ano:gState.ano,mes:gState.mes,nome:f.name};if(!geral)meta.obra=gState.obra;
+          // o Storage só aceita PDF/PNG/JPG/WEBP — infere o tipo pela extensão quando o navegador não manda (evita octet-stream)
+          const EXT_CT={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'};
+          const ext=(f.name.split('.').pop()||'').toLowerCase();
+          let ct=f.type;if(!ct||ct==='application/octet-stream')ct=EXT_CT[ext]||'';
+          if(!ct){throw new Error('tipo não aceito. Envie PDF, PNG, JPG ou WEBP (converta pra PDF se precisar).');}
+          // 1) URL assinada → envia o arquivo DIRETO pro Storage (sem o limite de ~4,5 MB da Vercel)
+          const up=await api('/api/gefip/upload-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(meta)});
+          const put=await fetch(up.signedUrl,{method:'PUT',headers:{'Content-Type':ct,'x-upsert':'true'},body:f});
+          if(!put.ok){let pt='';try{pt=JSON.parse(await put.text()).message||'';}catch{}throw new Error(pt||('falha no envio ('+put.status+')'));}
+          // 2) registra o documento apontando pro arquivo já enviado
+          await api('/api/gefip/doc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...meta,arquivo_path:up.arquivo_path})});
+          ok++;
+        }catch(e){let m=e.message||'';try{const j=JSON.parse(m);m=j.erro||j.detalhe||m;}catch{}
+          showToast('Erro em "'+f.name+'": '+(m||'falha').slice(0,140));console.error(e);}
+      }
+      if(ok)showToast(ok+' de '+fs.length+' documento(s) enviado(s) ✓');
+      renderGefip();
+    };
     inp.click();
   }
   async function gefipAlocar(docId){

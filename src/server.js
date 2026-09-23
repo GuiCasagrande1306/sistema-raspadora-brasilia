@@ -502,25 +502,51 @@ app.get('/api/gefip/docs', async (req, res, next) => {
   try { res.json(await db.listGefipDocs({ ano: req.query.ano, mes: req.query.mes, obra: req.query.obra, geral: req.query.geral === '1' })); }
   catch (e) { next(e); }
 });
+// URL assinada p/ upload DIRETO do navegador pro Storage (arquivos grandes: a Vercel limita o corpo do request a ~4,5 MB)
+app.post('/api/gefip/upload-url', async (req, res, next) => {
+  try {
+    if (!USING_SUPABASE) return res.status(400).json({ erro: 'armazenamento indisponível' });
+    const { ano, mes } = req.body;
+    const obra = req.body.obra ? String(req.body.obra) : null;
+    if (!Number(ano) || !mes) return res.status(400).json({ erro: 'ano e mes são obrigatórios' });
+    const safe = (req.body.nome || 'doc.pdf').replace(/[^\w.\-]+/g, '_');
+    const pastaObra = obra ? String(obra).replace(/[^\w.\-]+/g, '_') : '_gerais';
+    const arquivo_path = `gefip/${Number(ano)}/${mes}/${pastaObra}/${Date.now()}_${safe}`;
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(arquivo_path);
+    if (error) throw error;
+    res.json({ arquivo_path, signedUrl: data.signedUrl, token: data.token });
+  } catch (e) { next(e); }
+});
 app.post('/api/gefip/doc', upload.single('arquivo'), async (req, res, next) => {
   try {
     const { ano, mes } = req.body;
     const obra = req.body.obra ? String(req.body.obra) : null;   // sem obra = documento GERAL do mês
     if (!Number(ano) || !mes) return res.status(400).json({ erro: 'ano e mes são obrigatórios' });
-    if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
-    let arquivo_url = null, arquivo_path = null;
-    if (USING_SUPABASE) {
-      const safe = (req.file.originalname || 'doc.pdf').replace(/[^\w.\-]+/g, '_');
-      const pastaObra = obra ? String(obra).replace(/[^\w.\-]+/g, '_') : '_gerais';
-      arquivo_path = `gefip/${Number(ano)}/${mes}/${pastaObra}/${Date.now()}_${safe}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(arquivo_path, req.file.buffer, { contentType: req.file.mimetype });
-      if (upErr) throw upErr;
-      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(arquivo_path, 60 * 60 * 24 * 365);
-      arquivo_url = signed?.signedUrl || arquivo_path;
+    let arquivo_url = null, arquivo_path = null, nomeArq = req.body.nome || 'Documento';
+    if (req.body.arquivo_path) {
+      // arquivo JÁ enviado direto pro Storage (fluxo novo, sem limite de tamanho da Vercel)
+      arquivo_path = String(req.body.arquivo_path);
+      if (USING_SUPABASE) {
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(arquivo_path, 60 * 60 * 24 * 365);
+        arquivo_url = signed?.signedUrl || arquivo_path;
+      }
+    } else {
+      // fluxo antigo (arquivo pequeno via multipart)
+      if (!req.file) return res.status(400).json({ erro: 'arquivo é obrigatório' });
+      nomeArq = req.body.nome || req.file.originalname || 'Documento';
+      if (USING_SUPABASE) {
+        const safe = (req.file.originalname || 'doc.pdf').replace(/[^\w.\-]+/g, '_');
+        const pastaObra = obra ? String(obra).replace(/[^\w.\-]+/g, '_') : '_gerais';
+        arquivo_path = `gefip/${Number(ano)}/${mes}/${pastaObra}/${Date.now()}_${safe}`;
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(arquivo_path, req.file.buffer, { contentType: req.file.mimetype });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(arquivo_path, 60 * 60 * 24 * 365);
+        arquivo_url = signed?.signedUrl || arquivo_path;
+      }
     }
     res.status(201).json(await db.createGefipDoc({
       ano: Number(ano), mes: String(mes), obra,
-      nome: req.body.nome || req.file.originalname || 'Documento', arquivo_path, arquivo_url,
+      nome: nomeArq, arquivo_path, arquivo_url,
       criado_por: req.user?.email || null,
     }));
   } catch (e) { next(e); }
@@ -1634,6 +1660,7 @@ app.post('/api/sicoob/:conta/importar', requireAdmin, async (req, res) => {
 
 app.use((err, _req, res, _next) => {
   if (err && err.status) return res.status(err.status).json({ erro: err.message });
+  if (err && err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ erro: 'Arquivo muito grande (máx. 10 MB por este caminho). Use o envio direto.' });
   console.error(err);
   res.status(500).json({ erro: 'erro interno', detalhe: err.message });
 });
