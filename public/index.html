@@ -1145,7 +1145,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v168</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v169</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1829,6 +1829,31 @@
   </div>
 </div>
 
+<!-- MODAL: editar medição/nota -->
+<div class="overlay" id="ov-med-edit">
+  <div class="modal" style="max-width:520px">
+    <header><h3>Editar medição / nota</h3><button class="x" data-close>×</button></header>
+    <form id="form-med-edit">
+      <div class="body">
+        <input type="hidden" id="mede-id">
+        <div class="field"><label>Descrição / Nº nota</label><input id="mede-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
+        <div class="grid2">
+          <div class="field"><label>Valor bruto (R$)</label><input type="number" step="0.01" min="0" id="mede-valor"></div>
+          <div class="field"><label>Forma de pagamento</label><select id="mede-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Imposto (R$) <span style="color:var(--ink-3);font-weight:400">retido na nota</span></label><input type="number" step="0.01" min="0" id="mede-imposto"></div>
+          <div class="field"><label>Retenção técnica (R$)</label><input type="number" step="0.01" min="0" id="mede-retido"></div>
+        </div>
+        <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" id="mede-recebido"> Já foi recebido</label>
+        <div class="field" id="mede-recdata-wrap" style="display:none"><label>Data do recebimento</label><input type="date" id="mede-recdata"></div>
+        <div id="mede-breakdown" style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px"></div>
+      </div>
+      <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar alterações</button></footer>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: corrigir data de vencimento do documento -->
 <div class="overlay" id="ov-doc-data">
   <div class="modal" style="max-width:380px">
@@ -2168,7 +2193,7 @@
               <div class="field" style="flex:1;min-width:120px"><label>Descrição / Nº nota</label><input id="med-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
               <div class="field" style="flex:0 0 120px"><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="med-valor" placeholder="0,00"></div>
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
-              <div class="field" style="flex:0 0 150px"><label>Data do recebimento</label><input type="date" id="med-receb-data"></div>
+              <div class="field" style="flex:0 0 150px;display:none" id="med-receb-data-wrap"><label>Data do recebimento</label><input type="date" id="med-receb-data"></div>
               <div class="field" style="flex:0 0 150px"><label>Forma de pagamento</label><select id="med-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
             </div>
@@ -2501,21 +2526,28 @@
     document.getElementById('oe-insumos').textContent=brl(o.custo_insumos||0);
     document.getElementById('oe-maoobra').textContent=brl(o.custo_mao_obra||0);
     document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));
+    obraContratoAtual=o.valor_contrato||0;
     carregarMedicoes(id);
     carregarLancamentos(id);
     document.getElementById('med-data').value=isoHoje();document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    document.getElementById('med-receb-data-wrap').style.display='none';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';document.getElementById('med-imposto').value='';
     {const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}}
     medDatas=[];renderMedChips();
     openModal('ov-obra-exec');
   }
   const FORMA_LBL={PIX:'PIX',TED_DOC:'Transferência',DINHEIRO:'Dinheiro',BOLETO:'Boleto',CHEQUE:'Cheque',CARTAO:'Cartão',OUTRO:'Outro'};
+  let obraContratoAtual=0;
   async function carregarMedicoes(obraId){
     const el=document.getElementById('oe-medicoes-lista');el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Carregando…</div>';
     let r;try{r=await api('/api/financeiro/obra/'+obraId+'/medicoes');}catch(e){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Erro ao carregar.</div>';console.error(e);return;}
-    document.getElementById('oe-faturado').textContent=brl(r.resumo.faturado||0);
-    document.getElementById('oe-recebido').textContent=brl(r.resumo.recebido||0);
-    document.getElementById('oe-areceber').textContent=brl(r.resumo.a_receber||0);
+    MED_CACHE=r.medicoes||[];MED_OBRA_ID=obraId;
+    // Faturado = valor do contrato quando houver (pra abater as parcelas pagas); sem contrato, soma as notas.
+    const faturado=obraContratoAtual>0?obraContratoAtual:(r.resumo.faturado||0);
+    const recebido=r.resumo.recebido||0;
+    document.getElementById('oe-faturado').textContent=brl(faturado);
+    document.getElementById('oe-recebido').textContent=brl(recebido);
+    document.getElementById('oe-areceber').textContent=brl(faturado-recebido);
     document.getElementById('oe-retido').textContent=brl(r.resumo.retido||0);
     const notas=(r.medicoes||[]).filter(m=>!m.sem_nota);
     const recsSemNota=(r.medicoes||[]).filter(m=>m.sem_nota);
@@ -2541,7 +2573,8 @@
       <div style="display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span>${(m.recebido&&m.forma_pagamento)?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}</div>
         <b class="money">${brl(m.valor)}</b>
-        <button type="button" class="btn-ghost med-receb" data-med="${m.id}" data-recebido="${m.recebido?1:0}" data-recdata="${m.data_recebimento||''}" style="min-height:30px;font-size:11.5px;${m.recebido?'border-color:var(--ok);color:var(--ok)':''}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'Marcar recebido'}</button>
+        <span class="tag" style="font-size:9.5px;${m.recebido?'background:#DCFCE7;color:#12805c':'background:#FEF3C7;color:#92400E'}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'A receber'}</span>
+        <button type="button" class="btn-ghost med-edit" data-med="${m.id}" style="min-height:30px;font-size:11.5px;padding:4px 10px">✏️ Editar</button>
         <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
       </div>${liquidoLinha}${retidoLinha}</div>`;}).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';
     const rel=document.getElementById('oe-receb-lista');
@@ -2550,18 +2583,7 @@
         <b class="money" style="color:var(--ok)">${brl(m.valor)}</b>
         <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
       </div>`).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhum recebimento sem nota ainda.</div>';
-    el.querySelectorAll('.med-receb').forEach(b=>b.addEventListener('click',async()=>{
-      if(b.dataset.recebido==='1'){
-        // já recebido → desmarca (limpa a data)
-        try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido:false})});carregarMedicoes(obraId);}
-        catch(e){showToast('Erro');console.error(e);}
-      }else{
-        // ainda não recebido → pergunta a DATA do pagamento + forma
-        document.getElementById('medreceb-id').value=b.dataset.med;
-        document.getElementById('medreceb-data').value=b.dataset.recdata||isoHoje();
-        document.getElementById('medreceb-forma').value='';
-        openModal('ov-med-receb');
-      }}));
+    el.querySelectorAll('.med-edit').forEach(b=>b.addEventListener('click',()=>abrirMedEdit(b.dataset.med)));
     el.querySelectorAll('.med-resg').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Marcar este valor retido como resgatado (recebido)?'))return;
       try{await api('/api/financeiro/medicao/'+b.dataset.med,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({retido_resgatado:true,hoje:isoHoje()})});showToast('Retido resgatado ✓');carregarMedicoes(obraId);if(typeof atualizarBadges==='function')atualizarBadges();}
@@ -2580,6 +2602,7 @@
   }
   document.getElementById('med-recebido').addEventListener('change',e=>{
     const di=document.getElementById('med-receb-data');if(e.target.checked&&!di.value)di.value=isoHoje();
+    const wrap=document.getElementById('med-receb-data-wrap');if(wrap)wrap.style.display=e.target.checked?'':'none';
   });
   document.getElementById('med-add-dia').addEventListener('click',()=>{
     const inp=document.getElementById('med-data');const d=inp.value;if(!d){showToast('Escolha uma data');return;}
@@ -2628,7 +2651,7 @@
       imposto_valor:parseFloat(document.getElementById('med-imposto').value)||0};
     await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
-    document.getElementById('med-receb-data').value='';document.getElementById('med-forma').value='';
+    document.getElementById('med-receb-data').value='';document.getElementById('med-forma').value='';document.getElementById('med-receb-data-wrap').style.display='none';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';document.getElementById('med-imposto').value='';
     const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}
     medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
@@ -2640,6 +2663,52 @@
       if(r==='vazio'){showToast('Informe o valor da medição');return;}
       if(r==='ok'){carregarMedicoes(id);showToast('Nota/medição adicionada');}}
     catch(e){showToast('Erro ao adicionar');console.error(e);}
+  });
+  // ---- Editar medição/nota (valor, imposto, retenção, recebido) ----
+  let MED_CACHE=[], MED_OBRA_ID=null;
+  function medEditBreakdown(){
+    const v=parseFloat(document.getElementById('mede-valor').value)||0;
+    const imp=parseFloat(document.getElementById('mede-imposto').value)||0;
+    const ret=parseFloat(document.getElementById('mede-retido').value)||0;
+    const box=document.getElementById('mede-breakdown');
+    if(v<=0||(imp<=0&&ret<=0)){box.style.display='none';box.innerHTML='';return;}
+    const liq=Math.round((v-imp-ret)*100)/100;box.style.display='';
+    box.innerHTML=`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Valor bruto</span><b>${brlN(v)}</b></div>
+      ${imp>0?`<div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--danger)"><span>Imposto</span><b>− ${brlN(imp)}</b></div>`:''}
+      ${ret>0?`<div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--laranja-2)"><span>Retenção técnica</span><b>− ${brlN(ret)}</b></div>`:''}
+      <div style="display:flex;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px solid var(--line);font-size:14px"><span><b>Líquido</b></span><b style="color:#12805c">${brlN(liq)}</b></div>`;
+  }
+  function abrirMedEdit(medId){
+    const m=(MED_CACHE||[]).find(x=>String(x.id)===String(medId));if(!m){showToast('Medição não encontrada');return;}
+    document.getElementById('mede-id').value=m.id;
+    document.getElementById('mede-desc').value=m.descricao||'';
+    document.getElementById('mede-valor').value=m.valor?(m.valor/100).toFixed(2):'';
+    document.getElementById('mede-forma').value=m.forma_pagamento||'';
+    document.getElementById('mede-imposto').value=m.imposto_valor?(m.imposto_valor/100).toFixed(2):'';
+    document.getElementById('mede-retido').value=m.valor_retido?(m.valor_retido/100).toFixed(2):'';
+    document.getElementById('mede-recebido').checked=!!m.recebido;
+    document.getElementById('mede-recdata').value=m.data_recebimento||'';
+    document.getElementById('mede-recdata-wrap').style.display=m.recebido?'':'none';
+    medEditBreakdown();openModal('ov-med-edit');
+  }
+  ['mede-valor','mede-imposto','mede-retido'].forEach(id=>document.getElementById(id).addEventListener('input',medEditBreakdown));
+  document.getElementById('mede-recebido').addEventListener('change',e=>{
+    const w=document.getElementById('mede-recdata-wrap');w.style.display=e.target.checked?'':'none';
+    const di=document.getElementById('mede-recdata');if(e.target.checked&&!di.value)di.value=isoHoje();
+  });
+  document.getElementById('form-med-edit').addEventListener('submit',async e=>{
+    e.preventDefault();const medId=document.getElementById('mede-id').value;if(!medId)return;
+    const recebido=document.getElementById('mede-recebido').checked;
+    const payload={descricao:document.getElementById('mede-desc').value||null,
+      valor:parseFloat(document.getElementById('mede-valor').value)||0,
+      forma_pagamento:document.getElementById('mede-forma').value||null,
+      imposto_valor:parseFloat(document.getElementById('mede-imposto').value)||0,
+      valor_retido:parseFloat(document.getElementById('mede-retido').value)||0,
+      recebido,data_recebimento:recebido?(document.getElementById('mede-recdata').value||isoHoje()):null};
+    try{await api('/api/financeiro/medicao/'+medId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('ov-med-edit').classList.remove('open');showToast('Medição atualizada ✓');
+      if(MED_OBRA_ID)carregarMedicoes(MED_OBRA_ID);if(typeof atualizarBadges==='function')atualizarBadges();
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Erro: '+(m||'ao salvar'));console.error(err);}
   });
   // Recebimento SEM nota (PIX etc.) — seção separada
   document.getElementById('btn-add-receb').addEventListener('click',async()=>{

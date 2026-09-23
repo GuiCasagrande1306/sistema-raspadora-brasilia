@@ -1572,7 +1572,7 @@ export const db = {
     const fim = new Date(y, m, 0).toISOString().slice(0, 10);
     const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR, obrR] = await Promise.all([
-      sb('medicoes_obra').select('valor,recebido,data_recebimento,data'),
+      sb('medicoes_obra').select('valor,recebido,data_recebimento,data,forma_pagamento'),
       sb('lancamentos_diarios').select('valor,data').gte('data', ini).lte('data', fim),
       sb('boletos').select('valor,vencimento').gte('vencimento', ini).lte('vencimento', fim),
       sb('movimentacoes_caixa').select('valor,tipo,data_movimento').gte('data_movimento', ini).lte('data_movimento', fim),
@@ -1580,7 +1580,8 @@ export const db = {
       sb('lancamentos').select('valor,tipo,created_at').eq('tipo', 'entrada').gte('created_at', ini).lte('created_at', fim + 'T23:59:59'),
     ]);
     let entradas = 0, saidas = 0;
-    (medR.data || []).forEach(x => { const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += (x.valor || 0); });
+    // Entrada do mês só conta medição/nota REALIZADA: marcada como recebida OU forma de pagamento PIX.
+    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += (x.valor || 0); });
     (ldR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (boR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
@@ -1593,13 +1594,14 @@ export const db = {
   async previstosTotais() {
     if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
     const [medR, boR, ldR, movR] = await Promise.all([
-      sb('medicoes_obra').select('valor,recebido').eq('recebido', false),
+      sb('medicoes_obra').select('valor,recebido,forma_pagamento').eq('recebido', false),
       sb('boletos').select('valor,pago').eq('pago', false),
       sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
       sb('movimentacoes_caixa').select('valor,tipo,status').eq('status', 'PREVISTO'),
     ]);
     let entradas = 0, saidas = 0;
-    (medR.data || []).forEach(x => entradas += (x.valor || 0));
+    // previsto = ainda não realizado: não recebido E não é PIX (PIX conta como entrada do mês)
+    (medR.data || []).forEach(x => { if (x.forma_pagamento === 'PIX') return; entradas += (x.valor || 0); });
     (boR.data || []).forEach(x => saidas += (x.valor || 0));
     (ldR.data || []).forEach(x => saidas += (x.valor || 0));
     (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
