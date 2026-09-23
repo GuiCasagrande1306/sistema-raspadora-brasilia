@@ -1568,17 +1568,20 @@ export const db = {
     const ini = mesStr + '-01';
     const fim = new Date(y, m, 0).toISOString().slice(0, 10);
     const noMes = d => d && d >= ini && d <= fim;
-    const [medR, ldR, boR, movR] = await Promise.all([
+    const [medR, ldR, boR, movR, obrR] = await Promise.all([
       sb('medicoes_obra').select('valor,recebido,data_recebimento,data'),
       sb('lancamentos_diarios').select('valor,data').gte('data', ini).lte('data', fim),
       sb('boletos').select('valor,vencimento').gte('vencimento', ini).lte('vencimento', fim),
       sb('movimentacoes_caixa').select('valor,tipo,data_movimento').gte('data_movimento', ini).lte('data_movimento', fim),
+      // entradas lançadas direto na obra (Novo Lançamento → Entrada) — datadas por created_at
+      sb('lancamentos').select('valor,tipo,created_at').eq('tipo', 'entrada').gte('created_at', ini).lte('created_at', fim + 'T23:59:59'),
     ]);
     let entradas = 0, saidas = 0;
     (medR.data || []).forEach(x => { const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += (x.valor || 0); });
     (ldR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (boR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    (obrR.data || []).forEach(x => { entradas += (x.valor || 0); });
     return { mes: mesStr, entradas, saidas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
