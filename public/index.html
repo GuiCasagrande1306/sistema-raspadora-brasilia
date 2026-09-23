@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v177</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v178</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5537,7 +5537,7 @@
         <td><div class="vt-nome">${seta}<div class="ini" style="background:${l.is_diarista?'#2563EB':hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}${diarTag}${faltaTag}</div></td>
         <td class="num">${l.dias_trabalhados}</td><td class="num">${l.m2_processados}</td>
         <td class="num">${brl(l.diarias)}</td><td class="num">${brl(l.comissao)}</td>
-        <td class="num">${l.bonus_assiduidade?brl(l.bonus_assiduidade):'—'}</td>
+        <td class="num">${l.gratificacoes?brl(l.gratificacoes):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.vales_abatidos?'−'+brl(l.vales_abatidos):'—'}</td>
         <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):(temFaltas?'<span style="color:var(--danger)">a lançar</span>':'—')}</td>
         <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
@@ -5571,7 +5571,7 @@
       :'<tr><td colspan="10" style="text-align:center;color:var(--ink-3);padding:24px">Sem alocações (cronograma), produção, vales ou descontos no período selecionado.</td></tr>';
     document.getElementById('folha-content').innerHTML=
       `<div class="vt-wrap"><table class="vt-table"><thead><tr>
-         <th>Colaborador</th><th class="num">Dias</th><th class="num">m²</th><th class="num">Diárias</th><th class="num">Comissão</th><th class="num">Bônus</th><th class="num">Vales</th><th class="num">Faltas</th><th class="num">INSS</th><th class="num">Líquido</th>
+         <th>Colaborador</th><th class="num">Dias</th><th class="num">m²</th><th class="num">Diárias</th><th class="num">Comissão</th><th class="num">Gratificação</th><th class="num">Vales</th><th class="num">Faltas</th><th class="num">INSS</th><th class="num">Líquido</th>
        </tr></thead><tbody>${rows}</tbody></table></div>`;
     document.querySelectorAll('#folha-content [data-folharow]').forEach(tr=>tr.addEventListener('click',()=>{
       const d=document.querySelector('#folha-content [data-det="'+tr.dataset.folharow+'"]');if(!d)return;
@@ -5662,7 +5662,7 @@
       <table><tbody>
         ${lin('Diárias ('+(has(o.presenca)?o.presenca.length:0)+' dia(s))',brl(o.diarias||0))}
         ${lin('Comissão por m²',brl(o.comissao||0))}
-        ${o.bonus?lin('Bônus assiduidade',brl(o.bonus)):''}
+        ${o.bonus?lin('Gratificação',brl(o.bonus)):''}
         ${o.vales?lin('(−) Vales adiantados','− '+brl(o.vales)):''}
         ${o.faltasTotal?lin('(−) Faltas','− '+brl(o.faltasTotal)):''}
         ${o.inss?lin('(−) INSS','− '+brl(o.inss)):''}
@@ -5671,7 +5671,7 @@
       <div class="row2" style="margin-top:40px"><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Assinatura do colaborador</div><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Raspadora Brasília</div></div>
       <p style="margin-top:12px;font-size:10px;color:#777">Recebi a importância de ${brl(o.liquido||0)} referente ao período acima.</p>`;
   }
-  function linhaToRecibo(l,ref){return {nome:l.nome,ref,presenca:l.detalhe||[],faltas:l.faltas_itens||[],diarias:l.diarias,comissao:l.comissao,bonus:l.bonus_assiduidade,vales:l.vales_abatidos,faltasTotal:l.faltas,inss:l.inss,outros:l.outros_desconto,liquido:l.total_liquido};}
+  function linhaToRecibo(l,ref){return {nome:l.nome,ref,presenca:l.detalhe||[],faltas:l.faltas_itens||[],diarias:l.diarias,comissao:l.comissao,bonus:((l.gratificacoes||0)-(l.gratificacoes_pagas||0)),vales:l.vales_abatidos,faltasTotal:l.faltas,inss:l.inss,outros:l.outros_desconto,liquido:l.total_liquido};}
   function folhaPrintTodos(folha){
     if(!folha||!folha.colaboradores.length){showToast('Nada para imprimir');return;}
     const p=folha.periodo||{};const ref='Período '+(p.desde?dtBR(p.desde):'')+' a '+(p.ate?dtBR(p.ate):'');

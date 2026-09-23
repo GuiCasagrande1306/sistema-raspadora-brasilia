@@ -1802,7 +1802,7 @@ export const db = {
     const obraNome = Object.fromEntries((obrasF || []).map(o => [o.id, o.cliente]));
     const apObra = Object.fromEntries((apds || []).map(a => [a.id, obraNome[a.obra_id] || null]));
     const porColab = {};
-    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, comissaoProd: 0, m2SemRate: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
+    for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, comissaoProd: 0, m2SemRate: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, gratificacoes: 0, gratifPagas: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
     for (const r of (apeq || [])) {
       const p = porColab[r.colaborador_id]; if (!p) continue;
       p.dias.add(r.data);
@@ -1828,7 +1828,10 @@ export const db = {
       const p = porColab[a.colaborador_id]; if (!p) continue;
       const ehGratif = /GRATIFICA/i.test(a.funcao || '');
       const gratifPaga = ehGratif && !!a.gratificacao_paga;
-      if (!gratifPaga) p.cronDiarias += (a.valor_diaria || 0);   // gratificação já paga à parte sai do total da folha
+      // gratificação vai pra coluna Gratificação (não pra Diárias). Mostra TODAS (pagas + a pagar);
+      // as já pagas à parte (caixa) ficam separadas p/ não somar de novo no líquido.
+      if (ehGratif) { p.gratificacoes += (a.valor_diaria || 0); if (gratifPaga) p.gratifPagas += (a.valor_diaria || 0); }
+      else p.cronDiarias += (a.valor_diaria || 0);
       p.cronDias.add(a.data);
       p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga });
     }
@@ -1839,14 +1842,16 @@ export const db = {
       const diarias = temCron ? p.cronDiarias : (p.dias.size * (p.valor_diaria || 0));
       // comissão de produção: taxa do acabamento (vassourado/polido) × m²; apontamentos antigos sem taxa caem no comissao_por_m2 do colaborador
       const comissao = p.comissaoProd + Math.round(p.m2SemRate * (p.comissao_por_m2 || 0));
-      const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade)
-      const bruto = diarias + comissao + bonus_assiduidade;
+      const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade) — somado à coluna Gratificação
+      const gratificacoes = p.gratificacoes + bonus_assiduidade;   // coluna "Gratificação" (todas do período)
+      // no total só entra o que ainda NÃO foi pago à parte (as pagas já saíram pelo caixa)
+      const bruto = diarias + comissao + (gratificacoes - p.gratifPagas);
       const total_liquido = bruto - p.vales - p.faltas - p.inss - p.outros_desc;
       return {
         colaborador_id: p.id, nome: p.nome, cargo: p.cargo, is_diarista: !!p.is_diarista,
         dias_trabalhados: dias, m2_processados: Math.round(p.m2 * 100) / 100,
         origem_diaria: temCron ? 'cronograma' : 'apontamento',
-        diarias, comissao, bonus_assiduidade, vales_abatidos: p.vales,
+        diarias, comissao, gratificacoes, gratificacoes_pagas: p.gratifPagas, bonus_assiduidade, vales_abatidos: p.vales,
         faltas: p.faltas, inss: p.inss, outros_desconto: p.outros_desc, total_liquido,
         faltas_itens: p.faltas_itens.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
         lancamentos: p.lancamentos.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
@@ -1865,6 +1870,7 @@ export const db = {
       diarias: linhas.reduce((s, l) => s + l.diarias, 0),
       vales: linhas.reduce((s, l) => s + l.vales_abatidos, 0),
       bonus: linhas.reduce((s, l) => s + l.bonus_assiduidade, 0),
+      gratificacoes: linhas.reduce((s, l) => s + (l.gratificacoes || 0), 0),
       faltas: linhas.reduce((s, l) => s + l.faltas, 0),
       inss: linhas.reduce((s, l) => s + l.inss, 0),
     };
