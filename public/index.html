@@ -1147,7 +1147,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v173</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v174</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1525,6 +1525,19 @@
       <div id="gcat-conteudo" style="overflow-x:auto"></div>
     </div>
     <footer><button type="button" class="btn-ghost" id="gcat-pdf">🖨️ Relatório desta categoria (PDF)</button><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
+  </div>
+</div>
+
+<!-- MODAL: Cronograma de serviços da obra -->
+<div class="overlay" id="ov-obra-cron">
+  <div class="modal" style="max-width:860px;width:96vw">
+    <header><h3 id="ocron-titulo">Cronograma de serviços</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div id="ocron-cards" class="fb-counts" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px"></div>
+      <div id="ocron-dias"></div>
+      <div id="ocron-conteudo" style="overflow-x:auto"></div>
+    </div>
+    <footer><button type="button" class="btn-ghost" id="ocron-pdf">🖨️ Exportar cronograma (PDF)</button><button type="button" class="btn-ghost" data-close>Fechar</button></footer>
   </div>
 </div>
 
@@ -2178,7 +2191,7 @@
         </div>
 
         <div class="orc-block" style="margin-top:12px">
-          <div class="orc-block-head"><span class="orc-marca">FATURAMENTO — MEDIÇÕES / NOTAS RECEBIDAS</span></div>
+          <div class="orc-block-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="orc-marca">FATURAMENTO — MEDIÇÕES / NOTAS RECEBIDAS</span><button type="button" class="btn-ghost" id="oe-cronograma" style="min-height:32px;font-size:12px;padding:4px 12px">📅 Cronograma de serviços</button></div>
           <div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:8px">Sem contrato fechado? Acrescente cada medição/nota conforme recebem — o sistema soma o faturado e o recebido.</div>
           <div class="fb-counts" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
             <div class="fb-count"><b class="money" id="oe-faturado">—</b><span>Faturado</span></div>
@@ -2755,6 +2768,59 @@
     const sel=document.getElementById('lanc-obra');if(sel)sel.value=id;
   });
   document.getElementById('oe-dre').addEventListener('click',()=>{const id=document.getElementById('oe-id').value;abrirDre&&abrirDre(id);});
+  // ---- Cronograma de serviços da obra (linha do tempo de medições: passado e futuro) ----
+  let OCRON_STATE=null;
+  document.getElementById('oe-cronograma').addEventListener('click',()=>{const id=document.getElementById('oe-id').value;if(id)abrirObraCronograma(id);});
+  async function abrirObraCronograma(id){
+    document.getElementById('ocron-titulo').textContent='Cronograma de serviços';
+    document.getElementById('ocron-cards').innerHTML='';document.getElementById('ocron-dias').innerHTML='';
+    document.getElementById('ocron-conteudo').innerHTML='<div class="dv" style="padding:12px;color:var(--ink-3)">Carregando…</div>';
+    openModal('ov-obra-cron');
+    let o={},r={medicoes:[],resumo:{}};
+    try{[o,r]=await Promise.all([api('/api/financeiro/obra/'+id),api('/api/financeiro/obra/'+id+'/medicoes')]);}
+    catch(e){document.getElementById('ocron-conteudo').innerHTML='<div class="orc-empty">Erro ao carregar.</div>';console.error(e);return;}
+    document.getElementById('ocron-titulo').textContent='Cronograma — '+(o.cliente||'');
+    const contrato=o.valor_contrato||0;
+    const faturado=contrato>0?contrato:(r.resumo.faturado||0);
+    const recebido=r.resumo.recebido||0, retido=r.resumo.retido||0;
+    document.getElementById('ocron-cards').innerHTML=`
+      <div class="fb-count"><b class="money">${brl(faturado)}</b><span>${contrato>0?'Contrato':'Faturado'}</span></div>
+      <div class="fb-count"><b class="money" style="color:#12805c">${brl(recebido)}</b><span>Recebido</span></div>
+      <div class="fb-count"><b class="money">${brl(faturado-recebido)}</b><span>A receber</span></div>
+      <div class="fb-count"><b class="money" style="color:var(--laranja-2)">${brl(retido)}</b><span>Retido a resgatar</span></div>`;
+    // dias de serviço (agenda operacional) da obra
+    const dias=(Array.isArray(o.dias_servico)?o.dias_servico:[]).slice().sort();
+    document.getElementById('ocron-dias').innerHTML=dias.length?`<div style="margin-bottom:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:5px">Dias de serviço programados (${dias.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px">${dias.map(d=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px;${d<isoHoje()?'opacity:.55':''}">${dtBR(d)}</span>`).join('')}</div></div>`:'';
+    // linha do tempo das medições/notas (ordenadas por data)
+    const meds=(r.medicoes||[]).slice().map(m=>{
+      const ds=((m.datas&&m.datas.length)?m.datas:(m.data?[m.data]:[])).slice().sort();
+      const dref=m.recebido?(m.data_recebimento||ds[0]||m.data):(ds[0]||m.data||'');
+      return {...m, _ds:ds, _dref:dref||''};
+    }).sort((a,b)=>String(a._dref).localeCompare(String(b._dref)));
+    OCRON_STATE={cliente:o.cliente,contrato:faturado,recebido,retido,meds};
+    if(!meds.length){document.getElementById('ocron-conteudo').innerHTML='<div class="orc-empty">Nenhuma medição/nota lançada ainda. Adicione no bloco de faturamento da obra.</div>';return;}
+    const hoje=isoHoje();
+    const rows=meds.map(m=>{
+      const ds=m._ds;
+      const dLabel=ds.length>1?`${dtBR(ds[0])} → ${dtBR(ds[ds.length-1])}`:(ds.length?dtBR(ds[0]):(m.data?dtBR(m.data):'—'));
+      const liq=(m.valor||0)-(m.valor_retido||0)-(m.imposto_valor||0);
+      const futuro=!m.recebido && m._dref && m._dref>hoje;
+      const status=m.recebido?`<span class="tag" style="font-size:9px;background:#DCFCE7;color:#12805c">✓ Recebido${m.data_recebimento?' '+dtBR(m.data_recebimento):''}</span>${m.forma_pagamento?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}`:`<span class="tag" style="font-size:9px;background:#FEF3C7;color:#92400E">${futuro?'Previsto':'A receber'}</span>`;
+      return `<tr${futuro?' style="background:rgba(37,99,235,.04)"':''}><td style="white-space:nowrap">${dLabel}</td><td>${esc(m.descricao||(m.sem_nota?'Recebimento':'Medição'))}</td>
+        <td style="text-align:right;white-space:nowrap">${brl(m.valor||0)}</td>
+        <td style="text-align:right;white-space:nowrap;color:var(--danger)">${m.imposto_valor?'−'+brl(m.imposto_valor):'—'}</td>
+        <td style="text-align:right;white-space:nowrap;color:var(--laranja-2)">${m.valor_retido?'−'+brl(m.valor_retido):'—'}</td>
+        <td style="text-align:right;white-space:nowrap;font-weight:700;color:#12805c">${brl(liq)}</td>
+        <td style="white-space:nowrap">${status}</td></tr>`;
+    }).join('');
+    document.getElementById('ocron-conteudo').innerHTML=`<table class="ltable" style="min-width:720px"><thead><tr><th>Data</th><th>Descrição / Nota</th><th style="text-align:right">Bruto</th><th style="text-align:right">Imposto</th><th style="text-align:right">Retenção</th><th style="text-align:right">Líquido</th><th>Recebimento</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  document.getElementById('ocron-pdf').addEventListener('click',()=>{
+    const g=OCRON_STATE;if(!g||!g.meds.length){showToast('Abra um cronograma primeiro');return;}
+    const rows=g.meds.map(m=>{const ds=m._ds;const dLabel=ds.length>1?`${dtBR(ds[0])} a ${dtBR(ds[ds.length-1])}`:(ds.length?dtBR(ds[0]):(m.data?dtBR(m.data):'—'));const liq=(m.valor||0)-(m.valor_retido||0)-(m.imposto_valor||0);
+      return `<tr><td>${dLabel}</td><td>${esc(m.descricao||'Medição')}</td><td class="r">${brl(m.valor||0)}</td><td class="r">${m.imposto_valor?'-'+brl(m.imposto_valor):'—'}</td><td class="r">${m.valor_retido?'-'+brl(m.valor_retido):'—'}</td><td class="r">${brl(liq)}</td><td class="c">${m.recebido?('Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'A receber'}</td></tr>`;}).join('');
+    finPrint('Cronograma — '+g.cliente,`<h1>Cronograma de serviços — ${esc(g.cliente)}</h1><p class="sub">Contrato/Faturado ${brl(g.contrato)} · Recebido ${brl(g.recebido)} · A receber ${brl(g.contrato-g.recebido)} · Retido ${brl(g.retido)}</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Bruto</th><th>Imposto</th><th>Retenção</th><th>Líquido</th><th>Situação</th></tr></thead><tbody>${rows}</tbody></table>`);
+  });
   // ---- Lançamentos da obra: listar, editar, excluir ----
   const catLancLbl=(tipo,v)=>{const it=(CATS[tipo]||[]).find(x=>x[0]===v);return it?it[1]:(v||'—');};
   async function carregarLancamentos(obraId){
