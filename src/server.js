@@ -581,6 +581,8 @@ const cents = (v) => Math.round((Number(v) || 0) * 100);
 const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'VALE', 'OUTRO'];
 const FORMAS_PAG = ['PIX', 'TED_DOC', 'DINHEIRO', 'BOLETO', 'CHEQUE', 'CARTAO', 'OUTRO'];
 const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
+// Administrativo (não vai a campo): fora do Cronograma Diário e do Vale-Transporte
+const isAdminCargo = cg => /ADMINISTR|ESCRIT|FINANC|GERENT|\bRH\b|SECRET/i.test(String(cg || ''));
 const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
@@ -786,7 +788,7 @@ app.get('/api/cronograma', async (req, res, next) => {
       .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null, cor: o.cor || null }));
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
-      .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO')
+      .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO' && !isAdminCargo(c.cargo))   // administrativo não vai pro cronograma
       .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo, is_diarista: c.is_diarista || false }))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor, observacao: f.observacao || null }));
