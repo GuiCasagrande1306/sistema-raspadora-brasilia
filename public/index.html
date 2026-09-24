@@ -325,6 +325,13 @@
   .vt-table tbody tr:hover{background:var(--surface-2);}
   .vt-table .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
   .vt-table .money{color:var(--laranja-esc);font-weight:800;}
+  /* Folha tem 10 colunas + detalhe: mais compacta pra caber sem cortar (rola na horizontal se precisar) */
+  #folha-content .vt-table{font-size:12px;}
+  #folha-content .vt-table thead th{padding:9px 8px;font-size:10px;letter-spacing:.02em;white-space:nowrap;}
+  #folha-content .vt-table td{padding:8px 8px;}
+  #folha-content .vt-table .num{padding-left:6px;padding-right:6px;}
+  #folha-content .vt-nome{gap:7px;}
+  #folha-content .vt-nome .ini{width:26px;height:26px;font-size:10px;flex:none;}
   .vt-nome{display:flex;align-items:center;gap:10px;}
   .vt-nome .ini{width:32px;height:32px;border-radius:9px;font-size:12px;}
   .vt-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--laranja-100);color:var(--laranja-esc);}
@@ -1147,7 +1154,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v179</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v180</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5542,7 +5549,7 @@
         <td class="num" style="color:var(--danger)">${l.faltas?'−'+brl(l.faltas):(temFaltas?'<span style="color:var(--danger)">a lançar</span>':'—')}</td>
         <td class="num" style="color:var(--danger)">${l.inss?'−'+brl(l.inss):'—'}</td>
         ${liqCell}</tr>`;
-      const diariasBlock=temDet?`<div style="padding:8px 18px"><div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn-ghost" data-recibofolha="${idx}" style="padding:4px 12px;font-size:12px">🖨️ Exportar PDF deste colaborador</button></div><table style="width:100%;font-size:12px;border-collapse:collapse">
+      const diariasBlock=temDet?`<div style="padding:8px 10px"><div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn-ghost" data-recibofolha="${idx}" style="padding:4px 12px;font-size:12px">🖨️ Exportar PDF deste colaborador</button></div><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th><th style="text-align:right;padding:4px">Gratificação</th></tr></thead>
         <tbody>${l.detalhe.map(d=>{
           const gratifCell=d.is_gratificacao
@@ -5554,7 +5561,7 @@
           return `<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}</td></tr>`;
         }).join('')}</tbody></table></div>`:'';
       const TIPO_LBL={VALE:'Vale',ADIANTAMENTO_VALE:'Vale',REEMBOLSO_COMBUSTIVEL:'Reembolso',BONUS_METRAGEM:'Bônus',FALTA:'Falta',INSS:'INSS',OUTRO:'Outro desconto'};
-      const lancBlock=temLanc?`<div style="padding:8px 18px 12px">
+      const lancBlock=temLanc?`<div style="padding:8px 10px 12px">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:4px">Lançamentos do período — vales e descontos</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse"><tbody>${l.lancamentos.map(x=>{
           const isFalta=x.origem==='desconto'&&x.tipo==='FALTA';const semValor=isFalta&&!x.valor;
