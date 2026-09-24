@@ -1835,6 +1835,14 @@ export const db = {
       p.cronDias.add(a.data);
       p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga });
     }
+    // dedup: a linha da produção (m²) SUBSTITUI a alocação vazia do cronograma no mesmo dia+obra
+    // (pedreiro entra no cronograma sem valor porque é pago por m² — evita duplicar)
+    const _normObra = s => String(s || '').trim().toLowerCase();
+    for (const p of Object.values(porColab)) {
+      const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(d => d.data + '|' + _normObra(d.obra)));
+      if (!prodKeys.size) continue;
+      p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(d.data + '|' + _normObra(d.obra)));
+    }
     const linhas = Object.values(porColab).map(p => {
       const temCron = p.cronDias.size > 0;
       // Diárias: preferir o Cronograma; se não houver alocação, cai no antigo (dias de apontamento × diária base)
