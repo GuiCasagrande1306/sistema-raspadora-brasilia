@@ -1597,11 +1597,13 @@ export const db = {
   // Saídas: boletos não pagos + lançamentos diários não pagos + movimentações PREVISTO SAIDA.
   async previstosTotais() {
     if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
-    const [medR, boR, ldR, movR] = await Promise.all([
+    const [medR, boR, ldR, movR, obrEntR] = await Promise.all([
       sb('medicoes_obra').select('valor,recebido,forma_pagamento').eq('recebido', false),
       sb('boletos').select('valor,pago').eq('pago', false),
       sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
       sb('movimentacoes_caixa').select('valor,tipo,status').eq('status', 'PREVISTO'),
+      // entradas já lançadas direto na obra (dinheiro que JÁ entrou) — abatem do "a receber"
+      sb('lancamentos').select('valor,tipo').eq('tipo', 'entrada'),
     ]);
     let entradas = 0, saidas = 0;
     // previsto = ainda não realizado: não recebido E não é PIX (PIX conta como entrada do mês)
@@ -1609,6 +1611,9 @@ export const db = {
     (boR.data || []).forEach(x => saidas += (x.valor || 0));
     (ldR.data || []).forEach(x => saidas += (x.valor || 0));
     (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    // já entrou → deixa de ser previsto: abate as entradas realizadas lançadas nas obras
+    const jaEntrou = (obrEntR.data || []).reduce((s, x) => s + (x.valor || 0), 0);
+    entradas = Math.max(0, entradas - jaEntrou);
     return { entradas, saidas };
   },
   // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos
