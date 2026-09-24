@@ -1783,6 +1783,54 @@ export const db = {
     }
     return { ...ap, m2_por_colaborador: rateio, valor_m2: valorM2, equipe: equipe.length };
   },
+  // Detalhe de um apontamento (p/ editar): obra, data, metragem, taxa e equipe
+  async getApontamento(id) {
+    if (!USING_SUPABASE) return null;
+    const { data: ap } = await sb('apontamentos_diarios').select('*').eq('id', id).maybeSingle();
+    if (!ap) return null;
+    const { data: eq } = await sb('apontamento_equipe').select('colaborador_id,valor_m2').eq('apontamento_id', id);
+    return {
+      id: ap.id, obra_id: ap.obra_id, data: ap.data, metragem_dia_m2: ap.metragem_dia_m2,
+      observacoes_tecnicas: ap.observacoes_tecnicas || null,
+      valor_m2: (eq && eq[0] && eq[0].valor_m2) || 0,
+      equipe_ids: (eq || []).map(r => r.colaborador_id),
+    };
+  },
+  async deleteApontamento(id) {
+    if (!USING_SUPABASE) return { ok: true };
+    await sb('apontamento_equipe').delete().eq('apontamento_id', id);
+    const { error } = await sb('apontamentos_diarios').delete().eq('id', id);
+    if (error) throw error;
+    return { ok: true };
+  },
+  // Edita um apontamento: atualiza a nota e refaz o rateio da equipe
+  async updateApontamento(id, a) {
+    if (!USING_SUPABASE) return { id, ...a };
+    const equipe = Array.isArray(a.equipe_ids) ? a.equipe_ids.filter(Boolean) : [];
+    if (a.obra_id && equipe.length) {
+      const val = await this.validarAlocacao(equipe, a.obra_id);
+      if (!val.ok) { const e = new Error(val.erro); e.status = 422; throw e; }
+    }
+    const patch = {};
+    if (a.obra_id !== undefined) patch.obra_id = a.obra_id;
+    if (a.data !== undefined) patch.data = a.data;
+    if (a.metragem_dia_m2 !== undefined) patch.metragem_dia_m2 = a.metragem_dia_m2;
+    if (a.observacoes_tecnicas !== undefined) patch.observacoes_tecnicas = a.observacoes_tecnicas || null;
+    const { data: ap, error } = await sb('apontamentos_diarios').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    // refaz a equipe/rateio
+    await sb('apontamento_equipe').delete().eq('apontamento_id', id);
+    const metr = a.metragem_dia_m2 != null ? a.metragem_dia_m2 : ap.metragem_dia_m2;
+    const rateio = equipe.length ? Math.round((metr / equipe.length) * 100) / 100 : 0;
+    const valorM2 = Number(a.valor_m2) || 0;
+    if (equipe.length) {
+      const rows = equipe.map(cid => ({ apontamento_id: id, colaborador_id: cid, m2_rateado: rateio, data: ap.data, valor_m2: valorM2 || null }));
+      let { error: e2 } = await sb('apontamento_equipe').insert(rows);
+      if (e2 && _missingCol(e2) === 'valor_m2') ({ error: e2 } = await sb('apontamento_equipe').insert(rows.map(({ valor_m2, ...r }) => r)));
+      if (e2) throw e2;
+    }
+    return { ...ap, m2_por_colaborador: rateio, valor_m2: valorM2, equipe: equipe.length };
+  },
   // Fechamento de folha no período [desde, ate]
   async fecharFolha(desde, ate) {
     if (!USING_SUPABASE) return { colaboradores: [], totais: {} };
@@ -1810,7 +1858,7 @@ export const db = {
       const rate = r.valor_m2 ? Number(r.valor_m2) : (p.comissao_por_m2 || 0);
       if (r.valor_m2) p.comissaoProd += Math.round(m * Number(r.valor_m2)); else p.m2SemRate += m;
       // linha de produção no detalhe: mostra por dia/obra o valor que o pedreiro ganha pelo m²
-      p.detalhe.push({ id: 'ap-' + r.id, data: r.data, obra: apObra[r.apontamento_id] || '—', funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
+      p.detalhe.push({ id: 'ap-' + r.id, apontamento_id: r.apontamento_id, data: r.data, obra: apObra[r.apontamento_id] || '—', funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
     }
     for (const v of (vales || [])) {
       const p = porColab[v.colaborador_id]; if (!p) continue;

@@ -1294,7 +1294,23 @@ app.post('/api/dp/apontamento', async (req, res, next) => {
     if (!obra_id || !(Number(metragem_dia_m2) > 0)) return res.status(400).json({ erro: 'obra_id e metragem_dia_m2 (>0) são obrigatórios' });
     if (!Array.isArray(equipe_ids) || !equipe_ids.length) return res.status(400).json({ erro: 'equipe_ids deve ter ao menos 1 colaborador' });
     res.status(201).json(await db.criarApontamento({ obra_id, metragem_dia_m2: Number(metragem_dia_m2), equipe_ids, data: req.body.data, observacoes_tecnicas: req.body.observacoes_tecnicas, valor_m2: Math.round((Number(req.body.valor_m2) || 0) * 100) }));
-  } catch (e) { next(e); }
+  } catch (e) { if (e.status) return res.status(e.status).json({ erro: e.message }); next(e); }
+});
+app.get('/api/dp/apontamento/:id', async (req, res, next) => {
+  try { const a = await db.getApontamento(req.params.id); if (!a) return res.status(404).json({ erro: 'apontamento não encontrado' }); res.json(a); }
+  catch (e) { next(e); }
+});
+app.patch('/api/dp/apontamento/:id', async (req, res, next) => {
+  try {
+    const { obra_id, metragem_dia_m2, equipe_ids } = req.body;
+    if (!obra_id || !(Number(metragem_dia_m2) > 0)) return res.status(400).json({ erro: 'obra_id e metragem_dia_m2 (>0) são obrigatórios' });
+    if (!Array.isArray(equipe_ids) || !equipe_ids.length) return res.status(400).json({ erro: 'equipe_ids deve ter ao menos 1 colaborador' });
+    res.json(await db.updateApontamento(req.params.id, { obra_id, metragem_dia_m2: Number(metragem_dia_m2), equipe_ids, data: req.body.data, observacoes_tecnicas: req.body.observacoes_tecnicas, valor_m2: Math.round((Number(req.body.valor_m2) || 0) * 100) }));
+  } catch (e) { if (e.status) return res.status(e.status).json({ erro: e.message }); next(e); }
+});
+app.delete('/api/dp/apontamento/:id', async (req, res, next) => {
+  try { res.json(await db.deleteApontamento(req.params.id)); }
+  catch (e) { next(e); }
 });
 
 // DP — Vale/adiantamento (debita a Caixinha PIX; pendente de abate na folha)
