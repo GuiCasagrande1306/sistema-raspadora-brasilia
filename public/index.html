@@ -1154,7 +1154,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v185</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v186</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1824,11 +1824,23 @@
           </div>
           <div id="apont-valor-prod" style="margin-top:6px;font-size:12.5px;color:var(--ink-2)"></div>
         </div>
-        <div class="field"><label>Equipe alocada — só pedreiros (rateio automático do m²)</label><div id="apont-equipe" class="apont-equipe"></div></div>
+        <div class="field"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">Equipe alocada — só pedreiros (rateio automático do m²)<button type="button" class="btn-ghost" id="apont-editar-peds" style="min-height:26px;padding:2px 10px;font-size:11px;font-weight:600">⚙ Editar pedreiros</button></label><div id="apont-equipe" class="apont-equipe"></div></div>
         <div class="field"><label>Observações técnicas</label><input name="observacoes_tecnicas" placeholder="Ex: calafetagem concluída, 1ª demão"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Registrar apontamento</button></footer>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: gerenciar quem é pedreiro de produção -->
+<div class="overlay" id="ov-pedreiros-prod">
+  <div class="modal" style="max-width:460px">
+    <header><h3>Pedreiros de produção</h3><button class="x" data-close>×</button></header>
+    <div class="body">
+      <div class="login-hint" style="text-align:left">Marque quem entra no rateio do m² (Apontar produção). Não muda o cargo nem o pagamento de ninguém — só define quem aparece nessa tela.</div>
+      <div id="peds-prod-lista" style="display:flex;flex-direction:column;gap:2px;margin-top:8px"></div>
+    </div>
+    <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="button" class="primary" id="peds-prod-salvar">Salvar</button></footer>
   </div>
 </div>
 
@@ -5780,7 +5792,31 @@
   });
 
   // ---- Apontamento ----
-  let apontEditId=null;
+  let apontEditId=null, PEDREIROS_PROD=null;
+  // Gerenciar quem é pedreiro de produção (aparece no Apontar produção)
+  document.getElementById('apont-editar-peds').addEventListener('click',async()=>{
+    if(!COLABS_NOMES){try{COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}catch{COLABS_NOMES=[];}}
+    if(!PEDREIROS_PROD){try{PEDREIROS_PROD=new Set((await api('/api/dp/pedreiros-producao')).ids||[]);}catch{PEDREIROS_PROD=new Set();}}
+    const fichados=ordNome((COLABS_NOMES||[]).filter(c=>!c.is_diarista));
+    document.getElementById('peds-prod-lista').innerHTML=fichados.map(c=>`<label class="docs-toggle" style="justify-content:flex-start;gap:8px"><input type="checkbox" class="pp-chk" value="${c.id}"${PEDREIROS_PROD.has(c.id)?' checked':''}> ${esc(c.nome)}${c.cargo?` <span style="color:var(--ink-3);font-size:11px">(${esc(c.cargo)})</span>`:''}</label>`).join('')||'<div class="dv" style="color:var(--ink-3)">Nenhum colaborador fichado.</div>';
+    openModal('ov-pedreiros-prod');
+  });
+  document.getElementById('peds-prod-salvar').addEventListener('click',async()=>{
+    const ids=[...document.querySelectorAll('#peds-prod-lista .pp-chk:checked')].map(c=>c.value);
+    try{await api('/api/dp/pedreiros-producao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});
+      PEDREIROS_PROD=new Set(ids);document.getElementById('ov-pedreiros-prod').classList.remove('open');showToast('Lista de pedreiros salva ✓');
+      // re-renderiza a equipe do apontamento SEM perder o que já foi preenchido
+      if(document.getElementById('ov-apont').classList.contains('open')){
+        const jaSel=new Set([...document.querySelectorAll('#apont-equipe .apont-chip.on')].map(c=>c.dataset.cid));
+        const fichados=(COLABS_NOMES||[]).filter(c=>!c.is_diarista);
+        const lista=PEDREIROS_PROD.size?fichados.filter(c=>PEDREIROS_PROD.has(c.id)):fichados;
+        const eqEl=document.getElementById('apont-equipe');
+        eqEl.innerHTML=lista.map(c=>`<span class="apont-chip${jaSel.has(c.id)?' on':''}" data-cid="${c.id}">${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3);font-size:12px">Nenhum pedreiro.</span>';
+        eqEl.querySelectorAll('.apont-chip').forEach(ch=>ch.addEventListener('click',()=>{ch.classList.toggle('on');apontValorProd();}));
+        apontValorProd();
+      }
+    }catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Erro ao salvar: '+(m||''));console.error(e);}
+  });
   async function abrirApont(pre){
     apontEditId=(pre&&pre.id)||null;
     const {colunas}=await api('/api/financeiro/obras');const obras=Object.values(colunas).flat();
@@ -5788,10 +5824,12 @@
     document.querySelector('#form-apont [name=data]').value=(pre&&pre.data)||isoHoje();
     document.getElementById('apont-metragem').value=pre&&pre.metragem_dia_m2!=null?pre.metragem_dia_m2:'';
     if(!COLABS_NOMES){try{COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}catch{COLABS_NOMES=[];}}
-    // só pedreiros FICHADOS (sem diaristas); fallback: todos os fichados se não vier o cargo
+    if(!PEDREIROS_PROD){try{PEDREIROS_PROD=new Set((await api('/api/dp/pedreiros-producao')).ids||[]);}catch{PEDREIROS_PROD=new Set();}}
     const fichados=(COLABS_NOMES||[]).filter(c=>!c.is_diarista);
-    const peds=fichados.filter(c=>(c.cargo||'').toUpperCase()==='PEDREIRO');
-    const lista=peds.length?peds:fichados;
+    // lista gerenciável de pedreiros de produção; se ninguém definido, cai no cargo=PEDREIRO fichado
+    let lista;
+    if(PEDREIROS_PROD.size)lista=fichados.filter(c=>PEDREIROS_PROD.has(c.id));
+    else{const peds=fichados.filter(c=>(c.cargo||'').toUpperCase()==='PEDREIRO');lista=peds.length?peds:fichados;}
     const sel=new Set((pre&&pre.equipe_ids)||[]);
     document.getElementById('apont-equipe').innerHTML=lista.map(c=>`<span class="apont-chip${sel.has(c.id)?' on':''}" data-cid="${c.id}">${esc(c.nome)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3);font-size:12px">Nenhum pedreiro cadastrado.</span>';
     document.querySelectorAll('#apont-equipe .apont-chip').forEach(ch=>ch.addEventListener('click',()=>{ch.classList.toggle('on');apontValorProd();}));

@@ -78,6 +78,7 @@ app.use('/api/orcamentos', requireAuth);         // orçamentos & medições (op
 app.use('/api/perfil', requireAuth);             // cada usuário edita o próprio perfil
 // Gestão v2
 app.use('/api/dp/apontamento', requireAuth);     // apontamento de campo (equipe)
+app.use('/api/dp/pedreiros-producao', requireAuth);   // lista de quem aparece no Apontar produção
 app.use('/api/dp/vale', requireAdmin);           // vale debita caixa — controle admin
 app.use('/api/dp/desconto', requireAdmin);       // falta / INSS / outros descontos na folha
 app.use('/api/dp/folha-fechamento', requireAdmin);
@@ -1310,6 +1311,15 @@ app.patch('/api/dp/apontamento/:id', async (req, res, next) => {
 });
 app.delete('/api/dp/apontamento/:id', async (req, res, next) => {
   try { res.json(await db.deleteApontamento(req.params.id)); }
+  catch (e) { next(e); }
+});
+// Pedreiros que aparecem no "Apontar produção" (lista gerenciável, sem mexer no cargo/pagamento)
+app.get('/api/dp/pedreiros-producao', async (_req, res, next) => {
+  try { const cfg = await db.getConfig('pedreiros_producao'); res.json({ ids: (cfg && Array.isArray(cfg.ids)) ? cfg.ids : [] }); }
+  catch (e) { next(e); }
+});
+app.post('/api/dp/pedreiros-producao', async (req, res, next) => {
+  try { const ids = Array.isArray(req.body.ids) ? req.body.ids.filter(Boolean) : []; await db.setConfig('pedreiros_producao', { ids }); res.json({ ok: true, ids }); }
   catch (e) { next(e); }
 });
 
