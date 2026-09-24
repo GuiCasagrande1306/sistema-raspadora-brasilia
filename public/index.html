@@ -1154,7 +1154,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v183</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v184</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4924,7 +4924,7 @@
 
   let BANCOS_STATE=null;
   async function loadBancosData(){
-    const [saldos,fluxo,previstos,mes,prevTot]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30&hoje='+isoHoje()),api('/api/fluxo-caixa/previstos').catch(()=>[]),api('/api/fluxo-caixa/mes').catch(()=>({entradas:0,saidas:0})),api('/api/fluxo-caixa/previstos-totais').catch(()=>({entradas:0,saidas:0}))]);
+    const [saldos,fluxo,previstos,mes,prevTot]=await Promise.all([api('/api/bancos/saldos'),api('/api/fluxo-caixa/projetado?dias=30&hoje='+isoHoje()),api('/api/fluxo-caixa/previstos').catch(()=>[]),api('/api/fluxo-caixa/mes?hoje='+isoHoje()).catch(()=>({entradas:0,saidas:0})),api('/api/fluxo-caixa/previstos-totais?hoje='+isoHoje()).catch(()=>({entradas:0,saidas:0}))]);
     BANCOS_STATE={saldos,fluxo,previstos,mes,prevTot};
     document.getElementById('bancos-ent-mes').textContent=brl(mes.entradas||0);
     document.getElementById('bancos-sai-mes').textContent=brl(mes.saidas||0);
@@ -4948,17 +4948,22 @@
       :'<div class="fluxo-empty">Sem movimentações previstas nos próximos 30 dias.<br>Lançamentos com status PREVISTO aparecem aqui como projeção.</div>';
     const prevList=previstos&&previstos.length?previstos:[];
     const prevTag=p=>{const c=(p.categoria&&p.categoria!=='PREVISAO_MANUAL')?(CAT_LABEL[p.categoria]||MOV_CAT_LABEL[p.categoria]||p.categoria):'';const fm=p.forma_pagamento?(FORMA_LBL[p.forma_pagamento]||p.forma_pagamento):'';return [c,fm].filter(Boolean).map(t=>`<span class="tag" style="font-size:9px;background:#eef1f5;color:#555;margin-left:6px">${esc(t)}</span>`).join('');};
-    const prevRows2=prevList.length?prevList.map(p=>`<div class="fluxo-row" style="grid-template-columns:64px 1fr auto 62px">
+    const prevRow=p=>`<div class="fluxo-row" style="grid-template-columns:64px 1fr auto 62px">
         <span>${new Date(p.data_movimento+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
         <span style="text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.descricao||(p.categoria&&p.categoria!=='PREVISAO_MANUAL'?(CAT_LABEL[p.categoria]||p.categoria):'Previsto'))}${prevTag(p)}</span>
         <span class="${p.tipo==='ENTRADA'?'ent':'sai'}" style="font-weight:800">${p.tipo==='ENTRADA'?'+':'−'}${brl(p.valor)}</span>
-        <span style="display:flex;gap:2px;justify-content:flex-end"><button class="doc-cloud" data-preved="${p.id}" title="Editar previsto" style="padding:2px">✏️</button><button class="doc-cloud" data-prevdel="${p.id}" title="Excluir previsto" style="padding:2px">${DE_TRASH}</button></span></div>`).join('')
-      :'<div class="fluxo-empty">Nenhum lançamento futuro. Use <b>＋ Entradas</b> para prever entradas e saídas.</div>';
+        <span style="display:flex;gap:2px;justify-content:flex-end"><button class="doc-cloud" data-preved="${p.id}" title="Editar" style="padding:2px">✏️</button><button class="doc-cloud" data-prevdel="${p.id}" title="Excluir" style="padding:2px">${DE_TRASH}</button></span></div>`;
+    const _hojeISO=isoHoje();
+    const prevFut=prevList.filter(p=>(p.data_movimento||'')>=_hojeISO);
+    const prevPass=prevList.filter(p=>(p.data_movimento||'')<_hojeISO);
+    const prevRowsFut=prevFut.length?prevFut.map(prevRow).join(''):'<div class="fluxo-empty">Nenhum lançamento futuro. Use <b>＋ Entradas</b> para prever entradas e saídas.</div>';
+    const passBloco=prevPass.length?`<div class="fluxo-list" style="margin-top:14px"><h5>Já entraram / venceram (data passada) <span style="font-weight:400;color:var(--ink-3);font-size:11px">— não são mais previsão</span></h5>${prevPass.map(prevRow).join('')}</div>`:'';
     document.getElementById('bancos-content').innerHTML=
       `<div class="conta-grid">${cards}</div>
        <div class="fluxo-list"><h5>Fluxo projetado — 30 dias</h5>
          <div class="fluxo-row head"><span>Data</span><span>Entradas</span><span>Saídas</span><span class="sal">Saldo</span></div>${rows}</div>
-       <div class="fluxo-list" style="margin-top:14px"><h5>Lançamentos futuros (previstos)</h5>${prevRows2}</div>`;
+       <div class="fluxo-list" style="margin-top:14px"><h5>Lançamentos futuros (previstos)</h5>${prevRowsFut}</div>
+       ${passBloco}`;
     document.querySelectorAll('#bancos-content [data-prevdel]').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('Excluir este lançamento previsto?'))return;
       try{await api('/api/fluxo-caixa/previsto/'+b.dataset.prevdel,{method:'DELETE'});showToast('Previsto excluído');loadBancos();}

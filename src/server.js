@@ -1512,11 +1512,11 @@ app.get('/api/fluxo-caixa/previstos', async (_req, res, next) => {
 app.get('/api/fluxo-caixa/mes', async (req, res, next) => {
   try {
     const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : new Date().toISOString().slice(0, 7);
-    res.json(await db.mesRealizado(mes));
+    res.json(await db.mesRealizado(mes, req.query.hoje));
   } catch (e) { next(e); }
 });
-app.get('/api/fluxo-caixa/previstos-totais', async (_req, res, next) => {
-  try { res.json(await db.previstosTotais()); }
+app.get('/api/fluxo-caixa/previstos-totais', async (req, res, next) => {
+  try { res.json(await db.previstosTotais(req.query.hoje)); }
   catch (e) { next(e); }
 });
 // Busca global (barra do topo)

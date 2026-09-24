@@ -1569,17 +1569,18 @@ export const db = {
   // Entradas/saídas do mês = tudo que cai no mês, FEITO + PREVISTO (todas as obras).
   // Entradas: medições (recebidas pela data_recebimento; a receber pela data) + movimentações ENTRADA (qualquer status).
   // Saídas: lançamentos diários (pela data) + boletos (pelo vencimento) + movimentações SAIDA (qualquer status).
-  async mesRealizado(mesStr) {
+  async mesRealizado(mesStr, hojeStr) {
     if (!USING_SUPABASE) return { mes: mesStr, entradas: 0, saidas: 0 };
     const [y, m] = mesStr.split('-').map(Number);
     const ini = mesStr + '-01';
     const fim = new Date(y, m, 0).toISOString().slice(0, 10);
+    const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
     const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR, obrR] = await Promise.all([
       sb('medicoes_obra').select('valor,recebido,data_recebimento,data,forma_pagamento'),
       sb('lancamentos_diarios').select('valor,data').gte('data', ini).lte('data', fim),
       sb('boletos').select('valor,vencimento').gte('vencimento', ini).lte('vencimento', fim),
-      sb('movimentacoes_caixa').select('valor,tipo,data_movimento').gte('data_movimento', ini).lte('data_movimento', fim),
+      sb('movimentacoes_caixa').select('valor,tipo,data_movimento,status').gte('data_movimento', ini).lte('data_movimento', fim),
       // entradas lançadas direto na obra (Novo Lançamento → Entrada) — datadas por created_at
       sb('lancamentos').select('valor,tipo,created_at').eq('tipo', 'entrada').gte('created_at', ini).lte('created_at', fim + 'T23:59:59'),
     ]);
@@ -1588,20 +1589,22 @@ export const db = {
     (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += (x.valor || 0); });
     (ldR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (boR.data || []).forEach(x => { saidas += (x.valor || 0); });
-    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    // movimentação só conta como realizada do mês se for REALIZADO ou (previsto) já com data <= hoje; previsto futuro fica de fora
+    (movR.data || []).forEach(x => { if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
     (obrR.data || []).forEach(x => { entradas += (x.valor || 0); });
     return { mes: mesStr, entradas, saidas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
   // Saídas: boletos não pagos + lançamentos diários não pagos + movimentações PREVISTO SAIDA.
-  async previstosTotais() {
+  async previstosTotais(hojeStr) {
     if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
+    const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
     const [medR, boR, ldR, movR, obrEntR] = await Promise.all([
       sb('medicoes_obra').select('valor,recebido,forma_pagamento').eq('recebido', false),
       sb('boletos').select('valor,pago').eq('pago', false),
       sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
-      sb('movimentacoes_caixa').select('valor,tipo,status').eq('status', 'PREVISTO'),
+      sb('movimentacoes_caixa').select('valor,tipo,status,data_movimento').eq('status', 'PREVISTO'),
       // entradas já lançadas direto na obra (dinheiro que JÁ entrou) — abatem do "a receber"
       sb('lancamentos').select('valor,tipo').eq('tipo', 'entrada'),
     ]);
@@ -1610,7 +1613,8 @@ export const db = {
     (medR.data || []).forEach(x => { if (x.forma_pagamento === 'PIX') return; entradas += (x.valor || 0); });
     (boR.data || []).forEach(x => saidas += (x.valor || 0));
     (ldR.data || []).forEach(x => saidas += (x.valor || 0));
-    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    // ENTRADA prevista só conta se for FUTURA (data > hoje); previsto com data passada já entrou (vira realizado)
+    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') { if (x.data_movimento && x.data_movimento > hoje) entradas += (x.valor || 0); } else saidas += (x.valor || 0); });
     // já entrou → deixa de ser previsto: abate as entradas realizadas lançadas nas obras
     const jaEntrou = (obrEntR.data || []).reduce((s, x) => s + (x.valor || 0), 0);
     entradas = Math.max(0, entradas - jaEntrou);
@@ -2051,29 +2055,35 @@ export const db = {
     const { data: contas } = await sb('contas_bancarias').select('saldo_atual,sicoob_ref');
     // contas-espelho do Sicoob ficam fora da base (o saldo real do Sicoob é somado no cliente)
     const saldo_atual = (contas || []).filter(c => !c.sicoob_ref).reduce((s, c) => s + c.saldo_atual, 0);
-    const [{ data: prev }, { data: boletos }, { data: lancs }, { data: medicoes }] = await Promise.all([
+    const [{ data: prev }, { data: boletos }, { data: lancs }, { data: medicoes }, { data: obraEnt }] = await Promise.all([
       sb('movimentacoes_caixa').select('data_movimento,tipo,valor').eq('status', 'PREVISTO').lte('data_movimento', d1),
       // pendentes: inclui ATRASADOS (venc/data no passado) — ainda são a pagar
       sb('boletos').select('vencimento,valor').eq('pago', false).lte('vencimento', d1),
       sb('lancamentos_diarios').select('data,valor').eq('pago', false).lte('data', d1),
-      // medições/notas ainda NÃO recebidas = ENTRADAS previstas (a receber)
-      sb('medicoes_obra').select('data,valor').eq('recebido', false),
+      // medições/notas ainda NÃO recebidas = ENTRADAS a receber
+      sb('medicoes_obra').select('data,valor,forma_pagamento').eq('recebido', false),
+      // entradas REALIZADAS lançadas na obra (dinheiro que já entrou) — aparecem no dia real
+      sb('lancamentos').select('valor,created_at').eq('tipo', 'entrada').gte('created_at', d0).lte('created_at', d1 + 'T23:59:59'),
     ]);
     const porDia = {}; let entradas = 0, saidas = 0;
     const add = (data, campo, valor) => { porDia[data] ||= { data, entradas: 0, saidas: 0 }; porDia[data][campo] += valor; };
-    const diaDe = (dataStr) => (dataStr && dataStr < d0) ? d0 : dataStr; // atrasado cai no dia de hoje
+    const diaDe = (dataStr) => (dataStr && dataStr < d0) ? d0 : dataStr; // atrasado (saída a pagar) cai no dia de hoje
+    // ENTRADAS que JÁ entraram (lançadas na obra) → no dia real em que entraram
+    for (const e of (obraEnt || [])) { const dia = (e.created_at || '').slice(0, 10); if (!dia || dia < d0 || dia > d1) continue; add(dia, 'entradas', e.valor || 0); entradas += e.valor || 0; }
     for (const m of (prev || [])) {
-      const dia = diaDe(m.data_movimento);
-      if (m.tipo === 'ENTRADA') { add(dia, 'entradas', m.valor); entradas += m.valor; }
-      else { add(dia, 'saidas', m.valor); saidas += m.valor; }
+      if (m.tipo === 'ENTRADA') {
+        // entrada prevista só entra na projeção se for FUTURA (data >= hoje); atrasada não vira "entrada de hoje"
+        if (!m.data_movimento || m.data_movimento < d0) continue;
+        add(m.data_movimento, 'entradas', m.valor); entradas += m.valor;
+      } else { add(diaDe(m.data_movimento), 'saidas', m.valor); saidas += m.valor; }
     }
     // boletos pendentes e lançamentos não pagos entram como SAÍDAS (atrasados caem em hoje)
     for (const b of (boletos || [])) { add(diaDe(b.vencimento), 'saidas', b.valor || 0); saidas += b.valor || 0; }
     for (const l of (lancs || [])) { add(diaDe(l.data), 'saidas', l.valor || 0); saidas += l.valor || 0; }
-    // medições a receber → entradas previstas (sem data ou atrasada cai em hoje; além da janela não entra)
+    // medições a receber → só as com DATA FUTURA dentro da janela (atrasadas/sem data NÃO empilham em hoje; ficam no card "a receber")
     for (const med of (medicoes || [])) {
-      const dia = diaDe(med.data || d0);
-      if (dia > d1) continue;
+      if (med.forma_pagamento === 'PIX') continue;
+      const dia = med.data; if (!dia || dia < d0 || dia > d1) continue;
       add(dia, 'entradas', med.valor || 0); entradas += med.valor || 0;
     }
     let saldo = saldo_atual;
