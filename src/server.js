@@ -991,7 +991,7 @@ app.get('/api/dp/vt/balanco', async (_req, res, next) => {
 app.get('/api/dp/vt/colaboradores', async (_req, res, next) => {
   try {
     const cs = await db.listColaboradores();
-    res.json(cs.map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo || null })));
+    res.json(cs.map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo || null, is_diarista: !!c.is_diarista })));
   } catch (e) { next(e); }
 });
 
