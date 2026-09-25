@@ -1154,7 +1154,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v187</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v188</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3297,15 +3297,15 @@
     <style>
       *{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}
       body{margin:28px;color:#1E1E1E;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      h1{font-size:18px;margin:0 0 2px}
-      .sub{color:#666;font-size:12px;margin:0 0 16px}
+      h1{font-size:22px;margin:0 0 2px}
+      .sub{color:#666;font-size:13px;margin:0 0 16px}
       .cards{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
       .card{border:1px solid #ddd;border-radius:8px;padding:8px 12px;min-width:130px}
-      .card .k{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.03em}
-      .card .v{font-size:15px;font-weight:700;color:#ED7118}
-      table{width:100%;border-collapse:collapse;font-size:12px}
-      th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
-      th{background:#1E1E1E;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.02em}
+      .card .k{font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.03em}
+      .card .v{font-size:16px;font-weight:700;color:#ED7118}
+      table{width:100%;border-collapse:collapse;font-size:15px}
+      th,td{border:1px solid #ddd;padding:9px 10px;text-align:left}
+      th{background:#1E1E1E;color:#fff;font-size:12.5px;text-transform:uppercase;letter-spacing:.02em}
       td.c{text-align:center}td.r{text-align:right}
       tr.cart td{background:#FDE8D3 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;} /* Carteirinha grifada; Conta fica branco */
       tfoot td{font-weight:700}
@@ -4130,20 +4130,44 @@
     if(!r||!r.linhas||!r.linhas.length){showToast('Sem presenças neste período para exportar');return;}
     const relTit=relModo==='mes'?'Relatório mensal':'Relatório da semana';
     const dow=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    const head=r.dias.map(d=>{const dt=new Date(d+'T00:00:00');return `<th style="text-align:center">${dow[(dt.getDay()+6)%7]}<br><span style="font-weight:400;font-size:9px">${d.slice(8,10)}/${d.slice(5,7)}</span></th>`;}).join('');
+    const head=r.dias.map(d=>{const dt=new Date(d+'T00:00:00');return `<th class="dcol">${dow[(dt.getDay()+6)%7]}<br><span class="dnum">${d.slice(8,10)}/${d.slice(5,7)}</span></th>`;}).join('');
     const rows=r.linhas.map(l=>{
       const cells=r.dias.map(d=>{const c=l.dias[d];
-        if(!c)return '<td class="c" style="color:#999">–</td>';
-        if(c.status==='F')return '<td class="c" style="color:#b91c1c;font-weight:800">F</td>';
-        return '<td class="c" style="color:#12805c;font-weight:800">P</td>';
+        if(!c)return '<td class="c muted">–</td>';
+        if(c.status==='F')return '<td class="c f">F</td>';
+        return '<td class="c p">P</td>';
       }).join('');
-      const tag=l.is_diarista?' <span style="font-size:8px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:5px;font-weight:700;vertical-align:1px">DIARISTA</span>':'';
-      return `<tr><td style="white-space:nowrap">${esc(l.nome)}${tag}</td>${cells}<td class="c" style="color:#12805c;font-weight:800">${l.presencas}</td><td class="c" style="color:#b91c1c;font-weight:800">${l.faltas}</td></tr>`;
+      const tag=l.is_diarista?' <span class="diar">DIARISTA</span>':'';
+      return `<tr><td class="nome">${esc(l.nome)}${tag}</td>${cells}<td class="c tot p">${l.presencas}</td><td class="c tot f">${l.faltas}</td></tr>`;
     }).join('');
-    const periodo=dtBR(r.desde)+' a '+dtBR(r.ate);
-    finPrint('Presença e faltas — '+periodo,
-      `<h1>${relTit} — presença e faltas</h1><p class="sub">${periodo} &nbsp;·&nbsp; <b style="color:#12805c">P</b> = presente · <b style="color:#b91c1c">F</b> = falta · – = sem registro</p>`+
-      `<table><thead><tr><th>Colaborador</th>${head}<th style="text-align:center">Pres.</th><th style="text-align:center">Faltas</th></tr></thead><tbody>${rows}</tbody></table>`);
+    const periodoBR=dtBR(r.desde)+' a '+dtBR(r.ate);
+    const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(relTit)} — ${esc(periodoBR)}</title>
+    <style>
+      @page{size:landscape;margin:9mm}
+      *{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{margin:0;color:#1E1E1E}
+      h1{font-size:21px;margin:0 0 2px} .sub{color:#555;font-size:13px;margin:0 0 12px}
+      .sub b.p{color:#0a7a4f} .sub b.f{color:#c0261d}
+      table{width:100%;border-collapse:collapse;font-size:14px}
+      th,td{border:1px solid #cfcfcf;padding:7px 6px}
+      th{background:#1E1E1E;color:#fff;font-size:12px;text-align:left}
+      th.dcol{padding:6px 2px;text-align:center;white-space:nowrap} .dnum{font-weight:400;font-size:10px}
+      td.nome{white-space:nowrap;font-weight:700;font-size:13.5px}
+      td.c{text-align:center}
+      td.p{color:#0a7a4f;font-weight:800;background:#e7f7ef} td.f{color:#c0261d;font-weight:800;background:#fdeceb} td.muted{color:#bbb}
+      td.tot{font-size:16px}
+      .diar{font-size:9px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:5px;font-weight:700}
+      .foot{margin-top:14px;font-size:10px;color:#999}
+    </style></head><body>
+      <h1>${relTit} — presença e faltas</h1>
+      <p class="sub">${periodoBR} &nbsp;·&nbsp; <b class="p">P</b> = presente · <b class="f">F</b> = falta · – = sem registro</p>
+      <table><thead><tr><th>Colaborador</th>${head}<th class="dcol">Pres.</th><th class="dcol">Faltas</th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="foot">Raspadora Brasília — gerado em ${new Date().toLocaleString('pt-BR')}</p>
+      <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`;
+    const w=window.open('','_blank');
+    if(!w){showToast('Permita pop-ups para exportar o PDF');return;}
+    w.document.write(html);w.document.close();
   });
   // Funções & Diárias (editável)
   document.getElementById('btn-funcoes').addEventListener('click',()=>{renderFuncoes();openModal('ov-funcoes');});
