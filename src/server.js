@@ -966,6 +966,10 @@ app.patch('/api/lancamentos-diarios/:id', async (req, res, next) => {
     if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
     const l = await db.updateLancDiario(req.params.id, patch);
     if (!l) return res.status(404).json({ erro: 'lançamento não encontrado' });
+    // VALE editado: mantém o colaborador/valor do vale ligado em sincronia
+    if ((patch.categoria === 'VALE' || l.categoria === 'VALE') && req.body.colaborador_id) {
+      try { await db.ajustarValeDoLancamento(req.params.id, { colaborador_id: req.body.colaborador_id, valor: patch.valor, data_lancamento: patch.data || l.data, observacao: patch.descricao }); } catch (_) {}
+    }
     res.json(l);
   } catch (e) { next(e); }
 });

@@ -1155,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v191</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v192</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5273,7 +5273,7 @@
       if(!confirm('Transformar em pagamento fixo mensal? A partir do próximo mês ele entra sozinho.'))return;
       try{const r=await api('/api/boletos/'+b.dataset.pdFixar+'/fixar',{method:'POST'});showToast(r.ja?'Este boleto já era fixo':'Virou pagamento fixo ✓');loadPagDiario();}
       catch(e){let m=e.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixar: '+(m||'erro'));console.error(e);}}));
-    cont.querySelectorAll('[data-pd-edit]').forEach(b=>b.addEventListener('click',()=>{
+    cont.querySelectorAll('[data-pd-edit]').forEach(b=>b.addEventListener('click',async()=>{
       const it=(PD_STATE.itens||[]).find(x=>String(x.id)===b.dataset.pdEdit&&x.origem===b.dataset.pdOg);if(!it)return;
       if(it.origem==='LANCAMENTO'){
         const f=document.getElementById('form-lancdia');f.reset();
@@ -5282,7 +5282,10 @@
         f.data.value=it.data||'';f.valor.value=it.valor?(it.valor/100).toFixed(2):'';f.descricao.value=it.descricao||'';
         document.getElementById('lancdia-cat').value=it.categoria||'OUTRO';f.forma.value=it.forma||'PIX';
         document.getElementById('lancdia-outro').value=it.categoria_custom||'';document.getElementById('lancdia-pago').checked=!!it.pago;
-        lancdiaOutroToggle();openModal('ov-lancdia');
+        lancdiaOutroToggle();
+        // VALE: mostra e preenche de quem é o vale
+        if(it.categoria==='VALE'){await popularLancdiaColabs();const sc=document.getElementById('lancdia-colab');if(sc)sc.value=it.colaborador_id||'';}
+        openModal('ov-lancdia');
       }else{
         const f=document.getElementById('form-boleto');f.reset();
         document.getElementById('boleto-id').value=it.id;document.getElementById('boleto-titulo').textContent='Editar boleto';

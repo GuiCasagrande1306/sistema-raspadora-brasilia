@@ -1136,6 +1136,20 @@ export const db = {
       data_lancamento: v.data_lancamento || new Date().toISOString().slice(0, 10),
     });
   },
+  // Ao editar um VALE: atualiza o colaborador/valor do vale ligado (só se ainda não abatido na folha).
+  // Se não existir vale ligado (lançamento antigo virou VALE agora), cria.
+  async ajustarValeDoLancamento(lancamentoDiarioId, { colaborador_id, valor, data_lancamento, observacao }) {
+    if (!USING_SUPABASE || !lancamentoDiarioId || !colaborador_id) return;
+    let ex;
+    try { ({ data: ex } = await sb('vales_diaria').select('id,abatido_folha').eq('lancamento_diario_id', lancamentoDiarioId).maybeSingle()); }
+    catch (_) { return; } // coluna lancamento_diario_id ainda não existe (migration não rodada)
+    if (!ex || ex.abatido_folha) return; // sem vale ligado, ou já abatido em folha fechada — não mexe
+    const campos = { colaborador_id };
+    if (valor != null) campos.valor = valor;
+    if (data_lancamento) campos.data_lancamento = data_lancamento;
+    if (observacao != null) campos.observacao = observacao;
+    await sb('vales_diaria').update(campos).eq('id', ex.id);
+  },
   async updateLancDiario(id, patch) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos_diarios').update(patch).eq('id', id).select().single();
@@ -1344,9 +1358,16 @@ export const db = {
       this.listLancDiarios({ data }),
       USING_SUPABASE ? sb('contas_bancarias').select('saldo_atual,sicoob_ref').then(r => r.data || []) : Promise.resolve([]),
     ]);
+    // colaborador do VALE (fica em vales_diaria, ligado ao lançamento) — pra aparecer na edição
+    let valeColab = {};
+    if (USING_SUPABASE) {
+      const ids = (lancs || []).map(l => l.id).filter(Boolean);
+      // tolerante: se a coluna lancamento_diario_id ainda não existe (migration não rodada), só ignora
+      if (ids.length) { try { const { data: vd } = await sb('vales_diaria').select('lancamento_diario_id,colaborador_id').in('lancamento_diario_id', ids); (vd || []).forEach(v => { if (v.lancamento_diario_id) valeColab[v.lancamento_diario_id] = v.colaborador_id; }); } catch (_) {} }
+    }
     const itens = [
       ...boletos.map(b => ({ ...b, origem: 'BOLETO', atrasado: (b.vencimento < data && !b.pago) })),
-      ...lancs.map(l => ({ ...l, origem: 'LANCAMENTO' })),
+      ...lancs.map(l => ({ ...l, origem: 'LANCAMENTO', colaborador_id: valeColab[l.id] || null })),
     ];
     const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
     const pago = itens.filter(i => i.pago).reduce((s, i) => s + (i.valor || 0), 0);
