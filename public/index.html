@@ -1154,7 +1154,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v188</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v189</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5089,7 +5089,7 @@
   });
 
   // ---------- BANCOS: abas (Contas & Fluxo · Pagamento Diário · Boletos) ----------
-  const CAT_GASTO_OPTS=[['ALIMENTACAO','Almoço'],['JANTAR','Jantar'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto e peças de máquinas'],['MANUTENCAO_CARRO','Manutenção e peças de carros'],['FORNECEDOR','Piso Tátil'],['FOLHA','Folha'],['IMPOSTO','Imposto'],['INSUMO','Materiais'],['DIARIA','Diária (pedreiros e serventes)'],['GRATIFICACAO_SERVENTE','Gratificação - Servente'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['EDVARD','Edvard'],['VALE','Vale (adiantamento)'],['OUTRO','Outro']];
+  const CAT_GASTO_OPTS=[['ALIMENTACAO','Almoço'],['JANTAR','Jantar'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto e peças de máquinas'],['MANUTENCAO_CARRO','Manutenção e peças de carros'],['FORNECEDOR','Piso Tátil'],['FOLHA','Folha'],['IMPOSTO','Imposto'],['INSUMO','Materiais'],['DIARIA','Diária (pedreiros e serventes)'],['GRATIFICACAO_SERVENTE','Gratificação - Servente'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['EDVARD','Edvard'],['GILSON','Gilson (Raspagem)'],['VALE','Vale (adiantamento)'],['OUTRO','Outro']];
   const CAT_LABEL=Object.fromEntries(CAT_GASTO_OPTS);
   document.getElementById('boleto-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   document.getElementById('lancdia-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
@@ -5349,7 +5349,7 @@
     const legenda=r.categorias.map((c,i)=>{
       const cor=GASTO_CORES[i%GASTO_CORES.length];const nome=CAT_LABEL[c.categoria]||c.categoria;
       const temSub=c.categoria==='OUTRO'&&c.subcategorias&&c.subcategorias.length;
-      const COM_SETA=['OUTRO','DESPESA_FUNCIONARIO','EDVARD','INSUMO'];
+      const COM_SETA=['OUTRO','DESPESA_FUNCIONARIO','EDVARD','GILSON','INSUMO'];
       const seta=(temSub||COM_SETA.includes(c.categoria))?` <span class="gsub-arrow"${temSub?' data-gsub="1"':''} title="Ver itens desta categoria">▾</span>`:'';
       const head=`<div class="gasto-leg" data-gcat="${c.categoria}" style="cursor:pointer" title="Ver itens desta categoria"><span class="gasto-dot" style="background:${cor}"></span><span class="gl-nome">${esc(nome)}${seta}</span><span class="gl-val money">${brl(c.total)}</span><span class="gl-pct">${(c.total/r.total_geral*100).toFixed(1)}%</span></div>`;
       if(!temSub)return head;
