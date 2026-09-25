@@ -2077,44 +2077,47 @@ export const db = {
     const base = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? new Date(hojeStr + 'T12:00:00Z') : new Date();
     const ate = new Date(base.getTime() + dias * 86400000);
     const d0 = base.toISOString().slice(0, 10), d1 = ate.toISOString().slice(0, 10);
+    // janela também mostra os DIAS RECENTES (31 dias pra trás) — pra as entradas já lançadas aparecerem no dia delas
+    const dStart = new Date(base.getTime() - 31 * 86400000).toISOString().slice(0, 10);
     const { data: contas } = await sb('contas_bancarias').select('saldo_atual,sicoob_ref');
-    // contas-espelho do Sicoob ficam fora da base (o saldo real do Sicoob é somado no cliente)
     const saldo_atual = (contas || []).filter(c => !c.sicoob_ref).reduce((s, c) => s + c.saldo_atual, 0);
-    const [{ data: prev }, { data: boletos }, { data: lancs }, { data: medicoes }, { data: obraEnt }] = await Promise.all([
-      sb('movimentacoes_caixa').select('data_movimento,tipo,valor').eq('status', 'PREVISTO').lte('data_movimento', d1),
-      // pendentes: inclui ATRASADOS (venc/data no passado) — ainda são a pagar
-      sb('boletos').select('vencimento,valor').eq('pago', false).lte('vencimento', d1),
-      sb('lancamentos_diarios').select('data,valor').eq('pago', false).lte('data', d1),
-      // medições/notas ainda NÃO recebidas = ENTRADAS a receber
-      sb('medicoes_obra').select('data,valor,forma_pagamento').eq('recebido', false),
-      // entradas REALIZADAS lançadas na obra (dinheiro que já entrou) — aparecem no dia real
-      sb('lancamentos').select('valor,created_at').eq('tipo', 'entrada').gte('created_at', d0).lte('created_at', d1 + 'T23:59:59'),
+    const [{ data: movs }, { data: boletos }, { data: lancs }, { data: medicoes }, { data: obraEnt }] = await Promise.all([
+      // movimentações (previstas e realizadas) na janela — cada uma no seu dia real
+      sb('movimentacoes_caixa').select('data_movimento,tipo,valor,status').gte('data_movimento', dStart).lte('data_movimento', d1),
+      // boletos: pagos entram no dia do pagamento; pendentes no vencimento (inclui atrasados no próprio dia de vencimento)
+      sb('boletos').select('vencimento,valor,pago,data_pagamento').lte('vencimento', d1),
+      // lançamentos do dia (pagos e a pagar) no dia deles
+      sb('lancamentos_diarios').select('data,valor').gte('data', dStart).lte('data', d1),
+      // medições/notas ainda NÃO recebidas = ENTRADAS a receber (só futuras dentro da janela)
+      sb('medicoes_obra').select('data,valor,forma_pagamento,recebido,data_recebimento'),
+      // entradas lançadas na obra (dinheiro que já entrou) — no dia real (created_at)
+      sb('lancamentos').select('valor,created_at').eq('tipo', 'entrada').gte('created_at', dStart).lte('created_at', d1 + 'T23:59:59'),
     ]);
-    const porDia = {}; let entradas = 0, saidas = 0;
-    const add = (data, campo, valor) => { porDia[data] ||= { data, entradas: 0, saidas: 0 }; porDia[data][campo] += valor; };
-    const diaDe = (dataStr) => (dataStr && dataStr < d0) ? d0 : dataStr; // atrasado (saída a pagar) cai no dia de hoje
-    // ENTRADAS que JÁ entraram (lançadas na obra) → no dia real em que entraram
-    for (const e of (obraEnt || [])) { const dia = (e.created_at || '').slice(0, 10); if (!dia || dia < d0 || dia > d1) continue; add(dia, 'entradas', e.valor || 0); entradas += e.valor || 0; }
-    for (const m of (prev || [])) {
-      if (m.tipo === 'ENTRADA') {
-        // entrada prevista só entra na projeção se for FUTURA (data >= hoje); atrasada não vira "entrada de hoje"
-        if (!m.data_movimento || m.data_movimento < d0) continue;
-        add(m.data_movimento, 'entradas', m.valor); entradas += m.valor;
-      } else { add(diaDe(m.data_movimento), 'saidas', m.valor); saidas += m.valor; }
-    }
-    // boletos pendentes e lançamentos não pagos entram como SAÍDAS (atrasados caem em hoje)
-    for (const b of (boletos || [])) { add(diaDe(b.vencimento), 'saidas', b.valor || 0); saidas += b.valor || 0; }
-    for (const l of (lancs || [])) { add(diaDe(l.data), 'saidas', l.valor || 0); saidas += l.valor || 0; }
-    // medições a receber → só as com DATA FUTURA dentro da janela (atrasadas/sem data NÃO empilham em hoje; ficam no card "a receber")
+    const porDia = {};
+    const emJanela = d => d && d >= dStart && d <= d1;
+    const add = (data, campo, valor) => { if (!emJanela(data)) return; porDia[data] ||= { data, entradas: 0, saidas: 0 }; porDia[data][campo] += (valor || 0); };
+    // ENTRADAS já entraram (obra) → no dia real
+    for (const e of (obraEnt || [])) add((e.created_at || '').slice(0, 10), 'entradas', e.valor);
+    // movimentações no dia real (entrada/saída, previstas ou realizadas)
+    for (const m of (movs || [])) add(m.data_movimento, m.tipo === 'ENTRADA' ? 'entradas' : 'saidas', m.valor);
+    // boletos: pago → dia do pagamento; pendente → vencimento
+    for (const b of (boletos || [])) add(b.pago ? (b.data_pagamento || b.vencimento) : b.vencimento, 'saidas', b.valor);
+    // lançamentos do dia → saída no dia
+    for (const l of (lancs || [])) add(l.data, 'saidas', l.valor);
+    // medições: recebida/PIX → entrada no dia do recebimento; a receber (não PIX) → só futura dentro da janela
     for (const med of (medicoes || [])) {
-      if (med.forma_pagamento === 'PIX') continue;
-      const dia = med.data; if (!dia || dia < d0 || dia > d1) continue;
-      add(dia, 'entradas', med.valor || 0); entradas += med.valor || 0;
+      const realizado = med.recebido || med.forma_pagamento === 'PIX';
+      if (realizado) add(med.recebido ? (med.data_recebimento || med.data) : med.data, 'entradas', med.valor);
+      else if (med.data && med.data > d0) add(med.data, 'entradas', med.valor); // a receber futura
     }
+    const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data));
+    // saldo corrido só de HOJE pra frente (projeção). Dias passados são histórico (entradas/saídas), sem saldo.
     let saldo = saldo_atual;
-    const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)).map(d => {
-      saldo += d.entradas - d.saidas; return { ...d, saldo_projetado: saldo };
-    });
-    return { saldo_atual, dias: linhas, resumo: { entradas_previstas: entradas, saidas_previstas: saidas, saldo_final_projetado: saldo_atual + entradas - saidas } };
+    linhas.forEach(d => { if (d.data < d0) { d.saldo_projetado = null; } else { saldo += d.entradas - d.saidas; d.saldo_projetado = saldo; } });
+    const totEnt = linhas.reduce((s, d) => s + d.entradas, 0), totSai = linhas.reduce((s, d) => s + d.saidas, 0);
+    // "previstas" = só o que ainda vai acontecer (futuro), pros cards
+    const fut = linhas.filter(d => d.data > d0);
+    const entFut = fut.reduce((s, d) => s + d.entradas, 0), saiFut = fut.reduce((s, d) => s + d.saidas, 0);
+    return { saldo_atual, hoje: d0, dias: linhas, resumo: { entradas_previstas: entFut, saidas_previstas: saiFut, entradas_total: totEnt, saidas_total: totSai, saldo_final_projetado: saldo } };
   },
 };
