@@ -680,19 +680,21 @@ export const db = {
   },
   // Busca global (barra do topo): colaboradores, obras, clientes e leads por nome.
   async buscaGlobal(q) {
-    const vazio = { colaboradores: [], obras: [], clientes: [], leads: [], boletos: [] };
+    const vazio = { colaboradores: [], obras: [], clientes: [], leads: [], boletos: [], lancamentos: [] };
     if (!USING_SUPABASE) return vazio;
     const t = (q || '').trim();
     if (t.length < 2) return vazio;
     const s = t.replace(/[,%()]/g, ' ').trim(); // sanitiza para o filtro .or
     if (!s) return vazio;
     const like = `%${s}%`;
-    const [colR, obrR, cliR, leaR, bolR] = await Promise.all([
+    const brDate = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
+    const [colR, obrR, cliR, leaR, bolR, ldR] = await Promise.all([
       sb('colaboradores').select('id,nome,cargo,cpf,apelido').or(`nome.ilike.${like},cpf.ilike.${like},apelido.ilike.${like}`).limit(8),
       sb('obras_financeiro').select('id,cliente,endereco').or(`cliente.ilike.${like},endereco.ilike.${like}`).limit(8),
       sb('clientes').select('id,nome,telefone').or(`nome.ilike.${like},telefone.ilike.${like}`).limit(8),
       sb('leads').select('id,nome,servico').or(`nome.ilike.${like},servico.ilike.${like}`).limit(8),
       sb('boletos').select('id,descricao,fornecedor,valor,vencimento,pago').or(`descricao.ilike.${like},fornecedor.ilike.${like}`).order('vencimento', { ascending: false }).limit(8),
+      sb('lancamentos_diarios').select('id,descricao,categoria,categoria_custom,valor,data').or(`descricao.ilike.${like},categoria_custom.ilike.${like}`).order('data', { ascending: false }).limit(8),
     ]);
     const fmt = c => 'R$ ' + Math.round((c || 0) / 100).toLocaleString('pt-BR');
     return {
@@ -700,7 +702,8 @@ export const db = {
       obras: (obrR.data || []).map(o => ({ id: o.id, label: o.cliente, sub: o.endereco || '' })),
       clientes: (cliR.data || []).map(c => ({ id: c.id, label: c.nome, sub: c.telefone || '' })),
       leads: (leaR.data || []).map(l => ({ id: l.id, label: l.nome, sub: l.servico || '' })),
-      boletos: (bolR.data || []).map(b => ({ id: b.id, label: b.descricao + (b.fornecedor ? ' · ' + b.fornecedor : ''), sub: fmt(b.valor) + (b.vencimento ? ' · vence ' + b.vencimento.split('-').reverse().join('/') : '') + (b.pago ? ' · pago' : '') })),
+      boletos: (bolR.data || []).map(b => ({ id: b.id, label: b.descricao + (b.fornecedor ? ' · ' + b.fornecedor : ''), sub: fmt(b.valor) + (b.vencimento ? ' · vence ' + brDate(b.vencimento) : '') + (b.pago ? ' · pago' : '') })),
+      lancamentos: (ldR.data || []).map(l => ({ id: l.id, label: l.descricao || l.categoria_custom || 'Lançamento', sub: fmt(l.valor) + (l.data ? ' · ' + brDate(l.data) : ''), data: l.data ? String(l.data).slice(0, 10) : '' })),
     };
   },
   // valida se um colaborador pode ser alocado numa obra (mesma empresa)

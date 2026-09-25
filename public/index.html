@@ -1045,6 +1045,7 @@
             <button class="primary" id="btn-novo-lanc-dia" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Novo lançamento</button>
             <button class="btn-ghost" id="btn-novo-vale" style="min-height:40px;border-color:#2563EB;color:#2563EB">＋ Lançar Vale</button>
             <button class="btn-ghost" id="btn-pd-pdf" style="min-height:40px">🖨️ Exportar PDF</button>
+            <input id="pd-busca" placeholder="🔎 Buscar lançamento (descrição, categoria, fornecedor)…" autocomplete="off" style="flex:1;min-width:200px;max-width:360px;min-height:40px;padding:8px 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--ink);font-size:13px">
           </div>
           <div class="metrics">
             <div class="metric"><div class="lbl">Saldo de Caixa</div><div class="val money" id="pd-caixa">—</div><div class="sub">contas no início</div></div>
@@ -1154,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v189</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v190</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3013,26 +3014,27 @@
     if(pop&&!pop.classList.contains('hidden')&&!e.target.closest('#notif-pop')&&!e.target.closest('#btn-sino'))pop.classList.add('hidden');});
 
   // ---------- BUSCA GLOBAL (barra do topo) ----------
-  const GS_GRUPOS=[['colaboradores','Colaboradores'],['obras','Obras'],['clientes','Clientes'],['leads','Leads'],['boletos','Boletos / contas']];
+  const GS_GRUPOS=[['colaboradores','Colaboradores'],['obras','Obras'],['clientes','Clientes'],['leads','Leads'],['boletos','Boletos / contas'],['lancamentos','Pagamentos do dia']];
   let gsTimer=null;
   function fecharGs(){const p=document.getElementById('gs-pop');if(p)p.classList.add('hidden');}
   function renderGs(r){
     const pop=document.getElementById('gs-pop');if(!pop)return;
     let html='';
     GS_GRUPOS.forEach(([k,lbl])=>{const arr=r[k]||[];if(!arr.length)return;
-      html+=`<div class="gs-grp">${lbl}</div>`+arr.map(it=>`<div class="gs-item" data-gt="${k}" data-gid="${it.id}" data-glabel="${esc(it.label||'')}"><b>${esc(it.label||'—')}</b>${it.sub?`<span>${esc(it.sub)}</span>`:''}</div>`).join('');
+      html+=`<div class="gs-grp">${lbl}</div>`+arr.map(it=>`<div class="gs-item" data-gt="${k}" data-gid="${it.id}" data-glabel="${esc(it.label||'')}" data-gdate="${esc(it.data||'')}"><b>${esc(it.label||'—')}</b>${it.sub?`<span>${esc(it.sub)}</span>`:''}</div>`).join('');
     });
     pop.innerHTML=html||'<div class="gs-empty">Nada encontrado.</div>';
     pop.classList.remove('hidden');
-    pop.querySelectorAll('.gs-item').forEach(it=>it.addEventListener('click',()=>abrirBuscaResultado(it.dataset.gt,it.dataset.gid,it.dataset.glabel)));
+    pop.querySelectorAll('.gs-item').forEach(it=>it.addEventListener('click',()=>abrirBuscaResultado(it.dataset.gt,it.dataset.gid,it.dataset.glabel,it.dataset.gdate)));
   }
-  function abrirBuscaResultado(tipo,id,label){
+  function abrirBuscaResultado(tipo,id,label,extra){
     fecharGs();const inp=document.getElementById('global-search');if(inp)inp.value='';
     if(tipo==='obras'){irParaView('fin');abrirObraExec(id);}
     else if(tipo==='colaboradores'){irParaView('docs');setTimeout(()=>abrirColab(id,label),300);}
     else if(tipo==='clientes'){irParaView('clientes');setTimeout(()=>{const c=(CLIENTES||[]).find(x=>x.id===id);if(c)abrirCliente(c);},400);}
     else if(tipo==='leads'){irParaView('leads');setTimeout(()=>{const l=(LEADS||[]).find(x=>x.id===id);if(l)abrirLead(l);},400);}
     else if(tipo==='boletos'){irParaView('bancos');setTimeout(()=>{if(typeof trocarBancoTab==='function')trocarBancoTab('boletos');},250);}
+    else if(tipo==='lancamentos'){irParaView('bancos');setTimeout(()=>{if(typeof trocarBancoTab==='function')trocarBancoTab('pagdiario');const dt=document.getElementById('pd-data');if(dt&&extra)dt.value=extra;const bq=document.getElementById('pd-busca');if(bq)bq.value=label||'';loadPagDiario();},250);}
   }
   const gsInput=document.getElementById('global-search');
   if(gsInput){
@@ -5240,7 +5242,10 @@
     fEl.style.color=(r.resumo.saldo_final||0)<0?'var(--danger)':'';
     const cont=document.getElementById('pd-content');
     if(!r.itens.length){cont.innerHTML='<div class="orc-empty">Nada lançado nem vencendo neste dia. Boletos com vencimento nesta data aparecem aqui automaticamente.</div>';return;}
-    cont.innerHTML='<div class="doc-list">'+r.itens.map(i=>{
+    const _q=(((document.getElementById('pd-busca')||{}).value)||'').trim().toLowerCase();
+    const itens=_q?(r.itens||[]).filter(i=>[i.descricao,i.categoria_custom,CAT_LABEL[i.categoria]||i.categoria,i.fornecedor,i.forma,i.empresa].some(x=>String(x||'').toLowerCase().includes(_q))):r.itens;
+    if(!itens.length){cont.innerHTML='<div class="orc-empty">Nenhum lançamento encontrado para "'+esc(_q)+'" neste dia.</div>';return;}
+    cont.innerHTML='<div class="doc-list">'+itens.map(i=>{
       const tag=i.origem==='BOLETO'?'<span class="tag t-lar">Boleto</span>':`<span class="tag">${esc(i.forma||'Lançamento')}</span>`;
       const st=i.pago?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
       const comp=i.comprovante_url?`<a class="doc-open" href="${i.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
@@ -5288,6 +5293,7 @@
     }));
   }
   document.getElementById('pd-data').addEventListener('change',loadPagDiario);
+  {let pdBuscaT=null;document.getElementById('pd-busca').addEventListener('input',()=>{clearTimeout(pdBuscaT);pdBuscaT=setTimeout(loadPagDiario,200);});}
   let LANCDIA_COLABS=null;
   async function popularLancdiaColabs(){
     if(LANCDIA_COLABS)return;
