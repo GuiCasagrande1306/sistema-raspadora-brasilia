@@ -1155,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v194</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v195</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4981,15 +4981,19 @@
           <button class="btn-ghost" data-conta-ajuste="${c.id}" data-nome="${esc(c.nome_instituicao)}" data-saldo="${c.saldo_atual}" style="padding:3px 10px;font-size:11.5px">Ajustar saldo</button>
           <button class="doc-cloud" data-conta-del="${c.id}" title="Excluir conta" style="padding:2px">${DE_TRASH}</button></div>`:''}</div>`;}).join('');
     const _hoje=fluxo.hoje||isoHoje();
-    const rows=(fluxo.dias&&fluxo.dias.length)?fluxo.dias.map(d=>{
+    const rows=(fluxo.dias&&fluxo.dias.length)?fluxo.dias.map((d,di)=>{
         const ehHoje=d.data===_hoje, passado=d.data<_hoje;
         const est=ehHoje?'background:var(--laranja-50);font-weight:700':(passado?'opacity:.72':'');
         const lbl=new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+(ehHoje?' · hoje':'');
+        const itens=(d.entradas_itens||[]);
+        const temItens=d.entradas>0&&itens.length>0;
+        const entCell=d.entradas?('+'+brl(d.entradas)+(temItens?` <span class="fx-caret" data-fxent="${di}" style="cursor:pointer;color:var(--ink-3)">▸</span>`:'')):'—';
+        const detItens=temItens?`<div class="fx-ent-det ${'fxd'+di} hidden" style="grid-column:1/-1;padding:2px 0 8px 4px">${itens.map(it=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--ink-2);padding:1px 8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">↳ ${esc(it.origem)}${it.descricao?' · '+esc(it.descricao):''}</span><span style="color:#12805c;white-space:nowrap">+${brl(it.valor)}</span></div>`).join('')}</div>`:'';
         return `<div class="fluxo-row" style="${est}">
         <span>${lbl}</span>
-        <span class="ent">${d.entradas?'+'+brl(d.entradas):'—'}</span>
+        <span class="ent">${entCell}</span>
         <span class="sai">${d.saidas?'−'+brl(d.saidas):'—'}</span>
-        <span class="sal">${d.saldo_projetado==null?'—':brl(d.saldo_projetado)}</span></div>`;}).join('')
+        <span class="sal">${d.saldo_projetado==null?'—':brl(d.saldo_projetado)}</span></div>${detItens}`;}).join('')
       :'<div class="fluxo-empty">Sem movimentações nos dias recentes nem nos próximos 30 dias.<br>As entradas lançadas aparecem aqui no dia em que entraram.</div>';
     const prevList=previstos&&previstos.length?previstos:[];
     const prevTag=p=>{const c=(p.categoria&&p.categoria!=='PREVISAO_MANUAL')?(CAT_LABEL[p.categoria]||MOV_CAT_LABEL[p.categoria]||p.categoria):'';const fm=p.forma_pagamento?(FORMA_LBL[p.forma_pagamento]||p.forma_pagamento):'';return [c,fm].filter(Boolean).map(t=>`<span class="tag" style="font-size:9px;background:#eef1f5;color:#555;margin-left:6px">${esc(t)}</span>`).join('');};
@@ -5015,6 +5019,10 @@
       catch(e){showToast('Erro ao excluir');console.error(e);}}));
     document.querySelectorAll('#bancos-content [data-preved]').forEach(b=>b.addEventListener('click',()=>{
       const p=((BANCOS_STATE&&BANCOS_STATE.previstos)||[]).find(x=>x.id===b.dataset.preved);if(p)abrirPrevistoEdit(p);}));
+    // expandir a entrada do dia pra ver de onde veio
+    document.querySelectorAll('#bancos-content [data-fxent]').forEach(c=>c.addEventListener('click',e=>{
+      e.stopPropagation();const det=document.querySelector('#bancos-content .fxd'+c.dataset.fxent);if(!det)return;
+      const abrir=det.classList.contains('hidden');det.classList.toggle('hidden',!abrir);c.textContent=abrir?'▾':'▸';}));
     const opt=saldos.contas.map(c=>`<option value="${c.id}">${esc(c.nome_instituicao)} — ${brl(c.saldo_atual)}</option>`).join('');
     document.getElementById('transfer-origem').innerHTML=opt;
     document.getElementById('transfer-destino').innerHTML=opt;

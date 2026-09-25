@@ -1602,16 +1602,18 @@ export const db = {
     const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
     const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR, obrR] = await Promise.all([
-      sb('medicoes_obra').select('valor,recebido,data_recebimento,data,forma_pagamento'),
+      sb('medicoes_obra').select('valor,recebido,data_recebimento,data,forma_pagamento,imposto_valor,valor_retido'),
       sb('lancamentos_diarios').select('valor,data').gte('data', ini).lte('data', fim),
       sb('boletos').select('valor,vencimento').gte('vencimento', ini).lte('vencimento', fim),
       sb('movimentacoes_caixa').select('valor,tipo,data_movimento,status').gte('data_movimento', ini).lte('data_movimento', fim),
       // entradas lançadas direto na obra (Novo Lançamento → Entrada) — datadas por created_at
       sb('lancamentos').select('valor,tipo,created_at').eq('tipo', 'entrada').gte('created_at', ini).lte('created_at', fim + 'T23:59:59'),
     ]);
+    // no caixa entra o LÍQUIDO da medição (bruto − imposto − retenção técnica), não o bruto
+    const liqMed = m => Math.max(0, (m.valor || 0) - (m.imposto_valor || 0) - (m.valor_retido || 0));
     let entradas = 0, saidas = 0;
     // Entrada do mês só conta medição/nota REALIZADA: marcada como recebida OU forma de pagamento PIX.
-    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += (x.valor || 0); });
+    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += liqMed(x); });
     (ldR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (boR.data || []).forEach(x => { saidas += (x.valor || 0); });
     // movimentação só conta como realizada do mês se for REALIZADO ou (previsto) já com data <= hoje; previsto futuro fica de fora
@@ -1626,16 +1628,17 @@ export const db = {
     if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
     const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
     const [medR, boR, ldR, movR, obrEntR] = await Promise.all([
-      sb('medicoes_obra').select('valor,recebido,forma_pagamento').eq('recebido', false),
+      sb('medicoes_obra').select('valor,recebido,forma_pagamento,imposto_valor,valor_retido').eq('recebido', false),
       sb('boletos').select('valor,pago').eq('pago', false),
       sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
       sb('movimentacoes_caixa').select('valor,tipo,status,data_movimento').eq('status', 'PREVISTO'),
       // entradas já lançadas direto na obra (dinheiro que JÁ entrou) — abatem do "a receber"
       sb('lancamentos').select('valor,tipo').eq('tipo', 'entrada'),
     ]);
+    const liqMed = m => Math.max(0, (m.valor || 0) - (m.imposto_valor || 0) - (m.valor_retido || 0));
     let entradas = 0, saidas = 0;
-    // previsto = ainda não realizado: não recebido E não é PIX (PIX conta como entrada do mês)
-    (medR.data || []).forEach(x => { if (x.forma_pagamento === 'PIX') return; entradas += (x.valor || 0); });
+    // a receber = LÍQUIDO da medição (bruto − imposto − retenção); não recebida E não PIX
+    (medR.data || []).forEach(x => { if (x.forma_pagamento === 'PIX') return; entradas += liqMed(x); });
     (boR.data || []).forEach(x => saidas += (x.valor || 0));
     (ldR.data || []).forEach(x => saidas += (x.valor || 0));
     // ENTRADA prevista só conta se for FUTURA (data > hoje); previsto com data passada já entrou (vira realizado)
@@ -2081,34 +2084,43 @@ export const db = {
     const dStart = new Date(base.getTime() - 31 * 86400000).toISOString().slice(0, 10);
     const { data: contas } = await sb('contas_bancarias').select('saldo_atual,sicoob_ref');
     const saldo_atual = (contas || []).filter(c => !c.sicoob_ref).reduce((s, c) => s + c.saldo_atual, 0);
-    const [{ data: movs }, { data: boletos }, { data: lancs }, { data: medicoes }, { data: obraEnt }] = await Promise.all([
+    const [{ data: movs }, { data: boletos }, { data: lancs }, { data: medicoes }, { data: obraEnt }, { data: obrasF }] = await Promise.all([
       // movimentações (previstas e realizadas) na janela — cada uma no seu dia real
-      sb('movimentacoes_caixa').select('data_movimento,tipo,valor,status').gte('data_movimento', dStart).lte('data_movimento', d1),
+      sb('movimentacoes_caixa').select('data_movimento,tipo,valor,status,descricao').gte('data_movimento', dStart).lte('data_movimento', d1),
       // boletos: pagos entram no dia do pagamento; pendentes no vencimento (inclui atrasados no próprio dia de vencimento)
       sb('boletos').select('vencimento,valor,pago,data_pagamento').lte('vencimento', d1),
       // lançamentos do dia (pagos e a pagar) no dia deles
       sb('lancamentos_diarios').select('data,valor').gte('data', dStart).lte('data', d1),
-      // medições/notas ainda NÃO recebidas = ENTRADAS a receber (só futuras dentro da janela)
-      sb('medicoes_obra').select('data,valor,forma_pagamento,recebido,data_recebimento'),
+      // medições/notas: LÍQUIDO (bruto − imposto − retenção). recebida/PIX = entrou; senão a receber (futura na janela)
+      sb('medicoes_obra').select('data,valor,forma_pagamento,recebido,data_recebimento,imposto_valor,valor_retido,obra_id,descricao'),
       // entradas lançadas na obra (dinheiro que já entrou) — no dia real (created_at)
-      sb('lancamentos').select('valor,created_at').eq('tipo', 'entrada').gte('created_at', dStart).lte('created_at', d1 + 'T23:59:59'),
+      sb('lancamentos').select('valor,created_at,obra_id,descricao,categoria').eq('tipo', 'entrada').gte('created_at', dStart).lte('created_at', d1 + 'T23:59:59'),
+      sb('obras_financeiro').select('id,cliente'),
     ]);
+    const obraNome = Object.fromEntries((obrasF || []).map(o => [o.id, o.cliente]));
+    const liqMed = m => Math.max(0, (m.valor || 0) - (m.imposto_valor || 0) - (m.valor_retido || 0));
     const porDia = {};
     const emJanela = d => d && d >= dStart && d <= d1;
-    const add = (data, campo, valor) => { if (!emJanela(data)) return; porDia[data] ||= { data, entradas: 0, saidas: 0 }; porDia[data][campo] += (valor || 0); };
+    const add = (data, campo, valor, item) => {
+      if (!emJanela(data) || !valor) return;
+      porDia[data] ||= { data, entradas: 0, saidas: 0, entradas_itens: [] };
+      porDia[data][campo] += valor;
+      if (campo === 'entradas' && item) porDia[data].entradas_itens.push({ ...item, valor });
+    };
     // ENTRADAS já entraram (obra) → no dia real
-    for (const e of (obraEnt || [])) add((e.created_at || '').slice(0, 10), 'entradas', e.valor);
+    for (const e of (obraEnt || [])) add((e.created_at || '').slice(0, 10), 'entradas', e.valor, { origem: 'Entrada na obra', descricao: obraNome[e.obra_id] || e.descricao || 'Entrada' });
     // movimentações no dia real (entrada/saída, previstas ou realizadas)
-    for (const m of (movs || [])) add(m.data_movimento, m.tipo === 'ENTRADA' ? 'entradas' : 'saidas', m.valor);
+    for (const m of (movs || [])) add(m.data_movimento, m.tipo === 'ENTRADA' ? 'entradas' : 'saidas', m.valor, m.tipo === 'ENTRADA' ? { origem: m.status === 'PREVISTO' ? 'Previsto' : 'Recebimento', descricao: m.descricao || 'Movimentação' } : null);
     // boletos: pago → dia do pagamento; pendente → vencimento
     for (const b of (boletos || [])) add(b.pago ? (b.data_pagamento || b.vencimento) : b.vencimento, 'saidas', b.valor);
     // lançamentos do dia → saída no dia
     for (const l of (lancs || [])) add(l.data, 'saidas', l.valor);
-    // medições: recebida/PIX → entrada no dia do recebimento; a receber (não PIX) → só futura dentro da janela
+    // medições: recebida/PIX → entrada LÍQUIDA no dia do recebimento; a receber (não PIX) → líquida, só futura na janela
     for (const med of (medicoes || [])) {
       const realizado = med.recebido || med.forma_pagamento === 'PIX';
-      if (realizado) add(med.recebido ? (med.data_recebimento || med.data) : med.data, 'entradas', med.valor);
-      else if (med.data && med.data > d0) add(med.data, 'entradas', med.valor); // a receber futura
+      const item = { origem: 'Medição/nota', descricao: (obraNome[med.obra_id] || '') + (med.descricao ? (obraNome[med.obra_id] ? ' · ' : '') + med.descricao : '') || 'Medição' };
+      if (realizado) add(med.recebido ? (med.data_recebimento || med.data) : med.data, 'entradas', liqMed(med), item);
+      else if (med.data && med.data > d0) add(med.data, 'entradas', liqMed(med), item); // a receber futura
     }
     const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data));
     // saldo corrido só de HOJE pra frente (projeção). Dias passados são histórico (entradas/saídas), sem saldo.
