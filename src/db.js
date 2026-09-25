@@ -1342,7 +1342,7 @@ export const db = {
         ? sb('boletos').select('*').or(`vencimento.eq.${data},and(vencimento.lt.${data},pago.eq.false)`).then(r => r.data || [])
         : Promise.resolve(mock.boletos.filter(b => b.vencimento === data || (b.vencimento < data && !b.pago))),
       this.listLancDiarios({ data }),
-      USING_SUPABASE ? sb('contas_bancarias').select('saldo_atual').then(r => r.data || []) : Promise.resolve([]),
+      USING_SUPABASE ? sb('contas_bancarias').select('saldo_atual,sicoob_ref').then(r => r.data || []) : Promise.resolve([]),
     ]);
     const itens = [
       ...boletos.map(b => ({ ...b, origem: 'BOLETO', atrasado: (b.vencimento < data && !b.pago) })),
@@ -1350,7 +1350,8 @@ export const db = {
     ];
     const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
     const pago = itens.filter(i => i.pago).reduce((s, i) => s + (i.valor || 0), 0);
-    const saldo_caixa = (contas || []).reduce((s, c) => s + (c.saldo_atual || 0), 0); // saldo consolidado das contas
+    // contas cadastradas (fora as espelho do Sicoob, que têm saldo 0). O saldo REAL do Sicoob é somado no endpoint (ao vivo).
+    const saldo_caixa = (contas || []).filter(c => !c.sicoob_ref).reduce((s, c) => s + (c.saldo_atual || 0), 0);
     const saldo_final = saldo_caixa - pago;                                           // após o que já saiu hoje
     return { data, itens, resumo: { total, pago, pendente: total - pago, saldo_caixa, saldo_final } };
   },

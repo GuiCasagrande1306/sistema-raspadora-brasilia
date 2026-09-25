@@ -717,8 +717,12 @@ app.post('/api/fixos/gerar', async (req, res, next) => {
 
 app.use('/api/pagamento-diario', requireAdmin);
 app.get('/api/pagamento-diario', async (req, res, next) => {
-  try { res.json(await db.pagamentoDiario(req.query.data || new Date().toISOString().slice(0, 10))); }
-  catch (e) { next(e); }
+  try {
+    const r = await db.pagamentoDiario(req.query.data || new Date().toISOString().slice(0, 10));
+    // soma o saldo REAL do Sicoob (ao vivo) ao Saldo de Caixa — mesma base do Bancos & Fluxo
+    try { const sic = await saldoPrincipalCentavos(); r.resumo.saldo_caixa = (r.resumo.saldo_caixa || 0) + (sic || 0); r.resumo.saldo_final = r.resumo.saldo_caixa - (r.resumo.pago || 0); } catch (_) {}
+    res.json(r);
+  } catch (e) { next(e); }
 });
 app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {
   try {
