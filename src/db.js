@@ -1892,7 +1892,7 @@ export const db = {
       const rate = r.valor_m2 ? Number(r.valor_m2) : (p.comissao_por_m2 || 0);
       if (r.valor_m2) p.comissaoProd += Math.round(m * Number(r.valor_m2)); else p.m2SemRate += m;
       // linha de produção no detalhe: mostra por dia/obra o valor que o pedreiro ganha pelo m²
-      p.detalhe.push({ id: 'ap-' + r.id, apontamento_id: r.apontamento_id, data: r.data, obra: apObra[r.apontamento_id] || '—', funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
+      p.detalhe.push({ id: 'ap-' + r.id, apontamento_id: r.apontamento_id, data: r.data, obra: apObra[r.apontamento_id] || '—', m2: Math.round(m * 100) / 100, funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
     }
     for (const v of (vales || [])) {
       const p = porColab[v.colaborador_id]; if (!p) continue;

@@ -1155,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v193</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v194</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5571,6 +5571,35 @@
     await calcularFolha();
   }
   let folhaAtual=null;
+  // Linhas do detalhe da folha: agrupa a PRODUÇÃO do mesmo dia numa linha-resumo (obras juntas + total) que expande por obra
+  function folhaDetRows(detalhe,idx){
+    const detRow=(d,isChild)=>{
+      const gratifCell=d.is_gratificacao?(d.gratificacao_paga
+        ?`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="1" title="Clique para desmarcar" style="padding:2px 8px;font-size:11px;color:#12805c;border-color:#12805c">✓ paga</button>`
+        :`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="0" style="padding:2px 8px;font-size:11px;border-color:var(--laranja);color:var(--laranja)">Marcar como paga</button>`):'';
+      const prodCell=d.is_producao&&d.apontamento_id
+        ?`<button class="btn-ghost" data-apedit="${d.apontamento_id}" title="Editar produção" style="padding:2px 7px;font-size:11px;margin-right:4px">✏️</button><button class="doc-cloud" data-apdel="${d.apontamento_id}" title="Excluir produção" style="padding:2px">${DE_TRASH}</button>`:'';
+      const valorCell=(d.is_gratificacao&&d.gratificacao_paga)?`<span style="text-decoration:line-through;color:var(--ink-3)" title="Paga à parte — fora do total da folha">${brl(d.valor)}</span>`:brl(d.valor);
+      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
+    };
+    const prod=(detalhe||[]).filter(d=>d.is_producao), outros=(detalhe||[]).filter(d=>!d.is_producao);
+    const byDate={}; prod.forEach(d=>{(byDate[d.data]||=[]).push(d);});
+    const items=[];
+    Object.keys(byDate).forEach(data=>items.push({data,kind:'prod',grp:byDate[data]}));
+    outros.forEach(d=>items.push({data:d.data,kind:'outro',d}));
+    items.sort((a,b)=>String(a.data||'').localeCompare(String(b.data||'')));
+    return items.map(it=>{
+      if(it.kind==='outro')return detRow(it.d,false);
+      const grp=it.grp;
+      if(grp.length===1)return detRow(grp[0],false);
+      const gid='pg'+idx+String(it.data||'').replace(/\D/g,'');
+      const totVal=grp.reduce((s,x)=>s+(x.valor||0),0), totM2=Math.round(grp.reduce((s,x)=>s+(x.m2||0),0)*100)/100;
+      const obras=[...new Set(grp.map(x=>x.obra).filter(Boolean))].join(' / ');
+      const head=`<tr class="prod-grp-head" data-pgrp="${gid}" style="cursor:pointer;background:var(--surface-2)"><td style="padding:4px;white-space:nowrap;font-weight:700">${it.data?dtBR(it.data):'—'} <span class="pg-caret" style="color:var(--ink-3)">▸</span></td><td style="padding:4px;font-weight:700">${esc(obras)}</td><td style="padding:4px">Produção — ${totM2} m²</td><td style="padding:4px;text-align:right;font-weight:700">${brl(totVal)}</td><td></td></tr>`;
+      const kids=grp.map(d=>detRow(d,true).replace('__CHILD__','prod-grp-child '+gid+' hidden')).join('');
+      return head+kids;
+    }).join('');
+  }
   async function calcularFolha(){
     const desde=document.getElementById('folha-desde').value,ate=document.getElementById('folha-ate').value;
     const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
@@ -5608,18 +5637,7 @@
         ${liqCell}</tr>`;
       const diariasBlock=temDet?`<div style="padding:8px 10px"><div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn-ghost" data-recibofolha="${idx}" style="padding:4px 12px;font-size:12px">🖨️ Exportar PDF deste colaborador</button></div><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th><th style="text-align:right;padding:4px">Gratificação</th></tr></thead>
-        <tbody>${l.detalhe.map(d=>{
-          const gratifCell=d.is_gratificacao
-            ?(d.gratificacao_paga
-              ?`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="1" title="Clique para desmarcar" style="padding:2px 8px;font-size:11px;color:#12805c;border-color:#12805c">✓ paga</button>`
-              :`<button class="btn-ghost" data-gratif="${d.id}" data-gpago="0" style="padding:2px 8px;font-size:11px;border-color:var(--laranja);color:var(--laranja)">Marcar como paga</button>`)
-            :'';
-          const prodCell=d.is_producao&&d.apontamento_id
-            ?`<button class="btn-ghost" data-apedit="${d.apontamento_id}" title="Editar produção" style="padding:2px 7px;font-size:11px;margin-right:4px">✏️</button><button class="doc-cloud" data-apdel="${d.apontamento_id}" title="Excluir produção" style="padding:2px">${DE_TRASH}</button>`
-            :'';
-          const valorCell=(d.is_gratificacao&&d.gratificacao_paga)?`<span style="text-decoration:line-through;color:var(--ink-3)" title="Paga à parte — fora do total da folha">${brl(d.valor)}</span>`:brl(d.valor);
-          return `<tr><td style="padding:4px">${d.data?dtBR(d.data):'—'}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
-        }).join('')}</tbody></table></div>`:'';
+        <tbody>${folhaDetRows(l.detalhe,idx)}</tbody></table></div>`:'';
       const TIPO_LBL={VALE:'Vale',ADIANTAMENTO_VALE:'Vale',REEMBOLSO_COMBUSTIVEL:'Reembolso',BONUS_METRAGEM:'Bônus',FALTA:'Falta',INSS:'INSS',OUTRO:'Outro desconto'};
       const lancBlock=temLanc?`<div style="padding:8px 10px 12px">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:4px">Lançamentos do período — vales e descontos</div>
@@ -5669,6 +5687,13 @@
       e.stopPropagation();if(!confirm('Excluir este apontamento de produção? Remove o m² de TODA a equipe desse lançamento. Não dá pra desfazer.'))return;
       try{await api('/api/dp/apontamento/'+b.dataset.apdel,{method:'DELETE'});showToast('Apontamento excluído');await calcularFolha();}
       catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Excluir: '+(m||'erro'));console.error(err);}
+    }));
+    // expandir/recolher a linha-resumo de produção do dia (obras juntas)
+    document.querySelectorAll('#folha-content .prod-grp-head').forEach(h=>h.addEventListener('click',e=>{
+      e.stopPropagation();const gid=h.dataset.pgrp;const kids=document.querySelectorAll('#folha-content .prod-grp-child.'+gid);
+      const abrir=kids.length&&kids[0].classList.contains('hidden');
+      kids.forEach(k=>k.classList.toggle('hidden',!abrir));
+      const c=h.querySelector('.pg-caret');if(c)c.textContent=abrir?'▾':'▸';
     }));
   }
   // Bárbara lança o valor da falta vinda do Cronograma
