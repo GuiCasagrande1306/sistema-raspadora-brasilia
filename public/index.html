@@ -1155,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v195</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v198</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1302,6 +1302,7 @@
     <button data-bn="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Financeiro</button>
     <button data-bn="orc" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>Orçamentos</button>
     <button data-bn="vt" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M4 16h16M8 4v6M16 4v6"/><circle cx="7.5" cy="13" r=".6"/><circle cx="16.5" cy="13" r=".6"/></svg>VT</button>
+    <button data-bn="agenda" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda</button>
     <button data-bn="novo" class="center"><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
     <button data-bn="perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Perfil</button>
   </nav>
@@ -2380,7 +2381,7 @@
     if(view==='prop')loadPropostas().catch(e=>console.error(e));
     if(view==='cronograma')loadCronograma().catch(e=>console.error(e));
     if(view==='perfil')loadPerfil();
-    const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'};
+    const bmap={dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt',agenda:'agenda'};
     document.querySelectorAll('#bottomnav [data-bn]').forEach(x=>x.classList.toggle('on',bmap[x.dataset.bn]===view));
   }
   nav.querySelectorAll('button[data-view]').forEach(b=>b.addEventListener('click',()=>irParaView(b.dataset.view)));
@@ -4209,10 +4210,13 @@
   async function agendaSave(url){return api('/api/config-app/agenda',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url||null})});}
   // ---------- AGENDA = CALENDÁRIO (pagamentos, documentos, medições) ----------
   const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#2563EB'},medicao:{lbl:'Recebidos',cor:'#12805c'},obra:{lbl:'Obras previstas',cor:'#EAB308'}};
+  // Agenda do time de campo (Adelino/Cadu): só obras por tipo de serviço, cores próprias, sem raspagem e sem valores.
+  const AG_TIPO_CAMPO={serv_concreto:{lbl:'Concreto',cor:'#2563EB'},serv_limpeza:{lbl:'Limpeza',cor:'#12805c'},serv_fulget:{lbl:'Fulget',cor:'#ED7118'},serv_cimento:{lbl:'Cimento',cor:'#6b7280'},serv_outro:{lbl:'Outro serviço',cor:'#7c3aed'}};
+  const agTipos=()=>ROLE==='ADMIN'?AG_TIPO:AG_TIPO_CAMPO;
   let agendaRef=null, AGENDA_EVENTOS=[];
   const agDialabel=iso=>new Date(iso+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
   function agEventoLinha(e){
-    const c=AG_TIPO[e.tipo]||{cor:'#999',lbl:e.tipo};
+    const c=agTipos()[e.tipo]||{cor:'#999',lbl:e.tipo};
     const vlr=(e.tipo!=='documento'&&e.valor)?`<b class="money">${brl(e.valor)}</b>`:'';
     const stat=e.tipo==='pagamento'?(e.pago?'<span class="tag" style="background:#DCFCE7;color:#12805c">pago</span>':'<span class="tag" style="background:#FEE2E2;color:#b91c1c">a pagar</span>')
       :e.tipo==='medicao'?(e.recebido?'<span class="tag" style="background:#DCFCE7;color:#12805c">recebido</span>':'<span class="tag" style="background:#FEF3C7;color:#92400e">a receber</span>')
@@ -4222,9 +4226,11 @@
   }
   async function loadAgenda(){
     const el=document.getElementById('agenda-content');if(!el)return;
+    const sub=document.querySelector('#view-agenda .modhead p');
+    if(sub)sub.textContent=ROLE==='ADMIN'?'Calendário do mês com vencimentos de pagamentos, vencimentos de documentos e datas de medições. Clique no dia para ver os detalhes.':'Calendário das obras do mês por tipo de serviço. Clique no dia para ver o que está programado.';
     if(!agendaRef)agendaRef=isoHoje();
     el.innerHTML='<div class="orc-empty">Carregando…</div>';
-    await agendaFetch();
+    if(ROLE==='ADMIN')await agendaFetch();   // embed do Google Calendar é config de admin
     const d=new Date(agendaRef+'T00:00:00'),ini=new Date(d.getFullYear(),d.getMonth(),1),fim=new Date(d.getFullYear(),d.getMonth()+1,0);
     const desde=ini.toISOString().slice(0,10),ate=fim.toISOString().slice(0,10);
     let ev=[];try{ev=await api('/api/agenda/eventos?desde='+desde+'&ate='+ate);}catch(e){console.error(e);}
@@ -4237,20 +4243,20 @@
     for(let dia=1;dia<=totalDias;dia++){
       const ds=ini.getFullYear()+'-'+String(ini.getMonth()+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
       const evs=porDia[ds]||[];
-      const chips=evs.slice(0,3).map(e=>`<div class="ag-chip" style="background:${(AG_TIPO[e.tipo]||{}).cor||'#999'}">${esc(e.titulo)}</div>`).join('')+(evs.length>3?`<div class="ag-more">+${evs.length-3}</div>`:'');
+      const chips=evs.slice(0,3).map(e=>`<div class="ag-chip" style="background:${(agTipos()[e.tipo]||{}).cor||'#999'}">${esc(e.titulo)}</div>`).join('')+(evs.length>3?`<div class="ag-more">+${evs.length-3}</div>`:'');
       cells+=`<div class="ag-cell${ds===hoje?' ag-today':''}${evs.length?' ag-has':''}" data-agdia="${ds}"><div class="ag-num">${dia}</div>${chips}</div>`;
     }
     el.innerHTML=`<div class="ag-toolbar">
         <div class="ag-nav"><button class="btn-ghost" id="ag-prev" title="Mês anterior">◀</button><b id="ag-mes" style="min-width:150px;text-align:center;text-transform:capitalize">${mesLbl}</b><button class="btn-ghost" id="ag-next" title="Próximo mês">▶</button><button class="btn-ghost" id="ag-hoje">Hoje</button></div>
-        <div class="ag-legend">${Object.values(AG_TIPO).map(v=>`<span><span class="ag-dot" style="background:${v.cor}"></span>${v.lbl}</span>`).join('')}</div>
-        <button class="btn-ghost" id="ag-google" title="Google Calendar da equipe">📅 Google Calendar</button>
+        <div class="ag-legend">${Object.values(agTipos()).map(v=>`<span><span class="ag-dot" style="background:${v.cor}"></span>${v.lbl}</span>`).join('')}</div>
+        ${ROLE==='ADMIN'?'<button class="btn-ghost" id="ag-google" title="Google Calendar da equipe">📅 Google Calendar</button>':''}
       </div>
       <div class="ag-grid ag-head">${dow.map(x=>`<div class="ag-dow">${x}</div>`).join('')}</div>
       <div class="ag-grid ag-body">${cells}</div>`;
     document.getElementById('ag-prev').addEventListener('click',()=>{const x=new Date(agendaRef+'T00:00:00');x.setMonth(x.getMonth()-1);agendaRef=x.toISOString().slice(0,10);loadAgenda();});
     document.getElementById('ag-next').addEventListener('click',()=>{const x=new Date(agendaRef+'T00:00:00');x.setMonth(x.getMonth()+1);agendaRef=x.toISOString().slice(0,10);loadAgenda();});
     document.getElementById('ag-hoje').addEventListener('click',()=>{agendaRef=isoHoje();loadAgenda();});
-    document.getElementById('ag-google').addEventListener('click',agendaConfig);
+    document.getElementById('ag-google')?.addEventListener('click',agendaConfig);
     el.querySelectorAll('[data-agdia]').forEach(c=>c.addEventListener('click',()=>abrirAgendaDia(c.dataset.agdia)));
   }
   function abrirAgendaDia(ds){
@@ -4283,7 +4289,7 @@
   document.getElementById('bottomnav').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     const t=b.dataset.bn;
     if(t==='novo'){document.getElementById('lanc-tipo').value='entrada';fillCats();openModal('ov-lanc');return;}
-    irParaView({dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt'}[t]);
+    irParaView({dp:'dp',fin:'fin',perfil:'perfil',orc:'orc',vt:'vt',agenda:'agenda'}[t]);
   }));
 
   // ---------- SERVICE WORKER (PWA) — auto-atualização ----------
@@ -4981,7 +4987,9 @@
           <button class="btn-ghost" data-conta-ajuste="${c.id}" data-nome="${esc(c.nome_instituicao)}" data-saldo="${c.saldo_atual}" style="padding:3px 10px;font-size:11.5px">Ajustar saldo</button>
           <button class="doc-cloud" data-conta-del="${c.id}" title="Excluir conta" style="padding:2px">${DE_TRASH}</button></div>`:''}</div>`;}).join('');
     const _hoje=fluxo.hoje||isoHoje();
-    const rows=(fluxo.dias&&fluxo.dias.length)?fluxo.dias.map((d,di)=>{
+    // ordem invertida: dia mais recente/futuro no topo (o dia atual fica na parte de cima)
+    const _dias=(fluxo.dias||[]).slice().reverse();
+    const rows=(_dias.length)?_dias.map((d,di)=>{
         const ehHoje=d.data===_hoje, passado=d.data<_hoje;
         const est=ehHoje?'background:var(--laranja-50);font-weight:700':(passado?'opacity:.72':'');
         const lbl=new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+(ehHoje?' · hoje':'');
@@ -5414,17 +5422,21 @@
     const rows=g.itens.map(i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?' — '+esc(i.detalhe):''}</td><td>${i.origem}</td><td class="r">${brl(i.valor)}</td></tr>`).join('');
     finPrint('Gastos — '+g.rotulo,`<h1>Gastos — ${esc(g.rotulo)}</h1><p class="sub">${esc(g.subt)} · ${g.itens.length} lançamentos</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th>Valor</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">${brl(g.total)}</td></tr></tfoot></table>`);
   });
-  document.getElementById('gastos-periodo').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    gastosPeriodo=b.dataset.gp;
-    document.getElementById('gastos-periodo').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
-    document.getElementById('gp-mes-wrap').classList.toggle('hidden',gastosPeriodo!=='mes');
-    document.getElementById('gp-dia-wrap').classList.toggle('hidden',gastosPeriodo!=='dia');
-    document.getElementById('gp-sem-wrap').classList.toggle('hidden',gastosPeriodo!=='semana');
+  function setGastosPeriodo(p){
+    gastosPeriodo=p;
+    document.getElementById('gastos-periodo').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.gp===p));
+    const mw=document.getElementById('gp-mes-wrap'),dw=document.getElementById('gp-dia-wrap'),sw=document.getElementById('gp-sem-wrap');
+    mw.style.display=(p==='mes')?'flex':'none'; mw.classList.toggle('hidden',p!=='mes');
+    dw.style.display=(p==='dia')?'flex':'none'; dw.classList.toggle('hidden',p!=='dia');
+    sw.style.display=(p==='semana')?'flex':'none'; sw.classList.toggle('hidden',p!=='semana');
     loadGastos();
-  }));
-  document.getElementById('gastos-mes').addEventListener('change',loadGastos);
-  document.getElementById('gastos-dia').addEventListener('change',loadGastos);
-  document.getElementById('gastos-sem').addEventListener('change',loadGastos);
+  }
+  document.getElementById('gastos-periodo').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setGastosPeriodo(b.dataset.gp)));
+  // Ao mudar a data em qualquer seletor, ativa o período correspondente e recalcula.
+  document.getElementById('gastos-mes').addEventListener('change',()=>setGastosPeriodo('mes'));
+  document.getElementById('gastos-dia').addEventListener('change',()=>setGastosPeriodo('dia'));
+  document.getElementById('gastos-sem').addEventListener('change',()=>setGastosPeriodo('semana'));
+  setGastosPeriodo(gastosPeriodo);
 
   // ---- Exportar PDF (financeiro) ----
   function finPrint(titulo,corpo){
@@ -6122,10 +6134,15 @@
   });
   function aplicarRole(role){
     const admin=role==='ADMIN';
-    // Perfis de acesso restrito: VISITA (só Visita Técnica) e CAMPO (Visita Técnica + Cronograma)
-    const ROLE_VIEWS={ VISITA:['orc'], CAMPO:['orc','cronograma'] };
+    // Perfis de acesso restrito:
+    //  VISITA  → só Visita Técnica (Victor/tablet)
+    //  CAMPO   → Visita Técnica + Cronograma Diário + Agenda (Adelino)
+    //  AGENDA  → só a Agenda das obras (Cadu) — sem financeiro, sem nada mais
+    const ROLE_VIEWS={ VISITA:['orc'], CAMPO:['orc','cronograma','agenda'], AGENDA:['agenda'] };
     const permitido=admin?['docs','docemp','gefip','agenda','dp','vt','cronograma','leads','prop','clientes','contratos','orc','fin','bancos','cofre','folha','recibos','retencoes','prestacao','nfrb','nfeco']:(ROLE_VIEWS[role]||['orc','vt']);
     document.querySelectorAll('.nav button[data-view]').forEach(b=>b.style.display=permitido.includes(b.dataset.view)?'':'none');
+    // topo: busca global e sino expõem dados financeiros → só ADMIN
+    document.querySelectorAll('header.top .search, #btn-sino').forEach(el=>{el.style.display=admin?'':'none';});
     if(admin)atualizarBadges();
     // esconde cabeçalhos de grupo sem itens visíveis
     document.querySelectorAll('.nav-group').forEach(h=>{
@@ -6137,11 +6154,11 @@
     if(av){av.innerHTML='<span>'+ini((SESSAO&&SESSAO.nome)||(SESSAO&&SESSAO.user&&SESSAO.user.email)||'US')+'</span>';av.title=(SESSAO&&SESSAO.user&&SESSAO.user.email)||'';}
     api('/api/perfil').then(p=>{PERFIL=p;renderAvatarEl(av,p.avatar_url,p.nome||p.email);if(p.nome&&SESSAO){SESSAO.nome=p.nome;}}).catch(()=>{});
     // bottom nav por role
-    const mostra=admin?{dp:1,fin:1,novo:1,perfil:1}:{orc:1,vt:1,perfil:1};
+    const mostra=admin?{dp:1,fin:1,novo:1,perfil:1}:(role==='AGENDA'?{agenda:1,perfil:1}:role==='CAMPO'?{orc:1,vt:1,agenda:1,perfil:1}:{orc:1,vt:1,perfil:1});
     document.querySelectorAll('#bottomnav [data-bn]').forEach(b=>b.style.display=mostra[b.dataset.bn]?'':'none');
     // esconde o atalho de VT na aba do DP para operacional (não usa DP)
     // Adelino (CAMPO) abre direto no Cronograma; Visita (Victor) abre na Visita Técnica
-    irParaView(admin?'docs':(role==='CAMPO'?'cronograma':'orc'));
+    irParaView(admin?'docs':(role==='CAMPO'?'cronograma':(role==='AGENDA'?'agenda':'orc')));
     if(admin)loadFin().catch(e=>console.error(e)); // popula select do modal de lançamento
   }
 

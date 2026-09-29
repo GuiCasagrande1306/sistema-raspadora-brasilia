@@ -658,8 +658,31 @@ export const db = {
   },
   // Eventos agregados para o calendário da Agenda (e o sino): vencimentos de pagamentos (boletos),
   // vencimentos de documentos SST/RH e datas de medições, num intervalo [desde, ate].
-  async agendaEventos(desde, ate) {
+  async agendaEventos(desde, ate, role) {
     if (!USING_SUPABASE) return [];
+    // ---- Perfil de CAMPO/AGENDA (Adelino, Cadu): SÓ os dias de serviço das obras, sem Raspagem e SEM nenhum valor ----
+    if ((role || 'ADMIN') !== 'ADMIN') {
+      const FORA = ['RASPAGEM'];   // raspagem nunca aparece pro time de campo
+      const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento' };
+      let obras = [];
+      try {
+        const r = await sb('obras_financeiro').select('id,cliente,categoria_servico,coluna_kanban,dias_servico');
+        obras = r.data || [];
+      } catch (_) { obras = []; }   // se a coluna dias_servico ainda não existir, agenda do campo fica vazia (não quebra)
+      const eventos = [];
+      (obras || []).forEach(o => {
+        if (o.coluna_kanban === 'liquidado') return;
+        if (FORA.includes(o.categoria_servico)) return;
+        const dias = Array.isArray(o.dias_servico) ? o.dias_servico : [];
+        dias.forEach(d => {
+          const ds = String(d).slice(0, 10);
+          if (ds < desde || ds > ate) return;
+          eventos.push({ tipo: CAT_TIPO[o.categoria_servico] || 'serv_outro', data: ds, titulo: o.cliente || 'Obra', categoria: o.categoria_servico || null, obra_id: o.id });
+        });
+      });
+      return eventos.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+    }
+    // ---- ADMIN: agenda completa (pagamentos, documentos, medições, obras previstas) ----
     const [boR, sstR, medR, obrR] = await Promise.all([
       sb('boletos').select('id,descricao,vencimento,valor,pago,empresa,categoria').gte('vencimento', desde).lte('vencimento', ate),
       sb('documentos_sst').select('id,tipo_documento,data_vencimento, colaboradores(nome,empresa)').not('data_vencimento', 'is', null).gte('data_vencimento', desde).lte('data_vencimento', ate),
@@ -2123,9 +2146,14 @@ export const db = {
       else if (med.data && med.data > d0) add(med.data, 'entradas', liqMed(med), item); // a receber futura
     }
     const linhas = Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data));
-    // saldo corrido só de HOJE pra frente (projeção). Dias passados são histórico (entradas/saídas), sem saldo.
-    let saldo = saldo_atual;
-    linhas.forEach(d => { if (d.data < d0) { d.saldo_projetado = null; } else { saldo += d.entradas - d.saidas; d.saldo_projetado = saldo; } });
+    // Saldo corrido ANCORADO no saldo real de HOJE: hoje = saldo_atual; o futuro projeta somando;
+    // o passado é reconstruído subtraindo os movimentos (o caixa "anda" em cada dia, não congela).
+    let acc = 0;
+    for (const d of linhas) { acc += d.entradas - d.saidas; d._acc = acc; }        // acumulado bruto ao longo da janela
+    let accHoje = 0;
+    for (const d of linhas) { if (d.data <= d0) accHoje = d._acc; else break; }      // acumulado até o fim de hoje
+    linhas.forEach(d => { d.saldo_projetado = saldo_atual + (d._acc - accHoje); delete d._acc; });
+    const saldo = linhas.length ? linhas[linhas.length - 1].saldo_projetado : saldo_atual;
     const totEnt = linhas.reduce((s, d) => s + d.entradas, 0), totSai = linhas.reduce((s, d) => s + d.saidas, 0);
     // "previstas" = só o que ainda vai acontecer (futuro), pros cards
     const fut = linhas.filter(d => d.data > d0);

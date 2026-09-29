@@ -1538,17 +1538,20 @@ app.get('/api/fluxo-caixa/previstos-totais', async (req, res, next) => {
   catch (e) { next(e); }
 });
 // Busca global (barra do topo)
-app.get('/api/busca', async (req, res, next) => {
-  try { res.json(await db.buscaGlobal(req.query.q || '')); }
-  catch (e) { next(e); }
+app.get('/api/busca', requireAuth, async (req, res, next) => {
+  try {
+    // Busca global expõe boletos/lançamentos com valores → só ADMIN. Campo/Agenda recebem vazio.
+    if (req.user.role !== 'ADMIN') return res.json({ colaboradores: [], obras: [], clientes: [], leads: [], boletos: [], lancamentos: [] });
+    res.json(await db.buscaGlobal(req.query.q || ''));
+  } catch (e) { next(e); }
 });
 // Calendário da Agenda / sino: eventos (pagamentos, documentos, medições) num intervalo
-app.get('/api/agenda/eventos', async (req, res, next) => {
+app.get('/api/agenda/eventos', requireAuth, async (req, res, next) => {
   try {
     const hoje = new Date().toISOString().slice(0, 10);
     const desde = /^\d{4}-\d{2}-\d{2}$/.test(req.query.desde || '') ? req.query.desde : hoje;
     const ate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.ate || '') ? req.query.ate : hoje;
-    res.json(await db.agendaEventos(desde, ate));
+    res.json(await db.agendaEventos(desde, ate, req.user.role));   // CAMPO/AGENDA recebem só dias de serviço (sem valores)
   } catch (e) { next(e); }
 });
 app.post('/api/fluxo-caixa/previsto', async (req, res, next) => {
