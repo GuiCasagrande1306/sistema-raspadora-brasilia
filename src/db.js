@@ -1374,10 +1374,11 @@ export const db = {
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {
     const [boletos, lancs, contas] = await Promise.all([
-      // vence hoje OU está atrasado e ainda não pago (carrega pro dia até ser quitado)
+      // PAGO → aparece no dia do PAGAMENTO (data_pagamento; legado sem data cai no vencimento).
+      // PENDENTE → aparece no vencimento e ATRASADO arrasta pro dia atual até ser quitado.
       USING_SUPABASE
-        ? sb('boletos').select('*').or(`vencimento.eq.${data},and(vencimento.lt.${data},pago.eq.false)`).then(r => r.data || [])
-        : Promise.resolve(mock.boletos.filter(b => b.vencimento === data || (b.vencimento < data && !b.pago))),
+        ? sb('boletos').select('*').or(`and(pago.eq.true,data_pagamento.eq.${data}),and(pago.eq.true,data_pagamento.is.null,vencimento.eq.${data}),and(pago.eq.false,vencimento.lte.${data})`).then(r => r.data || [])
+        : Promise.resolve(mock.boletos.filter(b => b.pago ? (b.data_pagamento ? b.data_pagamento === data : b.vencimento === data) : b.vencimento <= data)),
       this.listLancDiarios({ data }),
       USING_SUPABASE ? sb('contas_bancarias').select('saldo_atual,sicoob_ref').then(r => r.data || []) : Promise.resolve([]),
     ]);
