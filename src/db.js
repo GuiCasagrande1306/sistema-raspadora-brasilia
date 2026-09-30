@@ -662,7 +662,6 @@ export const db = {
     if (!USING_SUPABASE) return [];
     // ---- Perfil de CAMPO/AGENDA (Adelino, Cadu): SÓ os dias de serviço das obras, sem Raspagem e SEM nenhum valor ----
     if ((role || 'ADMIN') !== 'ADMIN') {
-      const FORA = ['RASPAGEM'];   // raspagem nunca aparece pro time de campo
       const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento' };
       let obras = [];
       try {
@@ -672,12 +671,14 @@ export const db = {
       const eventos = [];
       (obras || []).forEach(o => {
         if (o.coluna_kanban === 'liquidado') return;
-        if (FORA.includes(o.categoria_servico)) return;
         const dias = Array.isArray(o.dias_servico) ? o.dias_servico : [];
         dias.forEach(d => {
-          const ds = String(d).slice(0, 10);
-          if (ds < desde || ds > ate) return;
-          eventos.push({ tipo: CAT_TIPO[o.categoria_servico] || 'serv_outro', data: ds, titulo: o.cliente || 'Obra', categoria: o.categoria_servico || null, obra_id: o.id });
+          const it = (typeof d === 'string') ? { data: d } : (d || {});
+          const ds = String(it.data || '').slice(0, 10);
+          if (!ds || ds < desde || ds > ate) return;
+          const tipo = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
+          if (tipo === 'RASPAGEM') return;                        // raspagem nunca aparece pro time de campo
+          eventos.push({ tipo: CAT_TIPO[tipo] || 'serv_outro', data: ds, titulo: o.cliente || 'Obra', categoria: tipo, m2: Number(it.m2) || 0, obra_id: o.id });
         });
       });
       return eventos.sort((a, b) => String(a.data).localeCompare(String(b.data)));
@@ -1651,25 +1652,31 @@ export const db = {
   async previstosTotais(hojeStr) {
     if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
     const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
-    const [medR, boR, ldR, movR, obrEntR] = await Promise.all([
-      sb('medicoes_obra').select('valor,recebido,forma_pagamento,imposto_valor,valor_retido').eq('recebido', false),
+    const [obrasR, medR, entR, boR, ldR, movR] = await Promise.all([
+      sb('obras_financeiro').select('id,valor_contrato,coluna_kanban'),
+      sb('medicoes_obra').select('obra_id,valor,recebido'),
+      // entradas já lançadas direto na obra (dinheiro que JÁ entrou) — abatem do "a receber"
+      sb('lancamentos').select('obra_id,valor,tipo').eq('tipo', 'entrada'),
       sb('boletos').select('valor,pago').eq('pago', false),
       sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
       sb('movimentacoes_caixa').select('valor,tipo,status,data_movimento').eq('status', 'PREVISTO'),
-      // entradas já lançadas direto na obra (dinheiro que JÁ entrou) — abatem do "a receber"
-      sb('lancamentos').select('valor,tipo').eq('tipo', 'entrada'),
     ]);
-    const liqMed = m => Math.max(0, (m.valor || 0) - (m.imposto_valor || 0) - (m.valor_retido || 0));
+    // por obra: faturado por notas (bruto) e já recebido (medições recebidas + entradas lançadas)
+    const fatPorObra = {}, recPorObra = {};
+    (medR.data || []).forEach(m => { if (!m.obra_id) return; fatPorObra[m.obra_id] = (fatPorObra[m.obra_id] || 0) + (m.valor || 0); if (m.recebido) recPorObra[m.obra_id] = (recPorObra[m.obra_id] || 0) + (m.valor || 0); });
+    (entR.data || []).forEach(e => { if (!e.obra_id) return; recPorObra[e.obra_id] = (recPorObra[e.obra_id] || 0) + (e.valor || 0); });
     let entradas = 0, saidas = 0;
-    // a receber = LÍQUIDO da medição (bruto − imposto − retenção); não recebida E não PIX
-    (medR.data || []).forEach(x => { if (x.forma_pagamento === 'PIX') return; entradas += liqMed(x); });
+    // ENTRADAS PREVISTAS = a receber das obras ativas: contrato (ou faturado por notas) − tudo que já entrou.
+    // Desconta automaticamente conforme lançam entradas/recebimentos na obra (pedido da Maressa).
+    (obrasR.data || []).forEach(o => {
+      if (o.coluna_kanban === 'liquidado') return;
+      const base = (o.valor_contrato && o.valor_contrato > 0) ? o.valor_contrato : (fatPorObra[o.id] || 0);
+      entradas += Math.max(0, base - (recPorObra[o.id] || 0));
+    });
+    // + entradas previstas manuais FUTURAS (data > hoje)
+    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') { if (x.data_movimento && x.data_movimento > hoje) entradas += (x.valor || 0); } else saidas += (x.valor || 0); });
     (boR.data || []).forEach(x => saidas += (x.valor || 0));
     (ldR.data || []).forEach(x => saidas += (x.valor || 0));
-    // ENTRADA prevista só conta se for FUTURA (data > hoje); previsto com data passada já entrou (vira realizado)
-    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') { if (x.data_movimento && x.data_movimento > hoje) entradas += (x.valor || 0); } else saidas += (x.valor || 0); });
-    // já entrou → deixa de ser previsto: abate as entradas realizadas lançadas nas obras
-    const jaEntrou = (obrEntR.data || []).reduce((s, x) => s + (x.valor || 0), 0);
-    entradas = Math.max(0, entradas - jaEntrou);
     return { entradas, saidas };
   },
   // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos

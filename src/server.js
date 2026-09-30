@@ -605,7 +605,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
-const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'GILSON', 'VALE', 'OUTRO'];
+const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'LOCACAO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'GILSON', 'VALE', 'OUTRO'];
 const FORMAS_PAG = ['PIX', 'TED_DOC', 'DINHEIRO', 'BOLETO', 'CHEQUE', 'CARTAO', 'OUTRO'];
 const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
 // Administrativo (não vai a campo): fora do Cronograma Diário e do Vale-Transporte
@@ -1170,7 +1170,18 @@ app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
     for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'comissao_responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento', 'cor']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
-    if (req.body.dias_servico !== undefined) patch.dias_servico = Array.isArray(req.body.dias_servico) ? [...new Set(req.body.dias_servico.filter(Boolean))].sort() : [];
+    if (req.body.dias_servico !== undefined) {
+      // cada dia = {data, tipo, m2}; aceita string legada (vira {data}); dedup por data
+      const arr = Array.isArray(req.body.dias_servico) ? req.body.dias_servico : [];
+      const byData = {};
+      for (const d of arr) {
+        const it = (typeof d === 'string') ? { data: d } : (d || {});
+        const data = it.data ? String(it.data).slice(0, 10) : null;
+        if (!data) continue;
+        byData[data] = { data, tipo: it.tipo || null, m2: Number(it.m2) || 0 };
+      }
+      patch.dias_servico = Object.values(byData).sort((a, b) => a.data.localeCompare(b.data));
+    }
     if (req.body.metragem_m2 !== undefined) patch.metragem_m2 = Number(req.body.metragem_m2) || 0;
     if (req.body.valor_contrato !== undefined) patch.valor_contrato = Math.round((Number(req.body.valor_contrato) || 0) * 100);
     if (req.body.progresso !== undefined) patch.progresso = Math.max(0, Math.min(100, Math.round(Number(req.body.progresso) || 0)));
