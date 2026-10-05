@@ -605,7 +605,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
-const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'LOCACAO_MAQUINA', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'GILSON', 'VALE', 'OUTRO'];
+const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'FRETE', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'LOCACAO_MAQUINA', 'FERRAMENTAS_MAQUINARIO', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'GILSON', 'VALE', 'OUTRO'];
 const FORMAS_PAG = ['PIX', 'TED_DOC', 'DINHEIRO', 'BOLETO', 'CHEQUE', 'CARTAO', 'OUTRO'];
 const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
 // Administrativo (não vai a campo): fora do Cronograma Diário e do Vale-Transporte
@@ -722,6 +722,14 @@ app.get('/api/pagamento-diario', async (req, res, next) => {
     // soma o saldo REAL do Sicoob (ao vivo) ao Saldo de Caixa — mesma base do Bancos & Fluxo
     try { const sic = await saldoPrincipalCentavos(); r.resumo.saldo_caixa = (r.resumo.saldo_caixa || 0) + (sic || 0); r.resumo.saldo_final = r.resumo.saldo_caixa - (r.resumo.pago || 0); } catch (_) {}
     res.json(r);
+  } catch (e) { next(e); }
+});
+// Busca de lançamento/boleto em TODAS as datas (barra de busca do Pagamento Diário).
+// `cats` = códigos de categoria que casaram com o texto no front (ex.: "locação" → LOCACAO_MAQUINA).
+app.get('/api/pagamento-diario/busca', async (req, res, next) => {
+  try {
+    const cats = String(req.query.cats || '').split(',').map(s => s.trim()).filter(c => CAT_GASTO.includes(c));
+    res.json(await db.buscarPagamentos(req.query.q || '', cats));
   } catch (e) { next(e); }
 });
 app.get('/api/gastos/resumo', requireAdmin, async (req, res, next) => {

@@ -1043,7 +1043,7 @@
           <div class="dash-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
             <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--ink-2)">Dia<input type="date" id="pd-data" class="dash-sel"></label>
             <button class="primary" id="btn-novo-lanc-dia" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Novo lançamento</button>
-            <button class="btn-ghost" id="btn-novo-vale" style="min-height:40px;border-color:#2563EB;color:#2563EB">＋ Lançar Vale</button>
+            <button class="btn-ghost" id="btn-vale-pd" style="min-height:40px;border-color:#2563EB;color:#2563EB">＋ Lançar Vale</button>
             <button class="btn-ghost" id="btn-pd-pdf" style="min-height:40px">🖨️ Exportar PDF</button>
             <input id="pd-busca" placeholder="🔎 Buscar lançamento (descrição, categoria, fornecedor)…" autocomplete="off" style="flex:1;min-width:200px;max-width:360px;min-height:40px;padding:8px 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--ink);font-size:13px">
           </div>
@@ -1104,7 +1104,7 @@
       </div>
       <div class="metrics">
         <div class="metric"><div class="lbl">Total a Pagar</div><div class="val money" id="folha-total">—</div><div class="sub">só fichados (recebem no mês)</div></div>
-        <div class="metric"><div class="lbl">Diaristas (pagas no dia)</div><div class="val money" id="folha-diaristas" style="color:#2563EB">—</div><div class="sub"><span id="folha-diaristas-qtd">0</span> diaristas · já pagos</div></div>
+        <div class="metric"><div class="lbl">Pedreiros diaristas (pagos no dia)</div><div class="val money" id="folha-diaristas" style="color:#2563EB">—</div><div class="sub"><span id="folha-diaristas-qtd">0</span> pedreiros · pagos no dia (servente diarista vai no mês)</div></div>
         <div class="metric"><div class="lbl">Diárias (total)</div><div class="val money" id="folha-diarias">—</div><div class="sub">fichados + diaristas</div></div>
         <div class="metric"><div class="lbl">Comissões m²</div><div class="val money" id="folha-comissoes">—</div><div class="sub">produção rateada</div></div>
         <div class="metric"><div class="lbl">Vales abatidos</div><div class="val money" id="folha-vales">—</div><div class="sub">adiantados via PIX</div></div>
@@ -1155,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v204</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v209</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1212,11 +1212,8 @@
         <button class="primary" id="cron-novo-diarista" style="min-height:40px">＋ Adicionar diarista</button>
         <div class="metric" style="margin-left:auto;min-width:170px"><div class="lbl">Total de diárias do dia</div><div class="val money" id="cron-total">—</div></div>
       </div>
-      <div style="padding:16px 26px 0">
-        <div class="dv" style="font-size:12px;color:var(--ink-3);margin-bottom:6px">Arraste um colaborador para dentro de uma obra (ou use “+ Alocar”).</div>
-        <div id="cron-equipe" class="apont-equipe" style="margin-bottom:8px"></div>
-      </div>
-      <div class="board" id="cron-board" style="padding-bottom:96px"></div>
+      <div id="cron-equipe" class="apont-equipe" style="display:none"></div>
+      <div class="board" id="cron-board" style="padding:16px 26px 96px"></div>
     </section>
     <section id="view-prop" class="hidden">
       <div class="modhead"><h1>Propostas Comerciais</h1><p>Precificação das medições — defina o valor por m²/ml/m³, gere o total, envie e aprove.</p></div>
@@ -3996,7 +3993,7 @@
   }
   function renderCron(){
     const equipe=document.getElementById('cron-equipe');
-    equipe.innerHTML=(CRON.colaboradores||[]).map(c=>`<span class="apont-chip cron-chip${c.is_diarista?' diarista':''}" draggable="true" data-dragcolab="${c.id}"><span class="cron-ini">${ini(c.nome)}</span>${esc(c.nome)}${diarToggle(c)}</span>`).join('')||'<span class="dv" style="color:var(--ink-3)">Nenhum colaborador ativo.</span>';
+    equipe.innerHTML='';   // faixa de nomes removida (ficou poluída e não arrastavam) — alocação é pelo "+ Alocar" dentro da obra
     document.getElementById('cron-total').textContent=brl(CRON.total||0);
     const board=document.getElementById('cron-board');
     // Coluna fixa FALTA: Adelino arrasta quem não veio; vira desconto (valor a lançar pela Bárbara na Folha)
@@ -5119,7 +5116,7 @@
   });
 
   // ---------- BANCOS: abas (Contas & Fluxo · Pagamento Diário · Boletos) ----------
-  const CAT_GASTO_OPTS=[['ALIMENTACAO','Almoço'],['JANTAR','Jantar'],['COMBUSTIVEL','Combustível'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto e peças de máquinas'],['LOCACAO_MAQUINA','Locação de Maquinário'],['MANUTENCAO_CARRO','Manutenção e peças de carros'],['FORNECEDOR','Piso Tátil'],['FOLHA','Folha'],['IMPOSTO','Imposto'],['INSUMO','Materiais'],['DIARIA','Diária (pedreiros e serventes)'],['GRATIFICACAO_SERVENTE','Gratificação - Servente'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['EDVARD','Edvard'],['GILSON','Gilson (Raspagem)'],['VALE','Vale (adiantamento)'],['OUTRO','Outro']];
+  const CAT_GASTO_OPTS=[['ALIMENTACAO','Almoço'],['JANTAR','Jantar'],['COMBUSTIVEL','Combustível'],['FRETE','Frete'],['MULTA','Multa'],['VALE_TRANSPORTE','Vale-transporte'],['CONSERTO_MAQUINA','Conserto e peças de máquinas'],['LOCACAO_MAQUINA','Locação de Maquinário'],['FERRAMENTAS_MAQUINARIO','Ferramentas/Maquinário'],['MANUTENCAO_CARRO','Manutenção e peças de carros'],['FORNECEDOR','Piso Tátil'],['FOLHA','Folha'],['IMPOSTO','Imposto'],['INSUMO','Materiais'],['DIARIA','Diária (pedreiros e serventes)'],['GRATIFICACAO_SERVENTE','Gratificação - Servente'],['DESPESA_FUNCIONARIO','Despesa de Funcionário'],['EDVARD','Edvard'],['GILSON','Gilson (Raspagem)'],['VALE','Vale (adiantamento)'],['OUTRO','Outro']];
   const CAT_LABEL=Object.fromEntries(CAT_GASTO_OPTS);
   document.getElementById('boleto-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   document.getElementById('lancdia-cat').innerHTML=CAT_GASTO_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
@@ -5283,17 +5280,26 @@
     const fEl=document.getElementById('pd-final');fEl.textContent=brl(r.resumo.saldo_final||0);
     fEl.style.color=(r.resumo.saldo_final||0)<0?'var(--danger)':'';
     const cont=document.getElementById('pd-content');
-    if(!r.itens.length){cont.innerHTML='<div class="orc-empty">Nada lançado nem vencendo neste dia. Boletos com vencimento nesta data aparecem aqui automaticamente.</div>';return;}
-    const _q=(((document.getElementById('pd-busca')||{}).value)||'').trim().toLowerCase();
-    const itens=_q?(r.itens||[]).filter(i=>[i.descricao,i.categoria_custom,CAT_LABEL[i.categoria]||i.categoria,i.fornecedor,i.forma,i.empresa].some(x=>String(x||'').toLowerCase().includes(_q))):r.itens;
-    if(!itens.length){cont.innerHTML='<div class="orc-empty">Nenhum lançamento encontrado para "'+esc(_q)+'" neste dia.</div>';return;}
-    cont.innerHTML='<div class="doc-list">'+itens.map(i=>{
+    const _q=(((document.getElementById('pd-busca')||{}).value)||'').trim();
+    let itens, buscando=false;
+    if(_q){
+      buscando=true;
+      // resolve códigos de categoria cujo rótulo casa com o texto (ex.: "locação" → LOCACAO_MAQUINA)
+      const cats=CAT_GASTO_OPTS.filter(([v,l])=>l.toLowerCase().includes(_q.toLowerCase())).map(([v])=>v);
+      try{itens=await api('/api/pagamento-diario/busca?q='+encodeURIComponent(_q)+(cats.length?'&cats='+encodeURIComponent(cats.join(',')):''));}catch(e){console.error(e);itens=[];}
+      PD_STATE.itens=itens;   // pro ✏️ Editar achar o item buscado
+      if(!itens.length){cont.innerHTML='<div class="orc-empty">Nenhum lançamento encontrado para "'+esc(_q)+'" em nenhuma data.</div>';return;}
+    }else{
+      if(!r.itens.length){cont.innerHTML='<div class="orc-empty">Nada lançado nem vencendo neste dia. Boletos com vencimento nesta data aparecem aqui automaticamente.</div>';return;}
+      itens=r.itens;
+    }
+    cont.innerHTML=(buscando?'<div class="dv" style="font-size:12px;color:var(--ink-3);margin:-4px 0 10px">🔎 '+itens.length+' resultado(s) para "'+esc(_q)+'" <b>em todas as datas</b></div>':'')+'<div class="doc-list">'+itens.map(i=>{
       const tag=i.origem==='BOLETO'?'<span class="tag t-lar">Boleto</span>':`<span class="tag">${esc(i.forma||'Lançamento')}</span>`;
       const st=i.pago?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
       const comp=i.comprovante_url?`<a class="doc-open" href="${i.comprovante_url}" target="_blank" rel="noopener">Comprovante</a>`:'';
       const base=i.origem==='BOLETO'?'/api/boletos/'+i.id:'/api/lancamentos-diarios/'+i.id;
       return `<div class="fin-item">
-        <div class="fi-main"><h4>${esc(i.descricao)}${i.empresa?`<span class="emp-tag emp-${i.empresa==='ECO_PISOS'?'eco':'rb'}">${i.empresa==='ECO_PISOS'?'ECO PISOS':'R.B PISOS'}</span>`:''}</h4><div class="fi-sub">${i.categoria==='OUTRO'&&i.categoria_custom?esc(i.categoria_custom):(CAT_LABEL[i.categoria]||i.categoria||'')}${i.atrasado?' · <span style="color:var(--danger);font-weight:700">⚠ atrasado (venc. '+dtBR(i.vencimento)+')</span>':''}</div></div>
+        <div class="fi-main"><h4>${esc(i.descricao)}${i.empresa?`<span class="emp-tag emp-${i.empresa==='ECO_PISOS'?'eco':'rb'}">${i.empresa==='ECO_PISOS'?'ECO PISOS':'R.B PISOS'}</span>`:''}</h4><div class="fi-sub">${buscando?'<span style="color:var(--laranja-2);font-weight:600">'+dtBR(i.data||i.vencimento)+'</span> · ':''}${i.categoria==='OUTRO'&&i.categoria_custom?esc(i.categoria_custom):(CAT_LABEL[i.categoria]||i.categoria||'')}${i.atrasado?' · <span style="color:var(--danger);font-weight:700">⚠ atrasado (venc. '+dtBR(i.vencimento)+')</span>':''}</div></div>
         <div class="fi-val">${brl(i.valor)}</div>${tag}${st}
         <div class="fi-act">${comp}
           ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
@@ -5352,7 +5358,7 @@
   };
   document.getElementById('lancdia-cat').addEventListener('change',lancdiaOutroToggle);
   document.getElementById('btn-novo-lanc-dia').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.getElementById('lancdia-id').value='';document.getElementById('lancdia-titulo').textContent='Novo lançamento do dia';document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;lancdiaOutroToggle();openModal('ov-lancdia');});
-  document.getElementById('btn-novo-vale').addEventListener('click',()=>{const f=document.getElementById('form-lancdia');f.reset();document.getElementById('lancdia-id').value='';document.getElementById('lancdia-titulo').textContent='Lançar Vale (adiantamento)';document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;document.getElementById('lancdia-cat').value='VALE';document.querySelector('#form-lancdia [name=forma]').value='PIX';lancdiaOutroToggle();openModal('ov-lancdia');document.getElementById('lancdia-colab').focus();});
+  document.getElementById('btn-vale-pd').addEventListener('click',async()=>{const f=document.getElementById('form-lancdia');f.reset();document.getElementById('lancdia-id').value='';document.getElementById('lancdia-titulo').textContent='Lançar Vale (adiantamento)';document.querySelector('#form-lancdia [name=data]').value=document.getElementById('pd-data').value||isoHoje();document.getElementById('lancdia-pago').checked=true;document.getElementById('lancdia-cat').value='VALE';document.querySelector('#form-lancdia [name=forma]').value='PIX';lancdiaOutroToggle();await popularLancdiaColabs();openModal('ov-lancdia');document.getElementById('lancdia-colab').focus();});
   document.getElementById('form-lancdia').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
     const id=document.getElementById('lancdia-id').value;
@@ -5621,7 +5627,7 @@
       const prodCell=d.is_producao&&d.apontamento_id
         ?`<button class="btn-ghost" data-apedit="${d.apontamento_id}" title="Editar produção" style="padding:2px 7px;font-size:11px;margin-right:4px">✏️</button><button class="doc-cloud" data-apdel="${d.apontamento_id}" title="Excluir produção" style="padding:2px">${DE_TRASH}</button>`:'';
       const valorCell=(d.is_gratificacao&&d.gratificacao_paga)?`<span style="text-decoration:line-through;color:var(--ink-3)" title="Paga à parte — fora do total da folha">${brl(d.valor)}</span>`:brl(d.valor);
-      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
+      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:var(--ink-3);font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
     };
     const prod=(detalhe||[]).filter(d=>d.is_producao), outros=(detalhe||[]).filter(d=>!d.is_producao);
     const byDate={}; prod.forEach(d=>{(byDate[d.data]||=[]).push(d);});
@@ -5644,8 +5650,9 @@
   async function calcularFolha(){
     const desde=document.getElementById('folha-desde').value,ate=document.getElementById('folha-ate').value;
     const r=await api('/api/dp/folha-fechamento?desde='+desde+'&ate='+ate);
-    // Folha lista só fichados — diarista recebe no dia (não entra nesta divisão)
-    r.colaboradores=ordNome((r.colaboradores||[]).filter(c=>!c.is_diarista));
+    // "Pago no dia" = só diarista PEDREIRO. Diarista servente recebe no fim do mês → entra na folha.
+    const pagoNoDia=c=>c.is_diarista&&/PEDREIRO/i.test(c.cargo||'');
+    r.colaboradores=ordNome((r.colaboradores||[]).filter(c=>!pagoNoDia(c)));
     folhaAtual=r;
     document.getElementById('folha-total').textContent=brl(r.totais.a_pagar||0);
     document.getElementById('folha-diaristas').textContent=brl(r.totais.diaristas_pago||0);
@@ -5664,8 +5671,8 @@
       const diarTag=l.is_diarista?'<span class="tag" style="margin-left:6px;font-size:9.5px;background:#2563EB;color:#fff">diarista</span>':'';
       const seta=expand?'<span style="color:var(--ink-3);margin-right:4px" data-arrow>▸</span>':'';
       const reciboBtn=`<button class="btn-ghost" data-recibofolha="${idx}" title="Recibo detalhado do colaborador (imprimir)" style="padding:2px 8px;font-size:12px;margin-left:8px">🧾</button>`;
-      const liqCell=l.is_diarista
-        ? `<td class="num" style="color:var(--ink-3)" title="Diarista recebe no dia — não entra no Total a Pagar"><div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">${brl(l.total_liquido)}${reciboBtn}</div><div style="font-size:9.5px;color:#2563EB">pago no dia</div></td>`
+      const liqCell=pagoNoDia(l)
+        ? `<td class="num" style="color:var(--ink-3)" title="Pedreiro diarista recebe no dia — não entra no Total a Pagar"><div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">${brl(l.total_liquido)}${reciboBtn}</div><div style="font-size:9.5px;color:#2563EB">pago no dia</div></td>`
         : `<td class="num money"><div style="display:flex;align-items:center;justify-content:flex-end;gap:2px">${brl(l.total_liquido)}${reciboBtn}</div></td>`;
       const linha=`<tr data-folharow="${idx}" style="cursor:${expand?'pointer':'default'}">
         <td><div class="vt-nome">${seta}<div class="ini" style="background:${l.is_diarista?'#2563EB':hue(l.nome)}">${ini(l.nome)}</div>${esc(l.nome)}${cronTag}${diarTag}${faltaTag}</div></td>
@@ -5782,10 +5789,32 @@
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fechar folha: '+(m||'erro'));console.error(err);}
     finally{btn.disabled=false;btn.textContent='Confirmar fechamento';}
   });
+  // Linhas de presença do recibo PDF — mesma visão da tela: produção do mesmo dia (obras diferentes)
+  // vira 1 linha-resumo (data · obras juntas · total) com o detalhe por obra recuado abaixo. Não repete a data.
+  function reciboPresRows(presenca){
+    if(!presenca||!presenca.length)return '<tr><td colspan="4" class="c">Sem diárias no período.</td></tr>';
+    const linha=d=>`<tr><td>${d.data?dtBR(d.data):'—'}</td><td>${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:#777;font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td>${esc(d.funcao||'—')}</td><td class="r">${brl(d.valor||0)}</td></tr>`;
+    const prod=presenca.filter(d=>d.is_producao), outros=presenca.filter(d=>!d.is_producao);
+    const byDate={}; prod.forEach(d=>{(byDate[d.data]||=[]).push(d);});
+    const items=[];
+    Object.keys(byDate).forEach(data=>items.push({data,kind:'prod',grp:byDate[data]}));
+    outros.forEach(d=>items.push({data:d.data,kind:'outro',d}));
+    items.sort((a,b)=>String(a.data||'').localeCompare(String(b.data||'')));
+    return items.map(it=>{
+      if(it.kind==='outro')return linha(it.d);
+      const grp=it.grp;
+      if(grp.length===1)return linha(grp[0]);
+      const totVal=grp.reduce((s,x)=>s+(x.valor||0),0), totM2=Math.round(grp.reduce((s,x)=>s+(x.m2||0),0)*100)/100;
+      const obras=[...new Set(grp.map(x=>x.obra).filter(Boolean))].join(' / ');
+      const head=`<tr style="background:#f5f6f8;font-weight:700"><td>${it.data?dtBR(it.data):'—'}</td><td>${esc(obras)}</td><td>Produção — ${totM2} m²</td><td class="r">${brl(totVal)}</td></tr>`;
+      const kids=grp.map(d=>`<tr><td style="padding-left:18px;color:#666">↳</td><td style="color:#666">${esc(d.obra||'—')}</td><td style="color:#666">${d.m2?d.m2+' m²':esc(d.funcao||'Produção')}</td><td class="r" style="color:#666">${brl(d.valor||0)}</td></tr>`).join('');
+      return head+kids;
+    }).join('');
+  }
   // Corpo do recibo/folha de UM colaborador (presença + faltas + descontos). Usado no Fechar folha e no módulo Recibos.
   function reciboBody(o){
     const has=a=>a&&a.length;
-    const presRows=has(o.presenca)?o.presenca.map(d=>`<tr><td>${d.data?dtBR(d.data):'—'}</td><td>${esc(d.obra||'—')}</td><td>${esc(d.funcao||'—')}</td><td class="r">${brl(d.valor||0)}</td></tr>`).join(''):'<tr><td colspan="4" class="c">Sem diárias no período.</td></tr>';
+    const presRows=reciboPresRows(o.presenca);
     const faltasSec=has(o.faltas)?`<h3 style="font-size:12px;text-transform:uppercase;color:#b91c1c;margin-top:16px">Faltas</h3>
       <table><thead><tr><th>Dia</th><th style="text-align:right">Desconto</th></tr></thead><tbody>${o.faltas.map(f=>`<tr><td>${f.data?dtBR(f.data):'—'}</td><td class="r">${f.valor?'− '+brl(f.valor):'—'}</td></tr>`).join('')}</tbody></table>`:'';
     const lin=(k,v)=>`<tr><td>${k}</td><td class="r">${v}</td></tr>`;

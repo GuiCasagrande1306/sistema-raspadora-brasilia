@@ -1372,6 +1372,27 @@ export const db = {
     const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
     return { categoria, desde, ate, total, itens };
   },
+  // Busca de lançamento/boleto por texto em TODAS as datas (barra do Pagamento Diário).
+  // `cats` = códigos de categoria que o front resolveu a partir do texto (ex.: "locação" → LOCACAO_MAQUINA).
+  async buscarPagamentos(q, cats = []) {
+    if (!USING_SUPABASE) return [];
+    const t = (q || '').trim();
+    if (t.length < 2) return [];
+    const s = t.replace(/[,%()]/g, ' ').trim();
+    if (!s) return [];
+    const like = `%${s}%`;
+    const catList = (cats || []).filter(Boolean);
+    const catFilter = catList.length ? `,categoria.in.(${catList.join(',')})` : '';
+    const [boR, ldR] = await Promise.all([
+      sb('boletos').select('*').or(`descricao.ilike.${like},fornecedor.ilike.${like},categoria_custom.ilike.${like}${catFilter}`).order('vencimento', { ascending: false }).limit(80),
+      sb('lancamentos_diarios').select('*').or(`descricao.ilike.${like},categoria_custom.ilike.${like}${catFilter}`).order('data', { ascending: false }).limit(80),
+    ]);
+    const itens = [
+      ...(boR.data || []).map(b => ({ ...b, origem: 'BOLETO', data: b.pago ? (b.data_pagamento || b.vencimento) : b.vencimento, atrasado: (b.vencimento < new Date().toISOString().slice(0, 10) && !b.pago) })),
+      ...(ldR.data || []).map(l => ({ ...l, origem: 'LANCAMENTO', data: l.pago ? (l.data_pagamento || l.data) : l.data })),
+    ];
+    return itens.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+  },
   // Pagamento diário de uma data = boletos vencendo nesse dia + lançamentos manuais do dia
   async pagamentoDiario(data) {
     const [boletos, lancs, contas] = await Promise.all([
@@ -1949,7 +1970,7 @@ export const db = {
       if (ehGratif) { p.gratificacoes += (a.valor_diaria || 0); if (gratifPaga) p.gratifPagas += (a.valor_diaria || 0); }
       else p.cronDiarias += (a.valor_diaria || 0);
       p.cronDias.add(a.data);
-      p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga });
+      p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga, observacao: a.observacao || null });
     }
     // dedup: a linha da produção (m²) SUBSTITUI a alocação vazia do cronograma no mesmo dia+obra
     // (pedreiro entra no cronograma sem valor porque é pago por m² — evita duplicar)
@@ -1983,12 +2004,14 @@ export const db = {
       };
     }).filter(l => l.dias_trabalhados || l.vales_abatidos || l.faltas || l.inss || l.outros_desconto || (l.faltas_itens && l.faltas_itens.length))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
-    const fichados = linhas.filter(l => !l.is_diarista);
-    const diaristas = linhas.filter(l => l.is_diarista);
+    // "Pago no dia" = SÓ diarista PEDREIRO. Diarista SERVENTE (e demais) recebe no FIM DO MÊS (entra na folha como fichado).
+    const pagoNoDia = l => l.is_diarista && /PEDREIRO/i.test(l.cargo || '');
+    const fichados = linhas.filter(l => !pagoNoDia(l));     // fichados + diarista servente → recebem no mês
+    const diaristas = linhas.filter(l => pagoNoDia(l));      // só pedreiro diarista → pago no dia
     const totais = {
-      // Total a pagar = SÓ fichados (recebem no mês). Diarista recebe no dia, não entra aqui.
+      // Total a pagar = fichados + diarista servente (recebem no mês). Só o pedreiro diarista fica de fora (pago no dia).
       a_pagar: fichados.reduce((s, l) => s + l.total_liquido, 0),
-      diaristas_pago: diaristas.reduce((s, l) => s + l.total_liquido, 0),   // diárias de diaristas (já pagas no dia)
+      diaristas_pago: diaristas.reduce((s, l) => s + l.total_liquido, 0),   // diárias de pedreiros diaristas (já pagas no dia)
       diaristas_qtd: diaristas.length,
       comissoes: linhas.reduce((s, l) => s + l.comissao, 0),
       diarias: linhas.reduce((s, l) => s + l.diarias, 0),
