@@ -1086,7 +1086,12 @@ export const db = {
     return updateSafeById('pagamentos_fixos', id, patch);   // tolerante: ignora forma_pagamento antes da migration
   },
   async deleteFixo(id) {
-    if (USING_SUPABASE) { const { error } = await sb('pagamentos_fixos').delete().eq('id', id); if (error) throw error; }
+    if (USING_SUPABASE) {
+      // remove os boletos PENDENTES gerados por este fixo (senão viram órfãos que duplicam o gasto).
+      // Os já PAGOS ficam — são histórico do dinheiro que saiu do caixa.
+      await sb('boletos').delete().eq('fixo_id', id).eq('pago', false);
+      const { error } = await sb('pagamentos_fixos').delete().eq('id', id); if (error) throw error;
+    }
     return { ok: true };
   },
   // Materializa os fixos ativos como boletos da competência (YYYY-MM), sem duplicar.
