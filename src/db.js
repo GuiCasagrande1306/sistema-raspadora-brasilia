@@ -1693,9 +1693,9 @@ export const db = {
     const liqMed = x => Math.max(0, (x.valor || 0) - (x.imposto_valor || 0) - (x.valor_retido || 0));
     const entradas = [], saidas = [];
     // ENTRADAS (líquido no caixa)
-    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (!noMes(d)) return; entradas.push({ data: d, descricao: (obraNome[x.obra_id] || 'Obra') + (x.descricao ? ' · ' + x.descricao : ''), origem: 'Medição/nota', valor: liqMed(x) }); });
-    (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; entradas.push({ data: x.data_movimento, descricao: x.descricao || 'Movimentação', origem: x.status === 'PREVISTO' ? 'Previsto vencido' : 'Recebimento', valor: x.valor || 0 }); });
-    (obrEntR.data || []).forEach(x => entradas.push({ data: (x.created_at || '').slice(0, 10), descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
+    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (!noMes(d)) return; entradas.push({ data: d, obra: obraNome[x.obra_id] || null, descricao: (obraNome[x.obra_id] || 'Obra') + (x.descricao ? ' · ' + x.descricao : ''), origem: 'Medição/nota', valor: liqMed(x) }); });
+    (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; entradas.push({ data: x.data_movimento, obra: null, descricao: x.descricao || 'Movimentação', origem: x.status === 'PREVISTO' ? 'Previsto vencido' : 'Recebimento', valor: x.valor || 0 }); });
+    (obrEntR.data || []).forEach(x => entradas.push({ data: (x.created_at || '').slice(0, 10), obra: obraNome[x.obra_id] || null, descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
     // SAÍDAS
     const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA: 'Diária', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', EDVARD: 'Edvard', GILSON: 'Gilson', VALE: 'Vale' };
     const catTxt = x => (x.categoria === 'OUTRO' && x.categoria_custom) ? x.categoria_custom : (catLabel[x.categoria] || x.categoria || '');
@@ -1706,7 +1706,11 @@ export const db = {
     saidas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
     const total_entradas = entradas.reduce((s, i) => s + i.valor, 0);
     const total_saidas = saidas.reduce((s, i) => s + i.valor, 0);
-    return { mes: mesStr, entradas, saidas, total_entradas, total_saidas, saldo: total_entradas - total_saidas };
+    // entradas agrupadas por obra (quais obras entraram e quanto) — p/ conferir se não falta lançar
+    const porObra = {};
+    entradas.forEach(e => { const k = e.obra || 'Outras entradas (sem obra)'; porObra[k] = (porObra[k] || 0) + e.valor; });
+    const entradas_por_obra = Object.entries(porObra).map(([obra, total]) => ({ obra, total })).sort((a, b) => b.total - a.total);
+    return { mes: mesStr, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, saldo: total_entradas - total_saidas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
@@ -2084,7 +2088,7 @@ export const db = {
     const recibos = resumo.colaboradores.map(l => ({
       tipo: 'FOLHA', colaborador_id: l.colaborador_id, colaborador_nome: l.nome, referencia: ref,
       periodo_desde: desde, periodo_ate: ate, valor: l.total_liquido, folha_fechamento_id: fech.id, data: hoje,
-      detalhe: { dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos, faltas: l.faltas || 0, inss: l.inss || 0, outros_desconto: l.outros_desconto || 0, presenca: l.detalhe || [], faltas_lista: l.faltas_itens || [] },
+      detalhe: { cargo: l.cargo || null, dias: l.dias_trabalhados, m2: l.m2_processados, diarias: l.diarias, comissao: l.comissao, bonus: l.bonus_assiduidade, vales: l.vales_abatidos, faltas: l.faltas || 0, inss: l.inss || 0, outros_desconto: l.outros_desconto || 0, presenca: l.detalhe || [], faltas_lista: l.faltas_itens || [] },
     }));
     if (recibos.length) { const { error: er } = await sb('recibos').insert(recibos); if (er) throw er; }
     // abate os vales e descontos que entraram nesta folha (todos os pendentes)

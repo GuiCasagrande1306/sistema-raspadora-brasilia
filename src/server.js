@@ -807,8 +807,16 @@ app.get('/api/cronograma/relatorio', async (req, res, next) => {
     const dias = []; { const s = new Date(desde + 'T00:00:00'), e = new Date(ate + 'T00:00:00'); for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) dias.push(d.toISOString().slice(0, 10)); }
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c]));
     const linhas = {};
-    const get = (id) => (linhas[id] ||= { colaborador_id: id, nome: (nomeMap[id] && nomeMap[id].nome) || '—', is_diarista: !!(nomeMap[id] && nomeMap[id].is_diarista), dias: {}, presencas: 0, faltas: 0 });
-    for (const a of alocs) { if (!a.colaborador_id) continue; const L = get(a.colaborador_id); if (!L.dias[a.data]) { L.dias[a.data] = { status: 'P', obra: a.obra_nome || null, funcao: a.funcao || null }; L.presencas++; } }
+    const get = (id) => (linhas[id] ||= { colaborador_id: id, nome: (nomeMap[id] && nomeMap[id].nome) || '—', is_diarista: !!(nomeMap[id] && nomeMap[id].is_diarista), dias: {}, presencas: 0, faltas: 0, atestados: 0 });
+    for (const a of alocs) {
+      if (!a.colaborador_id) continue;
+      const L = get(a.colaborador_id);
+      if (L.dias[a.data]) continue;
+      // Obra/função "ATESTADO" → dia de atestado (A): faltou mas com atestado (recebe a diária). Não conta como presença nem falta.
+      const atest = /ATESTADO/i.test((a.obra_nome || '') + ' ' + (a.funcao || ''));
+      L.dias[a.data] = { status: atest ? 'A' : 'P', obra: a.obra_nome || null, funcao: a.funcao || null };
+      if (atest) L.atestados++; else L.presencas++;
+    }
     for (const f of faltas) { if (!f.colaborador_id) continue; const L = get(f.colaborador_id); const cur = L.dias[f.data_lancamento]; if (cur) continue; L.dias[f.data_lancamento] = { status: 'F' }; L.faltas++; }
     const arr = Object.values(linhas).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' }));
     res.json({ desde, ate, dias, linhas: arr });
