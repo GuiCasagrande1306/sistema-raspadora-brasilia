@@ -662,7 +662,7 @@ export const db = {
     if (!USING_SUPABASE) return [];
     // ---- Perfil de CAMPO/AGENDA (Adelino, Cadu): SÓ os dias de serviço das obras, sem Raspagem e SEM nenhum valor ----
     if ((role || 'ADMIN') !== 'ADMIN') {
-      const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento' };
+      const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento', RASPAGEM: 'serv_raspagem' };
       let obras = [];
       try {
         const r = await sb('obras_financeiro').select('id,cliente,categoria_servico,coluna_kanban,dias_servico');
@@ -677,7 +677,6 @@ export const db = {
           const ds = String(it.data || '').slice(0, 10);
           if (!ds || ds < desde || ds > ate) return;
           const tipo = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
-          if (tipo === 'RASPAGEM') return;                        // raspagem nunca aparece pro time de campo
           eventos.push({ tipo: CAT_TIPO[tipo] || 'serv_outro', data: ds, titulo: o.cliente || 'Obra', categoria: tipo, m2: Number(it.m2) || 0, obra_id: o.id });
         });
       });
