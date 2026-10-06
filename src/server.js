@@ -605,7 +605,7 @@ app.get('/api/gefip/zip', async (req, res, next) => {
 
 // ---------- BOLETOS + PAGAMENTO DIÁRIO (financeiro; valores em REAIS -> centavos) ----------
 const cents = (v) => Math.round((Number(v) || 0) * 100);
-const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'FRETE', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'LOCACAO_MAQUINA', 'FERRAMENTAS_MAQUINARIO', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'EDVARD', 'GILSON', 'VALE', 'OUTRO'];
+const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'COMBUSTIVEL', 'FRETE', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'LOCACAO_MAQUINA', 'FERRAMENTAS_MAQUINARIO', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'IMPOSTO', 'INSUMO', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'DESPESAS_LOJA', 'EDVARD', 'GILSON', 'VALE', 'OUTRO'];
 const FORMAS_PAG = ['PIX', 'TED_DOC', 'DINHEIRO', 'BOLETO', 'CHEQUE', 'CARTAO', 'OUTRO'];
 const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
 // Administrativo (não vai a campo): fora do Cronograma Diário e do Vale-Transporte
@@ -1550,6 +1550,13 @@ app.get('/api/fluxo-caixa/mes', async (req, res, next) => {
   try {
     const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : new Date().toISOString().slice(0, 7);
     res.json(await db.mesRealizado(mes, req.query.hoje));
+  } catch (e) { next(e); }
+});
+// Relatório mensal detalhado de entradas e saídas (para o PDF — escolhe o mês)
+app.get('/api/fluxo-caixa/relatorio-mensal', async (req, res, next) => {
+  try {
+    const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : new Date().toISOString().slice(0, 7);
+    res.json(await db.relatorioMensal(mes, req.query.hoje));
   } catch (e) { next(e); }
 });
 app.get('/api/fluxo-caixa/previstos-totais', async (req, res, next) => {

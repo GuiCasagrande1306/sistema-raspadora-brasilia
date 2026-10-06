@@ -1672,6 +1672,42 @@ export const db = {
     (obrR.data || []).forEach(x => { entradas += (x.valor || 0); });
     return { mes: mesStr, entradas, saidas };
   },
+  // Relatório detalhado do mês: lista cada ENTRADA e cada SAÍDA (mesma definição do mesRealizado,
+  // então os totais batem com os cards "Entradas do mês"/"Saídas do mês"). Para o PDF mensal.
+  async relatorioMensal(mesStr, hojeStr) {
+    if (!USING_SUPABASE) return { mes: mesStr, entradas: [], saidas: [], total_entradas: 0, total_saidas: 0, saldo: 0 };
+    const [y, m] = mesStr.split('-').map(Number);
+    const ini = mesStr + '-01';
+    const fim = new Date(y, m, 0).toISOString().slice(0, 10);
+    const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
+    const noMes = d => d && d >= ini && d <= fim;
+    const [medR, ldR, boR, movR, obrEntR, obrasF] = await Promise.all([
+      sb('medicoes_obra').select('obra_id,descricao,valor,recebido,data_recebimento,data,forma_pagamento,imposto_valor,valor_retido'),
+      sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').gte('data', ini).lte('data', fim),
+      sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,pago').gte('vencimento', ini).lte('vencimento', fim),
+      sb('movimentacoes_caixa').select('valor,tipo,data_movimento,status,descricao').gte('data_movimento', ini).lte('data_movimento', fim),
+      sb('lancamentos').select('valor,created_at,obra_id,descricao').eq('tipo', 'entrada').gte('created_at', ini).lte('created_at', fim + 'T23:59:59'),
+      sb('obras_financeiro').select('id,cliente'),
+    ]);
+    const obraNome = Object.fromEntries((obrasF.data || []).map(o => [o.id, o.cliente]));
+    const liqMed = x => Math.max(0, (x.valor || 0) - (x.imposto_valor || 0) - (x.valor_retido || 0));
+    const entradas = [], saidas = [];
+    // ENTRADAS (líquido no caixa)
+    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (!noMes(d)) return; entradas.push({ data: d, descricao: (obraNome[x.obra_id] || 'Obra') + (x.descricao ? ' · ' + x.descricao : ''), origem: 'Medição/nota', valor: liqMed(x) }); });
+    (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; entradas.push({ data: x.data_movimento, descricao: x.descricao || 'Movimentação', origem: x.status === 'PREVISTO' ? 'Previsto vencido' : 'Recebimento', valor: x.valor || 0 }); });
+    (obrEntR.data || []).forEach(x => entradas.push({ data: (x.created_at || '').slice(0, 10), descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
+    // SAÍDAS
+    const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA: 'Diária', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', EDVARD: 'Edvard', GILSON: 'Gilson', VALE: 'Vale' };
+    const catTxt = x => (x.categoria === 'OUTRO' && x.categoria_custom) ? x.categoria_custom : (catLabel[x.categoria] || x.categoria || '');
+    (ldR.data || []).forEach(x => saidas.push({ data: x.data, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Pagamento diário', valor: x.valor || 0, pago: !!x.pago }));
+    (boR.data || []).forEach(x => saidas.push({ data: x.vencimento, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Boleto', valor: x.valor || 0, pago: !!x.pago }));
+    (movR.data || []).forEach(x => { if (x.tipo !== 'SAIDA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; saidas.push({ data: x.data_movimento, descricao: x.descricao || 'Movimentação', categoria: '', origem: 'Movimentação', valor: x.valor || 0, pago: x.status !== 'PREVISTO' }); });
+    entradas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+    saidas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+    const total_entradas = entradas.reduce((s, i) => s + i.valor, 0);
+    const total_saidas = saidas.reduce((s, i) => s + i.valor, 0);
+    return { mes: mesStr, entradas, saidas, total_entradas, total_saidas, saldo: total_entradas - total_saidas };
+  },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
   // Saídas: boletos não pagos + lançamentos diários não pagos + movimentações PREVISTO SAIDA.
