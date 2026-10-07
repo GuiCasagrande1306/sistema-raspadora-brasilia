@@ -832,7 +832,7 @@ app.get('/api/cronograma', async (req, res, next) => {
     // Cronograma do Adelino: só Raspagem fica de fora. Limpeza e as demais (Fulget/Concreto/Cimento) aparecem.
     const FORA_CRONOGRAMA = ['RASPAGEM'];   // só Raspagem fica fora; Limpeza aparece no cronograma
     const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
-      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null, cor: o.cor || null }));
+      .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null, cor: o.cor || null, concluida: !!o.cronograma_concluida }));
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO' && !isAdminCargo(c.cargo))   // administrativo não vai pro cronograma
@@ -1206,6 +1206,7 @@ app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
       if (!v.includes(req.body.coluna_kanban)) return res.status(400).json({ erro: 'coluna_kanban inválida' });
       patch.coluna_kanban = req.body.coluna_kanban;
     }
+    if (req.body.cronograma_concluida !== undefined) patch.cronograma_concluida = !!req.body.cronograma_concluida;   // concluída some do Cronograma Diário (independe do Kanban)
     const o = await db.updateObra(req.params.id, patch);
     if (!o) return res.status(404).json({ erro: 'obra não encontrada' });
     res.json(o);
