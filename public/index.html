@@ -1155,7 +1155,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v218</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v220</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5733,7 +5733,7 @@
       const prodCell=d.is_producao&&d.apontamento_id
         ?`<button class="btn-ghost" data-apedit="${d.apontamento_id}" title="Editar produção" style="padding:2px 7px;font-size:11px;margin-right:4px">✏️</button><button class="doc-cloud" data-apdel="${d.apontamento_id}" title="Excluir produção" style="padding:2px">${DE_TRASH}</button>`:'';
       const valorCell=(d.is_gratificacao&&d.gratificacao_paga)?`<span style="text-decoration:line-through;color:var(--ink-3)" title="Paga à parte — fora do total da folha">${brl(d.valor)}</span>`:brl(d.valor);
-      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:var(--ink-3);font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td style="padding:4px">${esc(d.funcao||'—')}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
+      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:var(--ink-3);font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td style="padding:4px">${esc(d.funcao||'—')}${d.acabamento?' <span style="color:var(--ink-3)">· '+esc(d.acabamento)+'</span>':''}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
     };
     const prod=(detalhe||[]).filter(d=>d.is_producao), outros=(detalhe||[]).filter(d=>!d.is_producao);
     const byDate={}; prod.forEach(d=>{(byDate[d.data]||=[]).push(d);});
@@ -5902,7 +5902,7 @@
   // vira 1 linha-resumo (data · obras juntas · total) com o detalhe por obra recuado abaixo. Não repete a data.
   function reciboPresRows(presenca){
     if(!presenca||!presenca.length)return '<tr><td colspan="4" class="c">Sem diárias no período.</td></tr>';
-    const linha=d=>`<tr><td>${d.data?dtBR(d.data):'—'}</td><td>${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:#777;font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td>${esc(d.funcao||'—')}</td><td class="r">${brl(d.valor||0)}</td></tr>`;
+    const linha=d=>`<tr><td>${d.data?dtBR(d.data):'—'}</td><td>${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:#777;font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td>${esc(d.funcao||'—')}${d.acabamento?' <span style="color:#777">· '+esc(d.acabamento)+'</span>':''}</td><td class="r">${brl(d.valor||0)}</td></tr>`;
     const prod=presenca.filter(d=>d.is_producao), outros=presenca.filter(d=>!d.is_producao);
     const byDate={}; prod.forEach(d=>{(byDate[d.data]||=[]).push(d);});
     const items=[];
@@ -5916,7 +5916,7 @@
       const totVal=grp.reduce((s,x)=>s+(x.valor||0),0), totM2=Math.round(grp.reduce((s,x)=>s+(x.m2||0),0)*100)/100;
       const obras=[...new Set(grp.map(x=>x.obra).filter(Boolean))].join(' / ');
       const head=`<tr style="background:#f5f6f8;font-weight:700"><td>${it.data?dtBR(it.data):'—'}</td><td>${esc(obras)}</td><td>Produção — ${totM2} m²</td><td class="r">${brl(totVal)}</td></tr>`;
-      const kids=grp.map(d=>`<tr><td style="padding-left:18px;color:#666">↳</td><td style="color:#666">${esc(d.obra||'—')}</td><td style="color:#666">${d.m2?d.m2+' m²':esc(d.funcao||'Produção')}</td><td class="r" style="color:#666">${brl(d.valor||0)}</td></tr>`).join('');
+      const kids=grp.map(d=>`<tr><td style="padding-left:18px;color:#666">↳</td><td style="color:#666">${esc(d.obra||'—')}</td><td style="color:#666">${d.m2?d.m2+' m²'+(d.acabamento?' · '+esc(d.acabamento):''):esc(d.funcao||'Produção')}</td><td class="r" style="color:#666">${brl(d.valor||0)}</td></tr>`).join('');
       return head+kids;
     }).join('');
   }
@@ -5924,6 +5924,8 @@
   function reciboBody(o){
     const has=a=>a&&a.length;
     const presRows=reciboPresRows(o.presenca);
+    const diasPresenca=new Set((o.presenca||[]).map(d=>d.data).filter(Boolean)).size;   // dias DISTINTOS (não a qtd de linhas)
+    const gratTotal=(o.gratifTotal!=null)?o.gratifTotal:(o.presenca||[]).filter(d=>d.is_gratificacao).reduce((s,d)=>s+(d.valor||0),0);
     const faltasSec=has(o.faltas)?`<h3 style="font-size:12px;text-transform:uppercase;color:#b91c1c;margin-top:16px">Faltas</h3>
       <table><thead><tr><th>Dia</th><th style="text-align:right">Desconto</th></tr></thead><tbody>${o.faltas.map(f=>`<tr><td>${f.data?dtBR(f.data):'—'}</td><td class="r">${f.valor?'− '+brl(f.valor):'—'}</td></tr>`).join('')}</tbody></table>`:'';
     const lin=(k,v)=>`<tr><td>${k}</td><td class="r">${v}</td></tr>`;
@@ -5936,8 +5938,9 @@
     const comissaoLinha=(/PEDREIRO/i.test(o.cargo||'')||(o.comissao||0)>0)?lin('Comissão por m²',brl(o.comissao||0)):'';
     return `<h1>Folha de Pagamento — ${esc(o.nome||'')}</h1><p class="sub">${esc(o.ref||'')}</p>`+`
       <div class="cards">
-        <div class="card"><div class="k">Presença</div><div class="v">${has(o.presenca)?o.presenca.length:0} dia(s)</div></div>
+        <div class="card"><div class="k">Presença</div><div class="v">${diasPresenca} dia(s)</div></div>
         <div class="card"><div class="k">Faltas</div><div class="v">${has(o.faltas)?o.faltas.length:0}</div></div>
+        <div class="card"><div class="k">Gratificação</div><div class="v">${brl(gratTotal)}</div></div>
         <div class="card"><div class="k">Líquido a receber</div><div class="v">${brl(o.liquido||0)}</div></div></div>
       <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">Presença — diárias</h3>
       <table><thead><tr><th>Dia</th><th>Obra</th><th>Função / equipamento</th><th style="text-align:right">Diária</th></tr></thead><tbody>${presRows}</tbody></table>
@@ -5955,7 +5958,7 @@
       <div class="row2" style="margin-top:40px"><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Assinatura do colaborador</div><div style="flex:1;border-top:1px solid #999;padding-top:6px;font-size:11px">Raspadora Brasília</div></div>
       <p style="margin-top:12px;font-size:10px;color:#777">Recebi a importância de ${brl(o.liquido||0)} referente ao período acima.</p>`;
   }
-  function linhaToRecibo(l,ref){return {nome:l.nome,cargo:l.cargo,ref,presenca:l.detalhe||[],faltas:l.faltas_itens||[],diarias:l.diarias,comissao:l.comissao,bonus:((l.gratificacoes||0)-(l.gratificacoes_pagas||0)),vales:l.vales_abatidos,faltasTotal:l.faltas,inss:l.inss,outros:l.outros_desconto,liquido:l.total_liquido};}
+  function linhaToRecibo(l,ref){return {nome:l.nome,cargo:l.cargo,ref,presenca:l.detalhe||[],faltas:l.faltas_itens||[],diarias:l.diarias,comissao:l.comissao,bonus:((l.gratificacoes||0)-(l.gratificacoes_pagas||0)),gratifTotal:(l.gratificacoes||0),vales:l.vales_abatidos,faltasTotal:l.faltas,inss:l.inss,outros:l.outros_desconto,liquido:l.total_liquido};}
   function folhaPrintTodos(folha){
     if(!folha||!folha.colaboradores.length){showToast('Nada para imprimir');return;}
     const p=folha.periodo||{};const ref='Período '+(p.desde?dtBR(p.desde):'')+' a '+(p.ate?dtBR(p.ate):'');

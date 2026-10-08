@@ -1982,6 +1982,7 @@ export const db = {
     const descontos = descRes && descRes.data ? descRes.data : [];
     const obraNome = Object.fromEntries((obrasF || []).map(o => [o.id, o.cliente]));
     const apObra = Object.fromEntries((apds || []).map(a => [a.id, obraNome[a.obra_id] || null]));
+    const apObraId = Object.fromEntries((apds || []).map(a => [a.id, a.obra_id || null]));   // p/ dedup por obra_id (robusto a renome do cliente)
     const porColab = {};
     for (const c of (colabs || [])) porColab[c.id] = { ...c, dias: new Set(), m2: 0, comissaoProd: 0, m2SemRate: 0, vales: 0, faltas: 0, inss: 0, outros_desc: 0, gratificacoes: 0, gratifPagas: 0, faltas_itens: [], lancamentos: [], cronDiarias: 0, cronDias: new Set(), detalhe: [] };
     for (const r of (apeq || [])) {
@@ -1990,8 +1991,10 @@ export const db = {
       const m = Number(r.m2_rateado) || 0; p.m2 += m;
       const rate = r.valor_m2 ? Number(r.valor_m2) : (p.comissao_por_m2 || 0);
       if (r.valor_m2) p.comissaoProd += Math.round(m * Number(r.valor_m2)); else p.m2SemRate += m;
+      // acabamento derivado da taxa (centavos/m²): 170 = Vassourado, 200 = Polido; outras/sem taxa = não identificado
+      const acab = Number(r.valor_m2) === 170 ? 'Vassourado' : (Number(r.valor_m2) === 200 ? 'Polido' : null);
       // linha de produção no detalhe: mostra por dia/obra o valor que o pedreiro ganha pelo m²
-      p.detalhe.push({ id: 'ap-' + r.id, apontamento_id: r.apontamento_id, data: r.data, obra: apObra[r.apontamento_id] || '—', m2: Math.round(m * 100) / 100, funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
+      p.detalhe.push({ id: 'ap-' + r.id, apontamento_id: r.apontamento_id, obra_id: apObraId[r.apontamento_id] || null, data: r.data, obra: apObra[r.apontamento_id] || '—', m2: Math.round(m * 100) / 100, acabamento: acab, funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
     }
     for (const v of (vales || [])) {
       const p = porColab[v.colaborador_id]; if (!p) continue;
@@ -2014,15 +2017,17 @@ export const db = {
       if (ehGratif) { p.gratificacoes += (a.valor_diaria || 0); if (gratifPaga) p.gratifPagas += (a.valor_diaria || 0); }
       else p.cronDiarias += (a.valor_diaria || 0);
       p.cronDias.add(a.data);
-      p.detalhe.push({ id: a.id, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga, observacao: a.observacao || null });
+      p.detalhe.push({ id: a.id, obra_id: a.obra_id || null, data: a.data, obra: a.obra_nome, funcao: a.funcao, valor: a.valor_diaria || 0, is_gratificacao: ehGratif, gratificacao_paga: gratifPaga, observacao: a.observacao || null });
     }
-    // dedup: a linha da produção (m²) SUBSTITUI a alocação vazia do cronograma no mesmo dia+obra
-    // (pedreiro entra no cronograma sem valor porque é pago por m² — evita duplicar)
+    // dedup: a linha da produção (m²) SUBSTITUI a alocação vazia do cronograma no mesmo dia+OBRA
+    // (pedreiro entra no cronograma sem valor porque é pago por m² — evita duplicar).
+    // Casa por obra_id (robusto a renome/espaço no nome do cliente); cai no nome só se faltar o id.
     const _normObra = s => String(s || '').trim().toLowerCase();
+    const _chaveObra = d => d.data + '|' + (d.obra_id || _normObra(d.obra));
     for (const p of Object.values(porColab)) {
-      const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(d => d.data + '|' + _normObra(d.obra)));
+      const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(_chaveObra));
       if (!prodKeys.size) continue;
-      p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(d.data + '|' + _normObra(d.obra)));
+      p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(_chaveObra(d)));
     }
     const linhas = Object.values(porColab).map(p => {
       const temCron = p.cronDias.size > 0;
