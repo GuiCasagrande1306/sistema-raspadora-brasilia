@@ -888,6 +888,17 @@ app.delete('/api/cronograma/falta/:id', async (req, res, next) => {
   try { res.json(await db.deleteDesconto(req.params.id)); }
   catch (e) { next(e); }
 });
+// Status da obra NO CRONOGRAMA (Em execução / Concluída) — acessível a ADMIN e CAMPO (Adelino).
+// Fica sob /api/cronograma (requireCronograma) de propósito: o PATCH geral de obra é admin-only,
+// e quem marca "concluída" no painel é o time de campo. Só mexe no cronograma_concluida.
+app.patch('/api/cronograma/obra/:id/status', async (req, res, next) => {
+  try {
+    const concluida = !!req.body.concluida;
+    const o = await db.updateObra(req.params.id, { cronograma_concluida: concluida });
+    if (!o) return res.status(404).json({ erro: 'obra não encontrada' });
+    res.json({ ok: true, id: req.params.id, concluida });
+  } catch (e) { next(e); }
+});
 
 // ---------- CONFIG DO APP (dados da empresa / proposta) ----------
 app.use('/api/config-app', requireAdmin);
