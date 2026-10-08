@@ -1696,7 +1696,7 @@ export const db = {
     (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; entradas.push({ data: x.data_movimento, obra: null, descricao: x.descricao || 'Movimentação', origem: x.status === 'PREVISTO' ? 'Previsto vencido' : 'Recebimento', valor: x.valor || 0 }); });
     (obrEntR.data || []).forEach(x => entradas.push({ data: (x.created_at || '').slice(0, 10), obra: obraNome[x.obra_id] || null, descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
     // SAÍDAS
-    const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA: 'Diária', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', EDVARD: 'Edvard', GILSON: 'Gilson', VALE: 'Vale' };
+    const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', FERIAS: 'Férias', DECIMO_TERCEIRO: 'Décimo terceiro', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA: 'Diária', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', EDVARD: 'Edvard', GILSON: 'Gilson', VALE: 'Vale' };
     const catTxt = x => (x.categoria === 'OUTRO' && x.categoria_custom) ? x.categoria_custom : (catLabel[x.categoria] || x.categoria || '');
     (ldR.data || []).forEach(x => saidas.push({ data: x.data, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Pagamento diário', valor: x.valor || 0, pago: !!x.pago }));
     (boR.data || []).forEach(x => saidas.push({ data: x.vencimento, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Boleto', valor: x.valor || 0, pago: !!x.pago }));
@@ -2028,6 +2028,14 @@ export const db = {
       const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(_chaveObra));
       if (!prodKeys.size) continue;
       p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(_chaveObra(d)));
+    }
+    // INSS padrão do SERVENTE FICHADO (registrado) = R$ 100,98 descontado AUTOMÁTICO na folha.
+    // Só quando trabalhou no período e não há INSS lançado à mão (não duplica). Pedreiro e diarista não entram.
+    const INSS_SERVENTE_PADRAO = 10098;
+    for (const p of Object.values(porColab)) {
+      const servFichado = /SERVENTE/i.test(p.cargo || '') && !p.is_diarista;
+      const trabalhou = p.cronDias.size > 0 || p.dias.size > 0;
+      if (servFichado && trabalhou && !p.inss) p.inss = INSS_SERVENTE_PADRAO;
     }
     const linhas = Object.values(porColab).map(p => {
       const temCron = p.cronDias.size > 0;
