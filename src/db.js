@@ -680,6 +680,17 @@ export const db = {
           eventos.push({ tipo: CAT_TIPO[tipo] || 'serv_outro', data: ds, titulo: o.cliente || 'Obra', categoria: tipo, m2: Number(it.m2) || 0, obra_id: o.id });
         });
       });
+      // ---- Programação de concreto (polido/vassourado com m²): agenda_concreto ----
+      try {
+        const pcR = await sb('agenda_concreto')
+          .select('id,data,obra_id,polido,vassourado,m2_polido,m2_vassourado,obras_financeiro(cliente)')
+          .gte('data', desde).lte('data', ate);
+        for (const p of (pcR.data || [])) {
+          const nome = p.obras_financeiro?.cliente || '—';
+          if (p.polido) eventos.push({ tipo: 'conc_polido', data: p.data, titulo: nome, m2: p.m2_polido || 0, obra_id: p.obra_id, prog_id: p.id });
+          if (p.vassourado) eventos.push({ tipo: 'conc_vassourado', data: p.data, titulo: nome, m2: p.m2_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
+        }
+      } catch (_) {}
       return eventos.sort((a, b) => String(a.data).localeCompare(String(b.data)));
     }
     // ---- ADMIN: agenda completa (pagamentos, documentos, medições, obras previstas) ----
@@ -1666,8 +1677,8 @@ export const db = {
     (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (noMes(d)) entradas += liqMed(x); });
     (ldR.data || []).forEach(x => { saidas += (x.valor || 0); });
     (boR.data || []).forEach(x => { saidas += (x.valor || 0); });
-    // movimentação só conta como realizada do mês se for REALIZADO ou (previsto) já com data <= hoje; previsto futuro fica de fora
-    (movR.data || []).forEach(x => { if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
+    // movimentação só conta como realizada se status = REALIZADO; PREVISTO (mesmo vencido) não é entrada/saída real
+    (movR.data || []).forEach(x => { if (x.status === 'PREVISTO') return; if (x.tipo === 'ENTRADA') entradas += (x.valor || 0); else saidas += (x.valor || 0); });
     (obrR.data || []).forEach(x => { entradas += (x.valor || 0); });
     return { mes: mesStr, entradas, saidas };
   },
@@ -1693,7 +1704,8 @@ export const db = {
     const entradas = [], saidas = [];
     // ENTRADAS (líquido no caixa)
     (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (!noMes(d)) return; entradas.push({ data: d, obra: obraNome[x.obra_id] || null, descricao: (obraNome[x.obra_id] || 'Obra') + (x.descricao ? ' · ' + x.descricao : ''), origem: 'Medição/nota', valor: liqMed(x) }); });
-    (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; entradas.push({ data: x.data_movimento, obra: null, descricao: x.descricao || 'Movimentação', origem: x.status === 'PREVISTO' ? 'Previsto vencido' : 'Recebimento', valor: x.valor || 0 }); });
+    // movimentações: só entra/sai de VERDADE se status = REALIZADO (PREVISTO vencido não aconteceu)
+    (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO') return; entradas.push({ data: x.data_movimento, obra: null, descricao: x.descricao || 'Movimentação', origem: 'Recebimento', valor: x.valor || 0 }); });
     (obrEntR.data || []).forEach(x => entradas.push({ data: (x.created_at || '').slice(0, 10), obra: obraNome[x.obra_id] || null, descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
     // SAÍDAS
     const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', FERIAS: 'Férias', DECIMO_TERCEIRO: 'Décimo terceiro', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA: 'Diária', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', EDVARD: 'Edvard', GILSON: 'Gilson', VALE: 'Vale' };
@@ -1705,11 +1717,16 @@ export const db = {
     saidas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
     const total_entradas = entradas.reduce((s, i) => s + i.valor, 0);
     const total_saidas = saidas.reduce((s, i) => s + i.valor, 0);
+    // saiu DE VERDADE (realizado) = só as saídas pagas; o resto do mês é "a pagar"
+    const total_saidas_pagas = saidas.reduce((s, i) => s + (i.pago ? i.valor : 0), 0);
+    const total_saidas_a_pagar = total_saidas - total_saidas_pagas;
     // entradas agrupadas por obra (quais obras entraram e quanto) — p/ conferir se não falta lançar
     const porObra = {};
     entradas.forEach(e => { const k = e.obra || 'Outras entradas (sem obra)'; porObra[k] = (porObra[k] || 0) + e.valor; });
     const entradas_por_obra = Object.entries(porObra).map(([obra, total]) => ({ obra, total })).sort((a, b) => b.total - a.total);
-    return { mes: mesStr, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, saldo: total_entradas - total_saidas };
+    // Previsto (forward-looking, não é do mês): a receber das obras + previstos futuros / a pagar (boletos/lançamentos pendentes)
+    const prev = await this.previstosTotais(hoje);
+    return { mes: mesStr, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, total_saidas_pagas, total_saidas_a_pagar, saldo: total_entradas - total_saidas, saldo_realizado: total_entradas - total_saidas_pagas, entrada_prevista: prev.entradas, saida_prevista: prev.saidas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
@@ -2247,5 +2264,44 @@ export const db = {
     const fut = linhas.filter(d => d.data > d0);
     const entFut = fut.reduce((s, d) => s + d.entradas, 0), saiFut = fut.reduce((s, d) => s + d.saidas, 0);
     return { saldo_atual, hoje: d0, dias: linhas, resumo: { entradas_previstas: entFut, saidas_previstas: saiFut, entradas_total: totEnt, saidas_total: totSai, saldo_final_projetado: saldo } };
+  },
+
+  // ---- PROGRAMAÇÃO DE CONCRETO (polido / vassourado por obra / dia) ----
+  async getProgConcreto(desde, ate) {
+    if (!USING_SUPABASE) return [];
+    const { data, error } = await sb('agenda_concreto')
+      .select('*, obras_financeiro(id,cliente)')
+      .gte('data', desde).lte('data', ate)
+      .order('data');
+    if (error) throw error;
+    return (data || []).map(p => ({ ...p, obra_nome: p.obras_financeiro?.cliente || '—', obras_financeiro: undefined }));
+  },
+  async getObrasConcreto() {
+    if (!USING_SUPABASE) return [];
+    const { data, error } = await sb('obras_financeiro')
+      .select('id,cliente,categoria_servico,coluna_kanban')
+      .neq('coluna_kanban', 'liquidado');
+    if (error) throw error;
+    // Retorna obras ativas que são de concreto/raspagem/fulget
+    return (data || []).filter(o => ['CONCRETO', 'FULGET', 'CIMENTO_QUEIMADO', 'RASPAGEM'].includes(o.categoria_servico || ''));
+  },
+  async addProgConcreto(p) {
+    if (!USING_SUPABASE) return { id: uid(), ...p, created_at: new Date().toISOString() };
+    const { data, error } = await sb('agenda_concreto').insert({
+      data: p.data,
+      obra_id: p.obra_id,
+      polido: !!p.polido,
+      vassourado: !!p.vassourado,
+      m2_polido: Math.round(Number(p.m2_polido) || 0),
+      m2_vassourado: Math.round(Number(p.m2_vassourado) || 0),
+      criado_por: p.criado_por || null,
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async delProgConcreto(id) {
+    if (!USING_SUPABASE) return;
+    const { error } = await sb('agenda_concreto').delete().eq('id', id);
+    if (error) throw error;
   },
 };

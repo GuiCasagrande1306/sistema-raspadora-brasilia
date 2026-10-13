@@ -1576,7 +1576,12 @@ app.get('/api/fluxo-caixa/mes', async (req, res, next) => {
 app.get('/api/fluxo-caixa/relatorio-mensal', async (req, res, next) => {
   try {
     const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : new Date().toISOString().slice(0, 7);
-    res.json(await db.relatorioMensal(mes, req.query.hoje));
+    const r = await db.relatorioMensal(mes, req.query.hoje);
+    // saldo real de hoje (Conta Principal Sicoob + contas) e saldo projetado = saldo + entradas previstas − saídas previstas
+    const base = await saldoPrincipalCentavos();
+    r.saldo_atual = base || 0;
+    r.saldo_projetado = (base || 0) + (r.entrada_prevista || 0) - (r.saida_prevista || 0);
+    res.json(r);
   } catch (e) { next(e); }
 });
 app.get('/api/fluxo-caixa/previstos-totais', async (req, res, next) => {
@@ -1600,6 +1605,44 @@ app.get('/api/agenda/eventos', requireAuth, async (req, res, next) => {
     res.json(await db.agendaEventos(desde, ate, req.user.role));   // CAMPO/AGENDA recebem só dias de serviço (sem valores)
   } catch (e) { next(e); }
 });
+// ---- PROGRAMAÇÃO DE CONCRETO ----
+app.get('/api/programacao-concreto/obras', requireAuth, async (req, res, next) => {
+  try { res.json(await db.getObrasConcreto()); } catch (e) { next(e); }
+});
+app.get('/api/programacao-concreto/config', requireAuth, async (req, res, next) => {
+  try {
+    const cfg = (await db.getConfig('agenda_concreto_cores')) || {};
+    res.json({ cor_polido: cfg.cor_polido || '#1d4ed8', cor_vassourado: cfg.cor_vassourado || '#78350f' });
+  } catch (e) { next(e); }
+});
+app.put('/api/programacao-concreto/config', requireAdmin, async (req, res, next) => {
+  try {
+    const v = { cor_polido: String(req.body.cor_polido || '#1d4ed8'), cor_vassourado: String(req.body.cor_vassourado || '#78350f') };
+    await db.setConfig('agenda_concreto_cores', v);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+app.get('/api/programacao-concreto', requireAuth, async (req, res, next) => {
+  try {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const desde = /^\d{4}-\d{2}-\d{2}$/.test(req.query.desde || '') ? req.query.desde : hoje;
+    const ate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.ate || '') ? req.query.ate : hoje;
+    res.json(await db.getProgConcreto(desde, ate));
+  } catch (e) { next(e); }
+});
+app.post('/api/programacao-concreto', requireAuth, async (req, res, next) => {
+  try {
+    const { data, obra_id, polido, vassourado, m2_polido, m2_vassourado } = req.body;
+    if (!data || !obra_id) return res.status(400).json({ erro: 'data e obra_id são obrigatórios' });
+    if (!polido && !vassourado) return res.status(400).json({ erro: 'Selecione ao menos um tipo (polido ou vassourado)' });
+    const entry = await db.addProgConcreto({ data, obra_id, polido: !!polido, vassourado: !!vassourado, m2_polido: Number(m2_polido) || 0, m2_vassourado: Number(m2_vassourado) || 0, criado_por: req.user?.nome || null });
+    res.json(entry);
+  } catch (e) { next(e); }
+});
+app.delete('/api/programacao-concreto/:id', requireAuth, async (req, res, next) => {
+  try { await db.delProgConcreto(req.params.id); res.json({ ok: true }); } catch (e) { next(e); }
+});
+
 app.post('/api/fluxo-caixa/previsto', async (req, res, next) => {
   try {
     const tipo = req.body.tipo === 'SAIDA' ? 'SAIDA' : 'ENTRADA';
