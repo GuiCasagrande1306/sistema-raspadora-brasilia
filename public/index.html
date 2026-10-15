@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v237</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v238</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4574,7 +4574,7 @@
     try{
       if(isNova){
         btn.textContent='Criando obra…';
-        const nova=await api('/api/financeiro/obra',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        const nova=await api('/api/programacao-concreto/obra',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           cliente:document.getElementById('progconc-nova-cliente').value.trim()||null,
           endereco:document.getElementById('progconc-nova-end').value.trim()||null,
           metragem_m2:Number(document.getElementById('progconc-nova-m2').value)||0,
