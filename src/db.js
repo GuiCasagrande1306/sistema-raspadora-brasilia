@@ -658,34 +658,55 @@ export const db = {
   },
   // Eventos agregados para o calendário da Agenda (e o sino): vencimentos de pagamentos (boletos),
   // vencimentos de documentos SST/RH e datas de medições, num intervalo [desde, ate].
+  // Obras ativas no calendário (todos os perfis): dias de serviço do cronograma, início da obra e programação de concreto.
+  async agendaObrasEventos(desde, ate, { valores = false } = {}) {
+    const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento', RASPAGEM: 'serv_raspagem' };
+    const [obR, pcR] = await Promise.all([
+      sb('obras_financeiro').select('id,cliente,categoria_servico,coluna_kanban,dias_servico,data_inicio,valor_contrato'),
+      sb('agenda_concreto')
+        .select('id,data,obra_id,piso_polido,piso_vassourado,laje_polido,laje_vassourado,m2_piso_polido,m2_piso_vassourado,m2_laje_polido,m2_laje_vassourado,obras_financeiro(cliente)')
+        .gte('data', desde).lte('data', ate),
+    ]);
+    if (obR.error) throw obR.error;
+    if (pcR.error) throw pcR.error;
+    const eventos = [];
+    for (const o of obR.data || []) {
+      if (o.coluna_kanban === 'liquidado') continue;
+      const titulo = o.cliente || '(sem nome)';
+      for (const d of Array.isArray(o.dias_servico) ? o.dias_servico : []) {
+        const it = (typeof d === 'string') ? { data: d } : (d || {});
+        const ds = String(it.data || '').slice(0, 10);
+        if (!ds || ds < desde || ds > ate) continue;
+        const cat = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
+        eventos.push({ tipo: CAT_TIPO[cat] || 'serv_outro', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
+      }
+      const ini = String(o.data_inicio || '').slice(0, 10);
+      if (ini && ini >= desde && ini <= ate) eventos.push({ tipo: 'obra', data: ini, titulo, obra_id: o.id, id: o.id, ...(valores ? { valor: o.valor_contrato || 0 } : {}) });
+    }
+    for (const p of pcR.data || []) {
+      const nome = p.obras_financeiro?.cliente || '(sem nome)';
+      if (p.piso_polido) eventos.push({ tipo: 'piso_polido', data: p.data, titulo: nome, m2: p.m2_piso_polido || 0, obra_id: p.obra_id, prog_id: p.id });
+      if (p.piso_vassourado) eventos.push({ tipo: 'piso_vassourado', data: p.data, titulo: nome, m2: p.m2_piso_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
+      if (p.laje_polido) eventos.push({ tipo: 'laje_polido', data: p.data, titulo: nome, m2: p.m2_laje_polido || 0, obra_id: p.obra_id, prog_id: p.id });
+      if (p.laje_vassourado) eventos.push({ tipo: 'laje_vassourado', data: p.data, titulo: nome, m2: p.m2_laje_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
+    }
+    return eventos;
+  },
   async agendaEventos(desde, ate, role) {
     if (!USING_SUPABASE) return [];
-    // ---- Perfil de CAMPO/AGENDA (Adelino, Cadu): SÓ os dias de serviço das obras, sem Raspagem e SEM nenhum valor ----
+    // ---- Perfis restritos (CAMPO/AGENDA/OPERACIONAL): só as obras, SEM nenhum valor ----
     if ((role || 'ADMIN') !== 'ADMIN') {
-      // CAMPO/AGENDA: exibe apenas programações de concreto (polido/vassourado) — sem dias_servico
-      const eventos = [];
-      try {
-        const pcR = await sb('agenda_concreto')
-          .select('id,data,obra_id,piso_polido,piso_vassourado,laje_polido,laje_vassourado,m2_piso_polido,m2_piso_vassourado,m2_laje_polido,m2_laje_vassourado,obras_financeiro(cliente)')
-          .gte('data', desde).lte('data', ate);
-        for (const p of (pcR.data || [])) {
-          const nome = p.obras_financeiro?.cliente || '(sem nome)';
-          if (p.piso_polido) eventos.push({ tipo: 'piso_polido', data: p.data, titulo: nome, m2: p.m2_piso_polido || 0, obra_id: p.obra_id, prog_id: p.id });
-          if (p.piso_vassourado) eventos.push({ tipo: 'piso_vassourado', data: p.data, titulo: nome, m2: p.m2_piso_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
-          if (p.laje_polido) eventos.push({ tipo: 'laje_polido', data: p.data, titulo: nome, m2: p.m2_laje_polido || 0, obra_id: p.obra_id, prog_id: p.id });
-          if (p.laje_vassourado) eventos.push({ tipo: 'laje_vassourado', data: p.data, titulo: nome, m2: p.m2_laje_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
-        }
-      } catch (_) {}
+      const eventos = await this.agendaObrasEventos(desde, ate);
       return eventos.sort((a, b) => String(a.data).localeCompare(String(b.data)));
     }
-    // ---- ADMIN: agenda completa (pagamentos, documentos, medições, obras previstas) ----
-    const [boR, sstR, medR, obrR] = await Promise.all([
+    // ---- ADMIN: agenda completa (pagamentos, documentos, medições + obras) ----
+    const [boR, sstR, medR, obrasEv] = await Promise.all([
       sb('boletos').select('id,descricao,vencimento,valor,pago,empresa,categoria').gte('vencimento', desde).lte('vencimento', ate),
       sb('documentos_sst').select('id,tipo_documento,data_vencimento, colaboradores(nome,empresa)').not('data_vencimento', 'is', null).gte('data_vencimento', desde).lte('data_vencimento', ate),
       sb('medicoes_obra').select('id,obra_id,descricao,data,valor,recebido').gte('data', desde).lte('data', ate),
-      sb('obras_financeiro').select('id,cliente,data_inicio,valor_contrato,coluna_kanban').not('data_inicio', 'is', null).gte('data_inicio', desde).lte('data_inicio', ate),
+      this.agendaObrasEventos(desde, ate, { valores: true }),
     ]);
-    const eventos = [];
+    const eventos = [...obrasEv];
     (boR.data || []).forEach(b => eventos.push({ tipo: 'pagamento', data: b.vencimento, titulo: b.descricao || 'Boleto', valor: b.valor || 0, empresa: b.empresa || null, pago: !!b.pago, id: b.id }));
     (sstR.data || []).forEach(d => eventos.push({ tipo: 'documento', data: d.data_vencimento, titulo: (d.colaboradores?.nome || '—') + ' — ' + (d.tipo_documento || 'documento'), empresa: d.colaboradores?.empresa || null, id: d.id }));
     const meds = medR.data || [];
@@ -693,8 +714,6 @@ export const db = {
     let mapa = {};
     if (obraIds.length) { const { data: obras } = await sb('obras_financeiro').select('id,cliente').in('id', obraIds); mapa = Object.fromEntries((obras || []).map(o => [o.id, o.cliente])); }
     meds.forEach(m => eventos.push({ tipo: 'medicao', data: m.data, titulo: (mapa[m.obra_id] || 'Obra') + (m.descricao ? ' — ' + m.descricao : ''), valor: m.valor || 0, recebido: !!m.recebido, id: m.id }));
-    // Obras previstas (que vão iniciar): pela data_inicio, exceto as já liquidadas
-    (obrR.data || []).forEach(o => { if (o.coluna_kanban === 'liquidado') return; eventos.push({ tipo: 'obra', data: o.data_inicio, titulo: o.cliente || 'Obra', valor: o.valor_contrato || 0, id: o.id }); });
     return eventos.filter(e => e.data).sort((a, b) => String(a.data).localeCompare(String(b.data)));
   },
   // Busca global (barra do topo): colaboradores, obras, clientes e leads por nome.
@@ -2268,13 +2287,12 @@ export const db = {
   async getObrasConcreto() {
     if (!USING_SUPABASE) return [];
     const { data, error } = await sb('obras_financeiro')
-      .select('id,cliente,categoria_servico,coluna_kanban')
-      .neq('coluna_kanban', 'liquidado');
+      .select('id,cliente,categoria_servico,coluna_kanban');
     if (error) throw error;
-    // Retorna obras ativas que são de concreto/raspagem/fulget
     return (data || [])
-      .filter(o => ['CONCRETO', 'FULGET', 'CIMENTO_QUEIMADO', 'RASPAGEM'].includes(o.categoria_servico || ''))
-      .map(o => ({ ...o, cliente: o.cliente || '(sem nome)' }));
+      .filter(o => o.coluna_kanban !== 'liquidado')
+      .map(o => ({ ...o, cliente: o.cliente || '(sem nome)' }))
+      .sort((a, b) => a.cliente.localeCompare(b.cliente, 'pt-BR'));
   },
   async addProgConcreto(p) {
     if (!USING_SUPABASE) return { id: uid(), ...p, created_at: new Date().toISOString() };

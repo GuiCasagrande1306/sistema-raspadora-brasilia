@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v233</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v234</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4382,10 +4382,12 @@
   async function agendaFetch(){try{const c=await api('/api/config-app/agenda');AGENDA_URL=(c&&c.url)||'';}catch(e){AGENDA_URL='';console.error(e);}return AGENDA_URL;}
   async function agendaSave(url){return api('/api/config-app/agenda',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url||null})});}
   // ---------- AGENDA = CALENDÁRIO (pagamentos, documentos, medições) ----------
-  const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#2563EB'},medicao:{lbl:'Recebidos',cor:'#12805c'},obra:{lbl:'Obras previstas',cor:'#EAB308'}};
-  // Agenda do time de campo (Adelino/Cadu/Vitor): obras por tipo de serviço + programação de concreto.
-  const AG_TIPO_CAMPO={piso_polido:{lbl:'Piso Polido',cor:'#9ca3af'},piso_vassourado:{lbl:'Piso Vassourado',cor:'#7c3aed'},laje_polido:{lbl:'Laje Polido',cor:'#ED7118'},laje_vassourado:{lbl:'Laje Vassourado',cor:'#D65E0B'}};
-  const agTipos=()=>ROLE==='ADMIN'?AG_TIPO:AG_TIPO_CAMPO;
+  const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#6366f1'},medicao:{lbl:'Recebidos',cor:'#12805c'}};
+  // Obras (todos os perfis): programação de concreto + dias de serviço do cronograma + início da obra.
+  const AG_TIPO_CAMPO={piso_polido:{lbl:'Piso Polido',cor:'#9ca3af'},piso_vassourado:{lbl:'Piso Vassourado',cor:'#7c3aed'},laje_polido:{lbl:'Laje Polido',cor:'#ED7118'},laje_vassourado:{lbl:'Laje Vassourado',cor:'#D65E0B'},
+    serv_concreto:{lbl:'Concreto',cor:'#64748b'},serv_raspagem:{lbl:'Raspagem',cor:'#9333ea'},serv_fulget:{lbl:'Fulget',cor:'#0891b2'},serv_cimento:{lbl:'Cimento queimado',cor:'#0f766e'},serv_limpeza:{lbl:'Limpeza',cor:'#65a30d'},serv_outro:{lbl:'Outro serviço',cor:'#db2777'},
+    obra:{lbl:'Início da obra',cor:'#eab308'}};
+  const agTipos=()=>ROLE==='ADMIN'?Object.assign({},AG_TIPO,AG_TIPO_CAMPO):AG_TIPO_CAMPO;
   // Atualiza cores de polido/vassourado vindas do servidor
   function agAtualizarCores(cfg){if(!cfg)return;if(cfg.cor_polido)AG_TIPO_CAMPO.piso_polido.cor=cfg.cor_polido;if(cfg.cor_vassourado)AG_TIPO_CAMPO.piso_vassourado.cor=cfg.cor_vassourado;}
   let agendaRef=null, AGENDA_EVENTOS=[], OBRAS_CONCRETO=[];
@@ -4403,7 +4405,7 @@
   async function loadAgenda(){
     const el=document.getElementById('agenda-content');if(!el)return;
     const sub=document.querySelector('#view-agenda .modhead p');
-    if(sub)sub.textContent=ROLE==='ADMIN'?'Calendário do mês com vencimentos de pagamentos, vencimentos de documentos e datas de medições. Clique no dia para ver os detalhes.':'Calendário das obras do mês por tipo de serviço. Clique no dia para ver o que está programado.';
+    if(sub)sub.textContent=ROLE==='ADMIN'?'Calendário do mês com as obras (dias de serviço, início e programação de concreto), vencimentos de pagamentos e documentos e datas de medições. Clique no dia para ver os detalhes.':'Calendário das obras do mês por tipo de serviço. Clique no dia para ver o que está programado.';
     if(!agendaRef)agendaRef=isoHoje();
     el.innerHTML='<div class="orc-empty">Carregando…</div>';
     if(ROLE==='ADMIN')await agendaFetch();
@@ -4412,13 +4414,11 @@
     // Para CAMPO/AGENDA: busca eventos + lista de obras de concreto + cores
     let ev=[];
     try{ev=await api('/api/agenda/eventos?desde='+desde+'&ate='+ate);}catch(e){console.error(e);}
-    if(ROLE!=='ADMIN'){
-      try{
-        const [obras,cores]=await Promise.all([api('/api/programacao-concreto/obras'),api('/api/programacao-concreto/config')]);
-        OBRAS_CONCRETO=obras||[];
-        agAtualizarCores(cores);
-      }catch(e){console.error(e);}
-    }
+    try{
+      const [obras,cores]=await Promise.all([ROLE!=='ADMIN'?api('/api/programacao-concreto/obras'):Promise.resolve([]),api('/api/programacao-concreto/config')]);
+      OBRAS_CONCRETO=obras||[];
+      agAtualizarCores(cores);
+    }catch(e){console.error(e);}
     AGENDA_EVENTOS=ev;
     const porDia={};ev.forEach(e=>{(porDia[e.data]=porDia[e.data]||[]).push(e);});
     const mesLbl=ini.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
@@ -4427,7 +4427,7 @@
     // Obras sem nenhuma programação no mês (só para CAMPO/AGENDA)
     let obrasSemDataHtml='';
     if(ROLE!=='ADMIN'&&OBRAS_CONCRETO.length){
-      const obrasProg=new Set(ev.filter(e=>e.prog_id).map(e=>e.obra_id));
+      const obrasProg=new Set(ev.filter(e=>e.obra_id).map(e=>e.obra_id));
       const semData=OBRAS_CONCRETO.filter(o=>!obrasProg.has(o.id));
       if(semData.length){
         const chips=semData.map(o=>`<button class="btn-ghost" style="font-size:12px;padding:3px 10px;border-radius:20px;white-space:nowrap" data-prog-obra="${o.id}" title="Programar ${esc(o.cliente)}">${esc(o.cliente)}</button>`).join('');
@@ -4438,10 +4438,10 @@
     for(let dia=1;dia<=totalDias;dia++){
       const ds=ini.getFullYear()+'-'+String(ini.getMonth()+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
       const evs=porDia[ds]||[];
-      // Agrupa eventos de concreto (prog_id) por obra; admin fica individual
+      // Agrupa no mesmo chip tudo que é da mesma obra no dia (serviço, início, concreto)
       const _grps=[],_oMap={};
       evs.forEach(e=>{
-        if(e.prog_id&&e.obra_id){
+        if(e.obra_id){
           if(!_oMap[e.obra_id]){_oMap[e.obra_id]={titulo:e.titulo,evs:[]};_grps.push(_oMap[e.obra_id]);}
           _oMap[e.obra_id].evs.push(e);
         }else{_grps.push({titulo:e.titulo,evs:[e]});}
@@ -4451,7 +4451,7 @@
         const subs=g.evs.map(e=>{
           const lbl=(agTipos()[e.tipo]||{lbl:e.tipo}).lbl;
           return e.m2?`<div style="font-size:9px;line-height:1.4;opacity:.9">• ${lbl} — ${e.m2}m²</div>`
-                     :g.evs.length>1?`<div style="font-size:9px;line-height:1.4;opacity:.9">• ${lbl}</div>`:'';
+                     :(g.evs.length>1||e.obra_id)?`<div style="font-size:9px;line-height:1.4;opacity:.9">• ${lbl}</div>`:'';
         }).join('');
         return `<div class="ag-chip" style="background:${cor};white-space:normal;overflow:visible" title="${esc(g.titulo)}">${esc(g.titulo)}${subs}</div>`;
       }).join('')+(_grps.length>3?`<div class="ag-more">+${_grps.length-3}</div>`:'');
@@ -4460,7 +4460,7 @@
     }
     el.innerHTML=`${obrasSemDataHtml}<div class="ag-toolbar">
         <div class="ag-nav"><button class="btn-ghost" id="ag-prev" title="Mês anterior">◀</button><b id="ag-mes" style="min-width:150px;text-align:center;text-transform:capitalize">${mesLbl}</b><button class="btn-ghost" id="ag-next" title="Próximo mês">▶</button><button class="btn-ghost" id="ag-hoje">Hoje</button></div>
-        <div class="ag-legend">${Object.values(agTipos()).map(v=>`<span><span class="ag-dot" style="background:${v.cor}"></span>${v.lbl}</span>`).join('')}</div>
+        <div class="ag-legend">${(()=>{const T=agTipos(),pres=new Set(ev.map(e=>e.tipo)),ks=Object.keys(T).filter(k=>pres.has(k));return (ks.length?ks:Object.keys(T).slice(0,4)).map(k=>`<span><span class="ag-dot" style="background:${T[k].cor}"></span>${T[k].lbl}</span>`).join('');})()}</div>
         ${ROLE==='ADMIN'?'<button class="btn-ghost" id="ag-google" title="Google Calendar da equipe">📅 Google Calendar</button>':OBRAS_CONCRETO.length?'<button class="btn-ghost" id="ag-prog" style="color:var(--laranja)">+ Programar obra</button>':''}
       </div>
       <div class="ag-grid ag-head">${dow.map(x=>`<div class="ag-dow">${x}</div>`).join('')}</div>
