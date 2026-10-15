@@ -1238,7 +1238,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
   try {
     const datas = Array.isArray(req.body.datas) ? [...new Set(req.body.datas.filter(Boolean))].sort() : [];
     res.status(201).json(await db.createMedicaoObra({
-      obra_id: req.params.id, data: req.body.data || datas[0] || null, descricao: req.body.descricao || null,
+      obra_id: req.params.id, data: req.body.data || datas[0] || null, nome_obra: req.body.nome_obra || null, descricao: req.body.descricao || null,
       datas, valor: Math.round((Number(req.body.valor) || 0) * 100), recebido: req.body.recebido === true || req.body.recebido === 'true',
       data_recebimento: (req.body.recebido === true || req.body.recebido === 'true') ? (req.body.data_recebimento || null) : null,
       forma_pagamento: req.body.forma_pagamento || null,

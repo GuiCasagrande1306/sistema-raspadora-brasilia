@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v231</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v232</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2346,6 +2346,7 @@
                   <button type="button" class="btn-ghost" id="med-add-dia" style="min-height:38px;padding:0 12px;white-space:nowrap">+ dia</button>
                 </div>
               </div>
+              <div class="field" style="flex:1;min-width:160px"><label>Nome da obra <span style="color:var(--ink-3);font-weight:400">(aparece em Valores Retidos)</span></label><input id="med-nome-obra" placeholder="Ex.: Res. João Silva, Loja Centro…"></div>
               <div class="field" style="flex:1;min-width:120px"><label>Descrição / Nº nota</label><input id="med-desc" placeholder="Ex.: 1ª medição, NF 123"></div>
               <div class="field" style="flex:0 0 130px"><label>Valor (R$)</label><input type="text" inputmode="decimal" class="money-mask" id="med-valor" placeholder="R$ 0,00"></div>
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
@@ -2707,7 +2708,7 @@
     obraContratoAtual=o.valor_contrato||0;
     carregarMedicoes(id);
     carregarLancamentos(id);
-    document.getElementById('med-data').value=isoHoje();document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    document.getElementById('med-data').value=isoHoje();document.getElementById('med-nome-obra').value='';document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-receb-data-wrap').style.display='none';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';document.getElementById('med-imposto').value='';
     {const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}}
@@ -2749,7 +2750,7 @@
       </div>`:'';
       return `<div style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span>${(m.recebido&&m.forma_pagamento)?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}</div>
+        <div style="flex:1;min-width:0">${m.nome_obra?`<span style="font-size:10px;font-weight:600;color:var(--ink-2);background:var(--surface-2);border-radius:4px;padding:1px 5px;margin-right:4px">${esc(m.nome_obra)}</span>`:''}<b>${esc(m.descricao||'Medição')}</b> <span style="color:var(--ink-3)" title="${dTitle}">${dLabel}</span>${(m.recebido&&m.forma_pagamento)?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}</div>
         <b class="money">${brl(m.valor)}</b>
         <span class="tag" style="font-size:9.5px;${m.recebido?'background:#DCFCE7;color:#12805c':'background:#FEF3C7;color:#92400E'}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'A receber'}</span>
         <button type="button" class="btn-ghost med-edit" data-med="${m.id}" style="min-height:30px;font-size:11.5px;padding:4px 10px">✏️ Editar</button>
@@ -2822,13 +2823,13 @@
     if(!datas.length&&unica)datas=[unica];
     if(!datas.length){if(!silencioso)showToast('Adicione ao menos 1 data');return 'faltadata';}
     const recebidoChk=document.getElementById('med-recebido').checked;
-    const payload={datas,data:datas[0],descricao:document.getElementById('med-desc').value||null,valor,recebido:recebidoChk,
+    const payload={datas,data:datas[0],nome_obra:document.getElementById('med-nome-obra').value||null,descricao:document.getElementById('med-desc').value||null,valor,recebido:recebidoChk,
       data_recebimento:recebidoChk?(document.getElementById('med-receb-data').value||isoHoje()):null,
       forma_pagamento:document.getElementById('med-forma').value||null,
       valor_retido:parseBRL(document.getElementById('med-retido').value),data_resgate:document.getElementById('med-resgate').value||null,
       imposto_valor:parseBRL(document.getElementById('med-imposto').value)};
     await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
+    document.getElementById('med-nome-obra').value='';document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-receb-data').value='';document.getElementById('med-forma').value='';document.getElementById('med-receb-data-wrap').style.display='none';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';document.getElementById('med-imposto').value='';
     const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}
@@ -6250,7 +6251,7 @@
     if(!r.retencoes.length){c.innerHTML='<div class="orc-empty">Nenhum valor retido pendente. 👍<br>Ao lançar uma nota com <b>Valor retido</b> e uma <b>data de resgate</b>, ela aparece aqui como lembrete.</div>';return;}
     const stTag={VENCIDO:'<span class="tag t-danger">⚠ Resgatar já</span>',PROXIMO:'<span class="tag t-lar">Chegando</span>',FUTURO:'<span class="tag t-wait">No prazo</span>',SEM_DATA:'<span class="tag">Sem data</span>'};
     c.innerHTML='<div class="doc-list">'+r.retencoes.map(x=>`<div class="fin-item">
-      <div class="fi-main"><h4>${esc(x.obra_cliente)}</h4><div class="fi-sub">${esc(x.descricao||'Nota')} · ${x.data_resgate?('resgatar '+dtBR(x.data_resgate)):'sem data de resgate'}</div></div>
+      <div class="fi-main"><h4>${esc(x.nome_obra||x.obra_cliente)}</h4>${x.nome_obra&&x.nome_obra!==x.obra_cliente?`<div style="font-size:11px;color:var(--ink-3);margin:-2px 0 2px">${esc(x.obra_cliente)}</div>`:''}<div class="fi-sub">${esc(x.descricao||'Nota')} · ${x.data_resgate?('resgatar '+dtBR(x.data_resgate)):'sem data de resgate'}</div></div>
       <div class="fi-val">${brl(x.valor_retido)}</div>${stTag[x.status]||''}
       <div class="fi-act"><button class="btn-ghost" data-retobra="${x.obra_id}">Abrir obra</button><button class="btn-ghost ret-resg" data-med="${x.id}" style="border-color:var(--laranja);color:var(--laranja-2)">Marcar resgatado</button></div></div>`).join('')+'</div>';
     c.querySelectorAll('.ret-resg').forEach(b=>b.addEventListener('click',async()=>{

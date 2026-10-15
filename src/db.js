@@ -263,7 +263,7 @@ export const db = {
     const retencoes = lista.map(m => {
       const venc = m.data_resgate && m.data_resgate <= hoje;
       const prox = !venc && m.data_resgate && m.data_resgate <= ate30;
-      return { id: m.id, obra_id: m.obra_id, obra_cliente: mapa[m.obra_id] || '—', descricao: m.descricao || null, valor_retido: m.valor_retido, data_resgate: m.data_resgate || null, data: m.data || null, status: venc ? 'VENCIDO' : (prox ? 'PROXIMO' : (m.data_resgate ? 'FUTURO' : 'SEM_DATA')) };
+      return { id: m.id, obra_id: m.obra_id, obra_cliente: mapa[m.obra_id] || '—', nome_obra: m.nome_obra || null, descricao: m.descricao || null, valor_retido: m.valor_retido, data_resgate: m.data_resgate || null, data: m.data || null, status: venc ? 'VENCIDO' : (prox ? 'PROXIMO' : (m.data_resgate ? 'FUTURO' : 'SEM_DATA')) };
     }).sort((a, b) => (a.data_resgate || '9999-99').localeCompare(b.data_resgate || '9999-99'));
     const resumo = {
       total: retencoes.reduce((s, r) => s + r.valor_retido, 0),
