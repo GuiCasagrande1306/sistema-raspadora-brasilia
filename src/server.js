@@ -8,11 +8,13 @@ import { db, USING_SUPABASE, docStatus, supabase, BUCKET, categorizarMov } from 
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
 import { sicoobStatus, getSaldo as sicoobSaldo, getExtrato as sicoobExtrato, CONTAS as SICOOB_CONTAS, saldoPrincipalCentavos } from './sicoobService.js';
 import { createZip } from './zip.js';
+import { META_LEADS_ON, verificarDesafio, assinaturaValida, buscarLead, leadParaRegistro, listarLeadsRecentes, assinarPagina } from './metaLeads.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
-app.use(express.json());
+// corpo cru só nos webhooks — a assinatura da Meta é calculada sobre os bytes originais
+app.use(express.json({ verify: (req, _res, buf) => { if (req.url.startsWith('/api/webhooks/')) req.rawBody = buf; } }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // upload em memória (10 MB) — PDFs e imagens de documentos
@@ -388,11 +390,47 @@ app.delete('/api/docs-empresa/:id', requireAdmin, async (req, res, next) => {
   catch (e) { next(e); }
 });
 
+// ---------- LEADS — entrada automática do formulário instantâneo da Meta ----------
+// GET: verificação do webhook pela Meta (hub.challenge). POST: evento `leadgen` assinado com o App Secret.
+app.get('/api/webhooks/meta-leads', (req, res) => {
+  const ch = verificarDesafio(req.query);
+  return ch ? res.status(200).send(ch) : res.sendStatus(403);
+});
+app.post('/api/webhooks/meta-leads', async (req, res) => {
+  if (!assinaturaValida(req.rawBody, req.get('x-hub-signature-256'))) return res.sendStatus(401);
+  try {
+    for (const entry of req.body?.entry || []) {
+      for (const ch of entry.changes || []) {
+        if (ch.field !== 'leadgen' || !ch.value?.leadgen_id) continue;
+        const r = await db.importarLead(leadParaRegistro(await buscarLead(ch.value.leadgen_id)));
+        console.log('[meta-leads]', ch.value.leadgen_id, r.criado ? 'criado ' + r.lead.id : r.motivo);
+      }
+    }
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('[meta-leads] falhou', e.message);
+    res.sendStatus(500);   // a Meta reenvia; externo_id único evita duplicar
+  }
+});
+
 // ---------- LEADS (comercial) ----------
 const LEAD_ORIGENS = ['GOOGLE', 'META', 'INSTAGRAM', 'INDICACAO', 'PARCEIRO'];
 const LEAD_STATUS = ['MARCAR_VISITA', 'VISITA_AGENDADA', 'EM_EXECUCAO', 'EM_ESPERA', 'FECHADO', 'PERDIDO'];
 const LEAD_PAGTO = ['PENDENTE', 'CONCLUIDO'];
 app.use('/api/leads', requireAdmin);
+// Busca na Meta os leads dos últimos N dias que ainda não estão aqui (e reassina o webhook da Página)
+app.post('/api/leads/sincronizar-meta', async (req, res, next) => {
+  try {
+    if (!META_LEADS_ON) return res.status(503).json({ erro: 'Integração com a Meta não configurada (META_PAGE_ID / META_PAGE_TOKEN).' });
+    const dias = Math.min(90, Math.max(1, Number(req.body?.dias) || 30));
+    let assinatura = 'ok';
+    try { await assinarPagina(); } catch (e) { assinatura = e.message; }
+    const lista = await listarLeadsRecentes(Math.floor(Date.now() / 1000) - dias * 86400);
+    let novos = 0;
+    for (const { ml, form } of lista) if ((await db.importarLead(leadParaRegistro(ml, form))).criado) novos++;
+    res.json({ ok: true, encontrados: lista.length, novos, assinatura });
+  } catch (e) { next(e); }
+});
 app.get('/api/leads', async (req, res, next) => {
   try { res.json(await db.listLeads({ origem: req.query.origem, status: req.query.status })); }
   catch (e) { next(e); }

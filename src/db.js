@@ -896,6 +896,13 @@ export const db = {
       .filter(l => (!origem || l.origem === origem) && (!status || l.status === status))
       .sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''));
   },
+  // Lead vindo de integração (Meta). externo_id é único: o mesmo lead chegando 2x não duplica.
+  async importarLead(l) {
+    if (!USING_SUPABASE) return { criado: false, motivo: 'sem banco' };
+    const { data, error } = await sb('leads').insert(l).select('id,nome,origem').single();
+    if (error) { if (error.code === '23505') return { criado: false, motivo: 'duplicado' }; throw error; }
+    return { criado: true, lead: data };
+  },
   async createLead(l) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('leads').insert(l).select().single();
