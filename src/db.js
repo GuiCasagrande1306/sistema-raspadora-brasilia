@@ -662,33 +662,18 @@ export const db = {
     if (!USING_SUPABASE) return [];
     // ---- Perfil de CAMPO/AGENDA (Adelino, Cadu): SÓ os dias de serviço das obras, sem Raspagem e SEM nenhum valor ----
     if ((role || 'ADMIN') !== 'ADMIN') {
-      const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento', RASPAGEM: 'serv_raspagem' };
-      let obras = [];
-      try {
-        const r = await sb('obras_financeiro').select('id,cliente,categoria_servico,coluna_kanban,dias_servico');
-        obras = r.data || [];
-      } catch (_) { obras = []; }   // se a coluna dias_servico ainda não existir, agenda do campo fica vazia (não quebra)
+      // CAMPO/AGENDA: exibe apenas programações de concreto (polido/vassourado) — sem dias_servico
       const eventos = [];
-      (obras || []).forEach(o => {
-        if (o.coluna_kanban === 'liquidado') return;
-        const dias = Array.isArray(o.dias_servico) ? o.dias_servico : [];
-        dias.forEach(d => {
-          const it = (typeof d === 'string') ? { data: d } : (d || {});
-          const ds = String(it.data || '').slice(0, 10);
-          if (!ds || ds < desde || ds > ate) return;
-          const tipo = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
-          eventos.push({ tipo: CAT_TIPO[tipo] || 'serv_outro', data: ds, titulo: o.cliente || 'Obra', categoria: tipo, m2: Number(it.m2) || 0, obra_id: o.id });
-        });
-      });
-      // ---- Programação de concreto (polido/vassourado com m²): agenda_concreto ----
       try {
         const pcR = await sb('agenda_concreto')
-          .select('id,data,obra_id,polido,vassourado,m2_polido,m2_vassourado,obras_financeiro(cliente)')
+          .select('id,data,obra_id,piso_polido,piso_vassourado,laje_polido,laje_vassourado,m2_piso_polido,m2_piso_vassourado,m2_laje_polido,m2_laje_vassourado,obras_financeiro(cliente)')
           .gte('data', desde).lte('data', ate);
         for (const p of (pcR.data || [])) {
-          const nome = p.obras_financeiro?.cliente || '—';
-          if (p.polido) eventos.push({ tipo: 'conc_polido', data: p.data, titulo: nome, m2: p.m2_polido || 0, obra_id: p.obra_id, prog_id: p.id });
-          if (p.vassourado) eventos.push({ tipo: 'conc_vassourado', data: p.data, titulo: nome, m2: p.m2_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
+          const nome = p.obras_financeiro?.cliente || '(sem nome)';
+          if (p.piso_polido) eventos.push({ tipo: 'piso_polido', data: p.data, titulo: nome, m2: p.m2_piso_polido || 0, obra_id: p.obra_id, prog_id: p.id });
+          if (p.piso_vassourado) eventos.push({ tipo: 'piso_vassourado', data: p.data, titulo: nome, m2: p.m2_piso_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
+          if (p.laje_polido) eventos.push({ tipo: 'laje_polido', data: p.data, titulo: nome, m2: p.m2_laje_polido || 0, obra_id: p.obra_id, prog_id: p.id });
+          if (p.laje_vassourado) eventos.push({ tipo: 'laje_vassourado', data: p.data, titulo: nome, m2: p.m2_laje_vassourado || 0, obra_id: p.obra_id, prog_id: p.id });
         }
       } catch (_) {}
       return eventos.sort((a, b) => String(a.data).localeCompare(String(b.data)));
@@ -2042,9 +2027,13 @@ export const db = {
     const _normObra = s => String(s || '').trim().toLowerCase();
     const _chaveObra = d => d.data + '|' + (d.obra_id || _normObra(d.obra));
     for (const p of Object.values(porColab)) {
-      const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(_chaveObra));
-      if (!prodKeys.size) continue;
-      p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(_chaveObra(d)));
+      if (/PEDREIRO/i.test(p.cargo || '')) {
+        // Pedreiro é pago por m² — dias do cronograma sem produção não geram linha no recibo
+        p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao);
+      } else {
+        const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(_chaveObra));
+        if (prodKeys.size) p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(_chaveObra(d)));
+      }
     }
     // INSS padrão do SERVENTE FICHADO (registrado) = R$ 100,98 descontado AUTOMÁTICO na folha.
     // Só quando trabalhou no período e não há INSS lançado à mão (não duplica). Pedreiro e diarista não entram.
@@ -2283,17 +2272,23 @@ export const db = {
       .neq('coluna_kanban', 'liquidado');
     if (error) throw error;
     // Retorna obras ativas que são de concreto/raspagem/fulget
-    return (data || []).filter(o => ['CONCRETO', 'FULGET', 'CIMENTO_QUEIMADO', 'RASPAGEM'].includes(o.categoria_servico || ''));
+    return (data || [])
+      .filter(o => ['CONCRETO', 'FULGET', 'CIMENTO_QUEIMADO', 'RASPAGEM'].includes(o.categoria_servico || ''))
+      .map(o => ({ ...o, cliente: o.cliente || '(sem nome)' }));
   },
   async addProgConcreto(p) {
     if (!USING_SUPABASE) return { id: uid(), ...p, created_at: new Date().toISOString() };
     const { data, error } = await sb('agenda_concreto').insert({
       data: p.data,
       obra_id: p.obra_id,
-      polido: !!p.polido,
-      vassourado: !!p.vassourado,
-      m2_polido: Math.round(Number(p.m2_polido) || 0),
-      m2_vassourado: Math.round(Number(p.m2_vassourado) || 0),
+      piso_polido: !!p.piso_polido,
+      piso_vassourado: !!p.piso_vassourado,
+      laje_polido: !!p.laje_polido,
+      laje_vassourado: !!p.laje_vassourado,
+      m2_piso_polido: Math.round(Number(p.m2_piso_polido) || 0),
+      m2_piso_vassourado: Math.round(Number(p.m2_piso_vassourado) || 0),
+      m2_laje_polido: Math.round(Number(p.m2_laje_polido) || 0),
+      m2_laje_vassourado: Math.round(Number(p.m2_laje_vassourado) || 0),
       criado_por: p.criado_por || null,
     }).select().single();
     if (error) throw error;

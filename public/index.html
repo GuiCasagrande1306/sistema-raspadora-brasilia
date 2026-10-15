@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v229</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v231</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1730,37 +1730,49 @@
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
           <div>
             <label class="docs-toggle" style="font-size:14px">
-              <input type="checkbox" id="progconc-polido"> Concreto Polido
+              <input type="checkbox" id="progconc-piso-polido"> Piso Polido
             </label>
-            <div id="progconc-polido-wrap" class="hidden" style="margin:4px 0 0 24px">
-              <button type="button" id="progconc-polido-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
-              <div id="progconc-polido-m2" class="hidden field" style="margin:6px 0 0">
-                <label>m² — Polido</label>
-                <input type="number" id="progconc-m2-polido" min="0" step="1" placeholder="0">
+            <div id="progconc-piso-polido-wrap" class="hidden" style="margin:4px 0 0 24px">
+              <button type="button" id="progconc-piso-polido-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
+              <div id="progconc-piso-polido-m2" class="hidden field" style="margin:6px 0 0">
+                <label>m² — Piso Polido</label>
+                <input type="number" id="progconc-m2-piso-polido" min="0" step="1" placeholder="0">
               </div>
             </div>
           </div>
           <div>
             <label class="docs-toggle" style="font-size:14px">
-              <input type="checkbox" id="progconc-vassourado"> Concreto Vassourado
+              <input type="checkbox" id="progconc-piso-vassourado"> Piso Vassourado
             </label>
-            <div id="progconc-vassourado-wrap" class="hidden" style="margin:4px 0 0 24px">
-              <button type="button" id="progconc-vassourado-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
-              <div id="progconc-vassourado-m2" class="hidden field" style="margin:6px 0 0">
-                <label>m² — Vassourado</label>
-                <input type="number" id="progconc-m2-vassourado" min="0" step="1" placeholder="0">
+            <div id="progconc-piso-vassourado-wrap" class="hidden" style="margin:4px 0 0 24px">
+              <button type="button" id="progconc-piso-vassourado-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
+              <div id="progconc-piso-vassourado-m2" class="hidden field" style="margin:6px 0 0">
+                <label>m² — Piso Vassourado</label>
+                <input type="number" id="progconc-m2-piso-vassourado" min="0" step="1" placeholder="0">
               </div>
             </div>
           </div>
           <div>
             <label class="docs-toggle" style="font-size:14px">
-              <input type="checkbox" id="progconc-laje"> Laje
+              <input type="checkbox" id="progconc-laje-polido" style="accent-color:var(--laranja)"> <span style="color:var(--laranja);font-weight:600">Laje Polido</span>
             </label>
-            <div id="progconc-laje-wrap" class="hidden" style="margin:4px 0 0 24px">
-              <button type="button" id="progconc-laje-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
-              <div id="progconc-laje-m2" class="hidden field" style="margin:6px 0 0">
-                <label>m² — Laje</label>
-                <input type="number" id="progconc-m2-laje" min="0" step="1" placeholder="0">
+            <div id="progconc-laje-polido-wrap" class="hidden" style="margin:4px 0 0 24px">
+              <button type="button" id="progconc-laje-polido-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
+              <div id="progconc-laje-polido-m2" class="hidden field" style="margin:6px 0 0">
+                <label>m² — Laje Polido</label>
+                <input type="number" id="progconc-m2-laje-polido" min="0" step="1" placeholder="0">
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="docs-toggle" style="font-size:14px">
+              <input type="checkbox" id="progconc-laje-vassourado" style="accent-color:var(--laranja)"> <span style="color:var(--laranja);font-weight:600">Laje Vassourado</span>
+            </label>
+            <div id="progconc-laje-vassourado-wrap" class="hidden" style="margin:4px 0 0 24px">
+              <button type="button" id="progconc-laje-vassourado-m2-toggle" class="btn-ghost" style="font-size:11px;padding:2px 8px">＋ metragem</button>
+              <div id="progconc-laje-vassourado-m2" class="hidden field" style="margin:6px 0 0">
+                <label>m² — Laje Vassourado</label>
+                <input type="number" id="progconc-m2-laje-vassourado" min="0" step="1" placeholder="0">
               </div>
             </div>
           </div>
@@ -4371,10 +4383,10 @@
   // ---------- AGENDA = CALENDÁRIO (pagamentos, documentos, medições) ----------
   const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#2563EB'},medicao:{lbl:'Recebidos',cor:'#12805c'},obra:{lbl:'Obras previstas',cor:'#EAB308'}};
   // Agenda do time de campo (Adelino/Cadu/Vitor): obras por tipo de serviço + programação de concreto.
-  const AG_TIPO_CAMPO={conc_polido:{lbl:'Polido',cor:'#9ca3af'},conc_vassourado:{lbl:'Vassourado',cor:'#7c3aed'},conc_laje:{lbl:'Laje',cor:'#0ea5e9'}};
+  const AG_TIPO_CAMPO={piso_polido:{lbl:'Piso Polido',cor:'#9ca3af'},piso_vassourado:{lbl:'Piso Vassourado',cor:'#7c3aed'},laje_polido:{lbl:'Laje Polido',cor:'#ED7118'},laje_vassourado:{lbl:'Laje Vassourado',cor:'#D65E0B'}};
   const agTipos=()=>ROLE==='ADMIN'?AG_TIPO:AG_TIPO_CAMPO;
   // Atualiza cores de polido/vassourado vindas do servidor
-  function agAtualizarCores(cfg){if(!cfg)return;if(cfg.cor_polido)AG_TIPO_CAMPO.conc_polido.cor=cfg.cor_polido;if(cfg.cor_vassourado)AG_TIPO_CAMPO.conc_vassourado.cor=cfg.cor_vassourado;}
+  function agAtualizarCores(cfg){if(!cfg)return;if(cfg.cor_polido)AG_TIPO_CAMPO.piso_polido.cor=cfg.cor_polido;if(cfg.cor_vassourado)AG_TIPO_CAMPO.piso_vassourado.cor=cfg.cor_vassourado;}
   let agendaRef=null, AGENDA_EVENTOS=[], OBRAS_CONCRETO=[];
   const agDialabel=iso=>new Date(iso+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
   function agEventoLinha(e,comBotaoDel){
@@ -4425,7 +4437,23 @@
     for(let dia=1;dia<=totalDias;dia++){
       const ds=ini.getFullYear()+'-'+String(ini.getMonth()+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
       const evs=porDia[ds]||[];
-      const chips=evs.slice(0,3).map(e=>`<div class="ag-chip" style="background:${(agTipos()[e.tipo]||{}).cor||'#999'}">${esc(e.titulo)}${e.m2?' · '+e.m2+'m²':''}</div>`).join('')+(evs.length>3?`<div class="ag-more">+${evs.length-3}</div>`:'');
+      // Agrupa eventos de concreto (prog_id) por obra; admin fica individual
+      const _grps=[],_oMap={};
+      evs.forEach(e=>{
+        if(e.prog_id&&e.obra_id){
+          if(!_oMap[e.obra_id]){_oMap[e.obra_id]={titulo:e.titulo,evs:[]};_grps.push(_oMap[e.obra_id]);}
+          _oMap[e.obra_id].evs.push(e);
+        }else{_grps.push({titulo:e.titulo,evs:[e]});}
+      });
+      const chips=_grps.slice(0,3).map(g=>{
+        const cor=(agTipos()[g.evs[0].tipo]||{}).cor||'#999';
+        const subs=g.evs.map(e=>{
+          const lbl=(agTipos()[e.tipo]||{lbl:e.tipo}).lbl;
+          return e.m2?`<div style="font-size:9px;line-height:1.4;opacity:.9">• ${lbl} — ${e.m2}m²</div>`
+                     :g.evs.length>1?`<div style="font-size:9px;line-height:1.4;opacity:.9">• ${lbl}</div>`:'';
+        }).join('');
+        return `<div class="ag-chip" style="background:${cor};white-space:normal;overflow:visible" title="${esc(g.titulo)}">${esc(g.titulo)}${subs}</div>`;
+      }).join('')+(_grps.length>3?`<div class="ag-more">+${_grps.length-3}</div>`:'');
       const addBtn=ROLE!=='ADMIN'?`<button class="ag-add-btn" data-prog-dia="${ds}" title="Programar obra neste dia">+</button>`:'';
       cells+=`<div class="ag-cell${ds===hoje?' ag-today':''}${evs.length?' ag-has':''}" data-agdia="${ds}"><div class="ag-num">${dia}${addBtn}</div>${chips}</div>`;
     }
@@ -4486,7 +4514,7 @@
     sel.innerHTML='<option value="">Selecione a obra…</option>'+obras.sort((a,b)=>a.cliente.localeCompare(b.cliente)).map(o=>`<option value="${o.id}">${esc(o.cliente)}</option>`).join('');
     if(obraId)sel.value=obraId;
     // Reset checkboxes/m²
-    ['polido','vassourado','laje'].forEach(t=>{
+    ['piso-polido','piso-vassourado','laje-polido','laje-vassourado'].forEach(t=>{
       document.getElementById('progconc-'+t).checked=false;
       document.getElementById('progconc-'+t+'-wrap').classList.add('hidden');
       document.getElementById('progconc-'+t+'-m2').classList.add('hidden');
@@ -4496,7 +4524,7 @@
     openModal('ov-prog-conc');
   }
   // ---- Listeners do modal ov-prog-conc ----
-  ['polido','vassourado','laje'].forEach(t=>{
+  ['piso-polido','piso-vassourado','laje-polido','laje-vassourado'].forEach(t=>{
     document.getElementById('progconc-'+t)?.addEventListener('change',function(){
       document.getElementById('progconc-'+t+'-wrap').classList.toggle('hidden',!this.checked);
       if(!this.checked){
@@ -4521,13 +4549,15 @@
     e.preventDefault();
     const data=document.getElementById('progconc-data').value;
     const isNova=!document.getElementById('progconc-sect-nova').classList.contains('hidden');
-    const polido=document.getElementById('progconc-polido').checked;
-    const vassourado=document.getElementById('progconc-vassourado').checked;
-    const laje=document.getElementById('progconc-laje').checked;
-    const m2_polido=Number(document.getElementById('progconc-m2-polido').value)||0;
-    const m2_vassourado=Number(document.getElementById('progconc-m2-vassourado').value)||0;
-    const m2_laje=Number(document.getElementById('progconc-m2-laje').value)||0;
-    if(!polido&&!vassourado&&!laje){showToast('Selecione pelo menos um tipo');return;}
+    const piso_polido=document.getElementById('progconc-piso-polido').checked;
+    const piso_vassourado=document.getElementById('progconc-piso-vassourado').checked;
+    const laje_polido=document.getElementById('progconc-laje-polido').checked;
+    const laje_vassourado=document.getElementById('progconc-laje-vassourado').checked;
+    const m2_piso_polido=Number(document.getElementById('progconc-m2-piso-polido').value)||0;
+    const m2_piso_vassourado=Number(document.getElementById('progconc-m2-piso-vassourado').value)||0;
+    const m2_laje_polido=Number(document.getElementById('progconc-m2-laje-polido').value)||0;
+    const m2_laje_vassourado=Number(document.getElementById('progconc-m2-laje-vassourado').value)||0;
+    if(!piso_polido&&!piso_vassourado&&!laje_polido&&!laje_vassourado){showToast('Selecione pelo menos um tipo');return;}
     const btn=document.getElementById('progconc-submit');btn.disabled=true;btn.textContent='Salvando…';
     let obra_id;
     try{
@@ -4546,7 +4576,7 @@
       }
       if(!data||!obra_id){showToast('Preencha data e obra');btn.disabled=false;btn.textContent='Salvar';return;}
       btn.textContent='Salvando…';
-      await api('/api/programacao-concreto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data,obra_id,polido,vassourado,laje,m2_polido,m2_vassourado,m2_laje})});
+      await api('/api/programacao-concreto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data,obra_id,piso_polido,piso_vassourado,laje_polido,laje_vassourado,m2_piso_polido,m2_piso_vassourado,m2_laje_polido,m2_laje_vassourado})});
       showToast(isNova?'Obra criada e programação salva':'Programação salva');
       closeModal('ov-prog-conc');
       loadAgenda();

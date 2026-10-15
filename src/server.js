@@ -1321,7 +1321,6 @@ app.delete('/api/financeiro/obra/:id', async (req, res, next) => {
 app.post('/api/financeiro/obra', async (req, res, next) => {
   try {
     const { cliente, endereco, metragem_m2, tipo_piso, valor_contrato } = req.body;
-    if (!cliente) return res.status(400).json({ erro: 'cliente é obrigatório' });
     res.status(201).json(await db.createObra({
       cliente, endereco: endereco || null, tipo_piso: tipo_piso || null,
       categoria_servico: req.body.categoria_servico || null,
@@ -1632,10 +1631,10 @@ app.get('/api/programacao-concreto', requireAuth, async (req, res, next) => {
 });
 app.post('/api/programacao-concreto', requireAuth, async (req, res, next) => {
   try {
-    const { data, obra_id, polido, vassourado, m2_polido, m2_vassourado } = req.body;
+    const { data, obra_id, piso_polido, piso_vassourado, laje_polido, laje_vassourado, m2_piso_polido, m2_piso_vassourado, m2_laje_polido, m2_laje_vassourado } = req.body;
     if (!data || !obra_id) return res.status(400).json({ erro: 'data e obra_id são obrigatórios' });
-    if (!polido && !vassourado) return res.status(400).json({ erro: 'Selecione ao menos um tipo (polido ou vassourado)' });
-    const entry = await db.addProgConcreto({ data, obra_id, polido: !!polido, vassourado: !!vassourado, m2_polido: Number(m2_polido) || 0, m2_vassourado: Number(m2_vassourado) || 0, criado_por: req.user?.nome || null });
+    if (!piso_polido && !piso_vassourado && !laje_polido && !laje_vassourado) return res.status(400).json({ erro: 'Selecione ao menos um tipo' });
+    const entry = await db.addProgConcreto({ data, obra_id, piso_polido: !!piso_polido, piso_vassourado: !!piso_vassourado, laje_polido: !!laje_polido, laje_vassourado: !!laje_vassourado, m2_piso_polido: Number(m2_piso_polido) || 0, m2_piso_vassourado: Number(m2_piso_vassourado) || 0, m2_laje_polido: Number(m2_laje_polido) || 0, m2_laje_vassourado: Number(m2_laje_vassourado) || 0, criado_por: req.user?.nome || null });
     res.json(entry);
   } catch (e) { next(e); }
 });
