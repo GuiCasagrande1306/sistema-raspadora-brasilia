@@ -1638,6 +1638,20 @@ app.post('/api/programacao-concreto', requireAuth, async (req, res, next) => {
     res.json(entry);
   } catch (e) { next(e); }
 });
+// Cadastro rápido de obra pela Agenda (campo/agenda não acessam /api/financeiro) — só nome, local, m² e categoria; nada de valor
+app.post('/api/programacao-concreto/obra', requireAuth, async (req, res, next) => {
+  try {
+    const cat = req.body.categoria_servico;
+    if (cat && !['CONCRETO', 'FULGET', 'CIMENTO_QUEIMADO', 'RASPAGEM'].includes(cat)) return res.status(400).json({ erro: 'categoria inválida' });
+    const obra = await db.createObra({
+      cliente: String(req.body.cliente || '').trim().slice(0, 200) || null,
+      endereco: String(req.body.endereco || '').trim().slice(0, 300) || null,
+      categoria_servico: cat || 'CONCRETO',
+      metragem_m2: Math.max(0, Number(req.body.metragem_m2) || 0),
+    });
+    res.status(201).json({ id: obra.id, cliente: obra.cliente });
+  } catch (e) { next(e); }
+});
 app.delete('/api/programacao-concreto/:id', requireAuth, async (req, res, next) => {
   try { await db.delProgConcreto(req.params.id); res.json({ ok: true }); } catch (e) { next(e); }
 });
@@ -1676,20 +1690,6 @@ app.patch('/api/fluxo-caixa/previsto/:id', async (req, res, next) => {
 app.delete('/api/fluxo-caixa/previsto/:id', async (req, res, next) => {
   try { await db.deletePrevisto(req.params.id); res.json({ ok: true }); }
   catch (e) { next(e); }
-// Cadastro rápido de obra pela Agenda (campo/agenda não acessam /api/financeiro) — só nome, local, m² e categoria; nada de valor
-app.post('/api/programacao-concreto/obra', requireAuth, async (req, res, next) => {
-  try {
-    const cat = req.body.categoria_servico;
-    if (cat && !['CONCRETO', 'FULGET', 'CIMENTO_QUEIMADO', 'RASPAGEM'].includes(cat)) return res.status(400).json({ erro: 'categoria inválida' });
-    const obra = await db.createObra({
-      cliente: String(req.body.cliente || '').trim().slice(0, 200) || null,
-      endereco: String(req.body.endereco || '').trim().slice(0, 300) || null,
-      categoria_servico: cat || 'CONCRETO',
-      metragem_m2: Math.max(0, Number(req.body.metragem_m2) || 0),
-    });
-    res.status(201).json({ id: obra.id, cliente: obra.cliente });
-  } catch (e) { next(e); }
-});
 });
 
 // ---------- GESTÃO DE DOCUMENTOS (padrão Inmeta) ----------
