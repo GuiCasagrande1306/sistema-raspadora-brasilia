@@ -662,15 +662,19 @@ export const db = {
   // Sem categoria conta como concreto (ex.: FR Engenharia); Raspagem/Fulget/Limpeza/Cimento/Outro ficam de fora.
   async agendaObrasEventos(desde, ate, { valores = false } = {}) {
     const ehConcreto = cat => !cat || cat === 'CONCRETO';
-    const [obR, pcR] = await Promise.all([
-      sb('obras_financeiro').select('id,cliente,categoria_servico,coluna_kanban,dias_servico,data_inicio,valor_contrato'),
+    const [obR, pcR, ocR] = await Promise.all([
+      sb('obras_financeiro').select('id,cliente,categoria_servico,tipo_piso,metragem_m2,coluna_kanban,dias_servico,data_inicio,valor_contrato'),
       sb('agenda_concreto')
         .select('id,data,obra_id,piso_polido,piso_vassourado,laje_polido,laje_vassourado,m2_piso_polido,m2_piso_vassourado,m2_laje_polido,m2_laje_vassourado,obras_financeiro(cliente)')
         .gte('data', desde).lte('data', ate),
+      sb('agenda_ocultos').select('obra_id,data,tipo').gte('data', desde).lte('data', ate),
     ]);
     if (obR.error) throw obR.error;
     if (pcR.error) throw pcR.error;
+    if (ocR.error) throw ocR.error;
+    const ocultos = new Set((ocR.data || []).map(x => `${x.obra_id}|${x.data}|${x.tipo}`));
     const eventos = [];
+    const push = ev => { if (!ocultos.has(`${ev.obra_id}|${ev.data}|${ev.tipo}`)) eventos.push(ev); };
     for (const o of obR.data || []) {
       if (o.coluna_kanban === 'liquidado') continue;
       const titulo = o.cliente || '(sem nome)';
@@ -680,10 +684,10 @@ export const db = {
         if (!ds || ds < desde || ds > ate) continue;
         const cat = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
         if (!ehConcreto(cat)) continue;
-        eventos.push({ tipo: 'serv_concreto', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
+        push({ tipo: 'serv_concreto', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
       }
       const ini = String(o.data_inicio || '').slice(0, 10);
-      if (ini && ini >= desde && ini <= ate && ehConcreto(o.categoria_servico)) eventos.push({ tipo: 'obra', data: ini, titulo, obra_id: o.id, id: o.id, ...(valores ? { valor: o.valor_contrato || 0 } : {}) });
+      if (ini && ini >= desde && ini <= ate && ehConcreto(o.categoria_servico)) push({ tipo: 'obra', data: ini, titulo, obra_id: o.id, id: o.id, categoria: o.categoria_servico || null, servico: o.tipo_piso || null, m2: Number(o.metragem_m2) || 0, ...(valores ? { valor: o.valor_contrato || 0 } : {}) });
     }
     for (const p of pcR.data || []) {
       const nome = p.obras_financeiro?.cliente || '(sem nome)';
@@ -2317,6 +2321,12 @@ export const db = {
   async delProgConcreto(id) {
     if (!USING_SUPABASE) return;
     const { error } = await sb('agenda_concreto').delete().eq('id', id);
+    if (error) throw error;
+  },
+  async ocultarItemAgenda({ obra_id, data, tipo, criado_por }) {
+    if (!USING_SUPABASE) return;
+    const { error } = await sb('agenda_ocultos')
+      .upsert({ obra_id, data, tipo, criado_por: criado_por || null }, { onConflict: 'obra_id,data,tipo', ignoreDuplicates: true });
     if (error) throw error;
   },
 };

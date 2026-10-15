@@ -1641,6 +1641,17 @@ app.post('/api/programacao-concreto', requireAuth, async (req, res, next) => {
 app.delete('/api/programacao-concreto/:id', requireAuth, async (req, res, next) => {
   try { await db.delProgConcreto(req.params.id); res.json({ ok: true }); } catch (e) { next(e); }
 });
+// Remove da Agenda um item vindo da obra (dia de serviço / início) — só esconde, não altera a obra
+app.post('/api/agenda/ocultar', requireAuth, async (req, res, next) => {
+  try {
+    const { obra_id, data, tipo } = req.body || {};
+    if (!obra_id || typeof obra_id !== 'string') return res.status(400).json({ erro: 'obra_id obrigatório' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '')) return res.status(400).json({ erro: 'data inválida' });
+    if (!['serv_concreto', 'obra'].includes(tipo)) return res.status(400).json({ erro: 'tipo inválido' });
+    await db.ocultarItemAgenda({ obra_id, data, tipo, criado_por: req.user?.nome || null });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
 
 app.post('/api/fluxo-caixa/previsto', async (req, res, next) => {
   try {
