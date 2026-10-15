@@ -658,9 +658,10 @@ export const db = {
   },
   // Eventos agregados para o calendário da Agenda (e o sino): vencimentos de pagamentos (boletos),
   // vencimentos de documentos SST/RH e datas de medições, num intervalo [desde, ate].
-  // Obras ativas no calendário (todos os perfis): dias de serviço do cronograma, início da obra e programação de concreto.
+  // Obras de concreto ativas no calendário (todos os perfis): dias de serviço, início da obra e programação de concreto.
+  // Sem categoria conta como concreto (ex.: FR Engenharia); Raspagem/Fulget/Limpeza/Cimento/Outro ficam de fora.
   async agendaObrasEventos(desde, ate, { valores = false } = {}) {
-    const CAT_TIPO = { CONCRETO: 'serv_concreto', LIMPEZA: 'serv_limpeza', FULGET: 'serv_fulget', CIMENTO_QUEIMADO: 'serv_cimento', RASPAGEM: 'serv_raspagem' };
+    const ehConcreto = cat => !cat || cat === 'CONCRETO';
     const [obR, pcR] = await Promise.all([
       sb('obras_financeiro').select('id,cliente,categoria_servico,coluna_kanban,dias_servico,data_inicio,valor_contrato'),
       sb('agenda_concreto')
@@ -678,10 +679,11 @@ export const db = {
         const ds = String(it.data || '').slice(0, 10);
         if (!ds || ds < desde || ds > ate) continue;
         const cat = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
-        eventos.push({ tipo: CAT_TIPO[cat] || 'serv_outro', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
+        if (!ehConcreto(cat)) continue;
+        eventos.push({ tipo: 'serv_concreto', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
       }
       const ini = String(o.data_inicio || '').slice(0, 10);
-      if (ini && ini >= desde && ini <= ate) eventos.push({ tipo: 'obra', data: ini, titulo, obra_id: o.id, id: o.id, ...(valores ? { valor: o.valor_contrato || 0 } : {}) });
+      if (ini && ini >= desde && ini <= ate && ehConcreto(o.categoria_servico)) eventos.push({ tipo: 'obra', data: ini, titulo, obra_id: o.id, id: o.id, ...(valores ? { valor: o.valor_contrato || 0 } : {}) });
     }
     for (const p of pcR.data || []) {
       const nome = p.obras_financeiro?.cliente || '(sem nome)';
@@ -2290,7 +2292,7 @@ export const db = {
       .select('id,cliente,categoria_servico,coluna_kanban');
     if (error) throw error;
     return (data || [])
-      .filter(o => o.coluna_kanban !== 'liquidado')
+      .filter(o => o.coluna_kanban !== 'liquidado' && (!o.categoria_servico || o.categoria_servico === 'CONCRETO'))
       .map(o => ({ ...o, cliente: o.cliente || '(sem nome)' }))
       .sort((a, b) => a.cliente.localeCompare(b.cliente, 'pt-BR'));
   },

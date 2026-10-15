@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v234</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v235</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4385,8 +4385,7 @@
   const AG_TIPO={pagamento:{lbl:'Pagamento',cor:'#EF4444'},documento:{lbl:'Documento',cor:'#6366f1'},medicao:{lbl:'Recebidos',cor:'#12805c'}};
   // Obras (todos os perfis): programação de concreto + dias de serviço do cronograma + início da obra.
   const AG_TIPO_CAMPO={piso_polido:{lbl:'Piso Polido',cor:'#9ca3af'},piso_vassourado:{lbl:'Piso Vassourado',cor:'#7c3aed'},laje_polido:{lbl:'Laje Polido',cor:'#ED7118'},laje_vassourado:{lbl:'Laje Vassourado',cor:'#D65E0B'},
-    serv_concreto:{lbl:'Concreto',cor:'#64748b'},serv_raspagem:{lbl:'Raspagem',cor:'#9333ea'},serv_fulget:{lbl:'Fulget',cor:'#0891b2'},serv_cimento:{lbl:'Cimento queimado',cor:'#0f766e'},serv_limpeza:{lbl:'Limpeza',cor:'#65a30d'},serv_outro:{lbl:'Outro serviço',cor:'#db2777'},
-    obra:{lbl:'Início da obra',cor:'#eab308'}};
+    serv_concreto:{lbl:'Concreto',cor:'#64748b'},obra:{lbl:'Início da obra',cor:'#eab308'}};
   const agTipos=()=>ROLE==='ADMIN'?Object.assign({},AG_TIPO,AG_TIPO_CAMPO):AG_TIPO_CAMPO;
   // Atualiza cores de polido/vassourado vindas do servidor
   function agAtualizarCores(cfg){if(!cfg)return;if(cfg.cor_polido)AG_TIPO_CAMPO.piso_polido.cor=cfg.cor_polido;if(cfg.cor_vassourado)AG_TIPO_CAMPO.piso_vassourado.cor=cfg.cor_vassourado;}
