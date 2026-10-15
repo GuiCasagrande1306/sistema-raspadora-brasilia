@@ -1236,14 +1236,18 @@ app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
     if (req.body.dias_servico !== undefined) {
-      // cada dia = {data, tipo, m2}; aceita string legada (vira {data}); dedup por data
+      // cada dia = {data, tipo, acabamento?, m2}; aceita string legada (vira {data}).
+      // Concreto pode ter acabamento (mesmos da programação da Agenda); vários serviços no mesmo dia, dedup por data+tipo+acabamento
+      const ACABAMENTOS = ['piso_polido', 'piso_vassourado', 'laje_polido', 'laje_vassourado'];
       const arr = Array.isArray(req.body.dias_servico) ? req.body.dias_servico : [];
       const byData = {};
       for (const d of arr) {
         const it = (typeof d === 'string') ? { data: d } : (d || {});
         const data = it.data ? String(it.data).slice(0, 10) : null;
         if (!data) continue;
-        byData[data] = { data, tipo: it.tipo || null, m2: Number(it.m2) || 0 };
+        const tipo = it.tipo || null;
+        const acabamento = tipo === 'CONCRETO' && ACABAMENTOS.includes(it.acabamento) ? it.acabamento : null;
+        byData[`${data}|${tipo}|${acabamento}`] = { data, tipo, ...(acabamento ? { acabamento } : {}), m2: Number(it.m2) || 0 };
       }
       patch.dias_servico = Object.values(byData).sort((a, b) => a.data.localeCompare(b.data));
     }
@@ -1699,7 +1703,7 @@ app.post('/api/agenda/ocultar', requireAuth, async (req, res, next) => {
     const { obra_id, data, tipo } = req.body || {};
     if (!obra_id || typeof obra_id !== 'string') return res.status(400).json({ erro: 'obra_id obrigatório' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '')) return res.status(400).json({ erro: 'data inválida' });
-    if (!['serv_concreto', 'obra'].includes(tipo)) return res.status(400).json({ erro: 'tipo inválido' });
+    if (!['serv_concreto', 'obra', 'piso_polido', 'piso_vassourado', 'laje_polido', 'laje_vassourado'].includes(tipo)) return res.status(400).json({ erro: 'tipo inválido' });
     await db.ocultarItemAgenda({ obra_id, data, tipo, criado_por: req.user?.nome || null });
     res.json({ ok: true });
   } catch (e) { next(e); }

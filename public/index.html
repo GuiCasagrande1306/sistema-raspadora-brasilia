@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v239</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v240</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2314,7 +2314,7 @@
             <label>Dias de serviço <span style="color:var(--ink-3);font-weight:400">— quando NÃO é corrido (ex.: concreto em dias variados)</span></label>
             <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
               <input type="date" id="oe-dia-servico" style="max-width:150px" title="Data do serviço">
-              <select id="oe-dia-tipo" style="max-width:170px" title="Tipo de serviço do dia"><option value="">Tipo de serviço…</option><option value="CONCRETO">Concreto</option><option value="FULGET">Fulget</option><option value="LIMPEZA">Limpeza</option><option value="CIMENTO_QUEIMADO">Cimento queimado</option><option value="RASPAGEM">Raspagem</option><option value="OUTRO">Outro</option></select>
+              <select id="oe-dia-tipo" style="max-width:190px" title="Tipo de serviço do dia"><option value="">Tipo de serviço…</option><optgroup label="Concreto"><option value="CONCRETO:piso_polido">Piso Polido</option><option value="CONCRETO:piso_vassourado">Piso Vassourado</option><option value="CONCRETO:laje_polido">Laje Polido</option><option value="CONCRETO:laje_vassourado">Laje Vassourado</option><option value="CONCRETO">Concreto (sem detalhar)</option></optgroup><optgroup label="Outros serviços"><option value="FULGET">Fulget</option><option value="LIMPEZA">Limpeza</option><option value="CIMENTO_QUEIMADO">Cimento queimado</option><option value="RASPAGEM">Raspagem</option><option value="OUTRO">Outro</option></optgroup></select>
               <input type="number" id="oe-dia-m2" placeholder="m²" min="0" step="0.01" style="max-width:90px" title="Metragem (m²) do dia">
               <button type="button" class="btn-ghost" id="oe-add-dia" style="min-height:38px;padding:0 12px;white-space:nowrap">+ dia</button>
             </div>
@@ -2940,7 +2940,7 @@
       <div class="fb-count"><b class="money" style="color:var(--laranja-2)">${brl(retido)}</b><span>Retido a resgatar</span></div>`;
     // dias de serviço (agenda operacional) da obra — cada dia com tipo + m²
     const dias=normObraDias(o.dias_servico);
-    document.getElementById('ocron-dias').innerHTML=dias.length?`<div style="margin-bottom:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:5px">Dias de serviço programados (${dias.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px">${dias.map(d=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px;${d.data<isoHoje()?'opacity:.55':''}">${dtBR(d.data)}${d.tipo?' · '+(DIA_TIPO_LBL[d.tipo]||d.tipo):''}${d.m2?' · '+d.m2+'m²':''}</span>`).join('')}</div></div>`:'';
+    document.getElementById('ocron-dias').innerHTML=dias.length?`<div style="margin-bottom:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:5px">Dias de serviço programados (${dias.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px">${dias.map(d=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px;${d.data<isoHoje()?'opacity:.55':''}">${dtBR(d.data)}${diaServLbl(d)?' · '+diaServLbl(d):''}${d.m2?' · '+d.m2+'m²':''}</span>`).join('')}</div></div>`:'';
     // linha do tempo das medições/notas (ordenadas por data)
     const meds=(r.medicoes||[]).slice().map(m=>{
       const ds=((m.datas&&m.datas.length)?m.datas:(m.data?[m.data]:[])).slice().sort();
@@ -3026,18 +3026,22 @@
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Obra: '+(m||'erro'));console.error(err);}});
   // dias de serviço da obra: cada dia tem {data, tipo, m2} (aparece na Agenda do time de campo)
   const DIA_TIPO_LBL={FULGET:'Fulget',CONCRETO:'Concreto',CIMENTO_QUEIMADO:'Cimento',LIMPEZA:'Limpeza',RASPAGEM:'Raspagem',OUTRO:'Outro'};
-  const normObraDias=(arr)=>(Array.isArray(arr)?arr:[]).map(d=>typeof d==='string'?{data:d,tipo:null,m2:0}:{data:(d&&d.data)||'',tipo:(d&&d.tipo)||null,m2:(d&&Number(d.m2))||0}).filter(d=>d.data).sort((a,b)=>a.data.localeCompare(b.data));
+  // acabamento do concreto = mesmos tipos (nome e cor) da programação da Agenda
+  const DIA_ACAB_LBL={piso_polido:'Piso Polido',piso_vassourado:'Piso Vassourado',laje_polido:'Laje Polido',laje_vassourado:'Laje Vassourado'};
+  const diaServLbl=d=>d.acabamento?(DIA_ACAB_LBL[d.acabamento]||d.acabamento):(d.tipo?(DIA_TIPO_LBL[d.tipo]||d.tipo):'');
+  const normObraDias=(arr)=>(Array.isArray(arr)?arr:[]).map(d=>typeof d==='string'?{data:d,tipo:null,m2:0}:{data:(d&&d.data)||'',tipo:(d&&d.tipo)||null,...(d&&d.acabamento?{acabamento:d.acabamento}:{}),m2:(d&&Number(d.m2))||0}).filter(d=>d.data).sort((a,b)=>a.data.localeCompare(b.data));
   let obraDias=[];
   function renderObraDias(){
     const el=document.getElementById('oe-dias-chips');
-    el.innerHTML=obraDias.length?obraDias.map((d,i)=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px">${dtBR(d.data)}${d.tipo?' · '+(DIA_TIPO_LBL[d.tipo]||d.tipo):''}${d.m2?' · '+d.m2+'m²':''}<button type="button" data-diarm="${i}" style="border:0;background:none;cursor:pointer;color:var(--danger);font-weight:800;margin-left:4px">×</button></span>`).join(''):'<span class="dv" style="color:var(--ink-3);font-size:11.5px">Nenhum dia avulso. Escolha a data + tipo de serviço + m² e clique "+ dia".</span>';
+    el.innerHTML=obraDias.length?obraDias.map((d,i)=>`<span class="apont-chip" style="padding:4px 8px;font-size:11.5px">${dtBR(d.data)}${diaServLbl(d)?' · '+diaServLbl(d):''}${d.m2?' · '+d.m2+'m²':''}<button type="button" data-diarm="${i}" style="border:0;background:none;cursor:pointer;color:var(--danger);font-weight:800;margin-left:4px">×</button></span>`).join(''):'<span class="dv" style="color:var(--ink-3);font-size:11.5px">Nenhum dia avulso. Escolha a data + tipo de serviço + m² e clique "+ dia".</span>';
     el.querySelectorAll('[data-diarm]').forEach(b=>b.addEventListener('click',()=>{obraDias.splice(parseInt(b.dataset.diarm,10),1);renderObraDias();}));
   }
   document.getElementById('oe-add-dia').addEventListener('click',()=>{
     const inp=document.getElementById('oe-dia-servico');const d=inp.value;if(!d){showToast('Escolha uma data');return;}
-    const tipo=document.getElementById('oe-dia-tipo').value||null;
+    const [tipo=null,acabamento=null]=(document.getElementById('oe-dia-tipo').value||'').split(':').map(x=>x||null);
     const m2=parseFloat(document.getElementById('oe-dia-m2').value)||0;
-    obraDias=obraDias.filter(x=>x.data!==d);obraDias.push({data:d,tipo,m2});obraDias.sort((a,b)=>a.data.localeCompare(b.data));renderObraDias();
+    // mesmo dia pode ter mais de um serviço (ex.: piso polido + laje vassourado); só substitui o mesmo serviço
+    obraDias=obraDias.filter(x=>!(x.data===d&&x.tipo===tipo&&(x.acabamento||null)===acabamento));obraDias.push({data:d,tipo,...(acabamento?{acabamento}:{}),m2});obraDias.sort((a,b)=>a.data.localeCompare(b.data));renderObraDias();
     document.getElementById('oe-dia-m2').value='';
     const nx=new Date(d+'T00:00:00');nx.setDate(nx.getDate()+1);inp.value=nx.toISOString().slice(0,10);
   });
@@ -4418,7 +4422,7 @@
       :e.tipo==='obra'?'<span class="tag" style="background:#FEF9C3;color:#854d0e">início previsto</span>':'';
     const emp=e.empresa?`<span class="emp-tag emp-${e.empresa==='ECO_PISOS'?'eco':'rb'}">${e.empresa==='ECO_PISOS'?'ECO':'R.B'}</span>`:'';
     const del=!comBotaoDel?'':e.prog_id?`<button class="btn-ghost" data-del-prog="${e.prog_id}" style="padding:2px 6px;font-size:12px;color:var(--danger)" title="Remover esta programação">✕</button>`
-      :(e.obra_id&&(e.tipo==='serv_concreto'||e.tipo==='obra'))?`<button class="btn-ghost" data-ocultar-obra="${e.obra_id}" data-ocultar-tipo="${e.tipo}" style="padding:2px 6px;font-size:12px;color:var(--danger)" title="Remover da agenda neste dia">✕</button>`:'';
+      :e.obra_id?`<button class="btn-ghost" data-ocultar-obra="${e.obra_id}" data-ocultar-tipo="${e.tipo}" style="padding:2px 6px;font-size:12px;color:var(--danger)" title="Remover da agenda neste dia">✕</button>`:'';
     const rotulo=e.tipo==='obra'?`${c.lbl} · ${esc(agServicoObra(e))}`:c.lbl;
     return `<div class="ag-evrow"><span class="ag-dot" style="background:${c.cor}"></span><span style="flex:1;min-width:0"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3)">${rotulo}</span><div style="font-weight:600">${esc(e.titulo)}${emp}</div></span>${vlr}${stat}${del}</div>`;
   }

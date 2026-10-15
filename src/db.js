@@ -684,7 +684,7 @@ export const db = {
         if (!ds || ds < desde || ds > ate) continue;
         const cat = it.tipo || o.categoria_servico || null;   // tipo DO DIA; se não tiver, cai na categoria da obra
         if (!ehConcreto(cat)) continue;
-        push({ tipo: 'serv_concreto', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
+        push({ tipo: it.acabamento || 'serv_concreto', data: ds, titulo, categoria: cat, m2: Number(it.m2) || 0, obra_id: o.id });
       }
       const ini = String(o.data_inicio || '').slice(0, 10);
       if (ini && ini >= desde && ini <= ate && ehConcreto(o.categoria_servico)) push({ tipo: 'obra', data: ini, titulo, obra_id: o.id, id: o.id, categoria: o.categoria_servico || null, servico: o.tipo_piso || null, m2: Number(o.metragem_m2) || 0, ...(valores ? { valor: o.valor_contrato || 0 } : {}) });
