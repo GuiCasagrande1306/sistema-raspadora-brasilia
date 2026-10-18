@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v241</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v242</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1869,11 +1869,21 @@
 <!-- MODAL: Relatório mensal (entradas e saídas) -->
 <div class="overlay" id="ov-relmes">
   <div class="modal" style="max-width:430px">
-    <header><h3>Relatório do mês — entradas e saídas</h3><button class="x" data-close>×</button></header>
+    <header><h3>Relatório — entradas e saídas</h3><button class="x" data-close>×</button></header>
     <form id="form-relmes">
       <div class="body">
-        <div class="field"><label>Mês</label><input type="month" id="relmes-mes" required></div>
-        <div class="login-hint" style="text-align:left">Gera um PDF com tudo que <b>entrou</b> e <b>saiu</b> no mês escolhido, com os totais.</div>
+        <div class="seg" id="relmes-modo" style="margin-bottom:12px"><button type="button" data-rm="mes" class="on">Mês fechado</button><button type="button" data-rm="periodo">Período (até hoje)</button></div>
+        <div id="relmes-box-mes">
+          <div class="field"><label>Mês</label><input type="month" id="relmes-mes"></div>
+          <div class="login-hint" style="text-align:left">Fechamento do mês inteiro (dia 1º ao último dia): mostra só o que <b>entrou</b>, o que <b>saiu</b> e o <b>saldo</b>, com as tabelas.</div>
+        </div>
+        <div id="relmes-box-periodo" class="hidden">
+          <div class="grid2">
+            <div class="field"><label>De</label><input type="date" id="relmes-desde"></div>
+            <div class="field"><label>Até</label><input type="date" id="relmes-ate"></div>
+          </div>
+          <div class="login-hint" style="text-align:left">Parcial (ex.: semana ou quinzena): além do que entrou e saiu, mostra o que <b>ainda falta pagar</b>, o <b>saldo de hoje</b> e a <b>projeção</b>. Se escolher do dia 1º ao último dia do mês, sai como mês fechado.</div>
+        </div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">🖨️ Gerar PDF</button></footer>
     </form>
@@ -5982,35 +5992,53 @@
       <table><thead><tr><th>Data</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead><tbody>${fluxoRows}</tbody></table>`);
   });
   // Relatório do mês (entradas e saídas) — escolhe o mês e gera PDF
+  let relmesModo='mes';
+  document.querySelectorAll('#relmes-modo button').forEach(b=>b.addEventListener('click',()=>{
+    relmesModo=b.dataset.rm;document.querySelectorAll('#relmes-modo button').forEach(x=>x.classList.toggle('on',x===b));
+    document.getElementById('relmes-box-mes').classList.toggle('hidden',relmesModo!=='mes');
+    document.getElementById('relmes-box-periodo').classList.toggle('hidden',relmesModo!=='periodo');
+  }));
   document.getElementById('btn-rel-mes').addEventListener('click',()=>{
     const inp=document.getElementById('relmes-mes');if(!inp.value)inp.value=isoHoje().slice(0,7);
+    const de=document.getElementById('relmes-desde'),ate=document.getElementById('relmes-ate');
+    if(!de.value)de.value=isoHoje().slice(0,8)+'01';if(!ate.value)ate.value=isoHoje();
     openModal('ov-relmes');
   });
   document.getElementById('form-relmes').addEventListener('submit',async e=>{
     e.preventDefault();
-    const mes=document.getElementById('relmes-mes').value;if(!mes){showToast('Escolha o mês');return;}
-    let r;try{r=await api('/api/fluxo-caixa/relatorio-mensal?mes='+mes+'&hoje='+isoHoje());}catch(err){showToast('Erro ao gerar relatório');console.error(err);return;}
+    let qs;
+    if(relmesModo==='mes'){const mes=document.getElementById('relmes-mes').value;if(!mes){showToast('Escolha o mês');return;}qs='mes='+mes;}
+    else{const de=document.getElementById('relmes-desde').value,ate=document.getElementById('relmes-ate').value;
+      if(!de||!ate){showToast('Escolha as duas datas');return;}if(de>ate){showToast('A data inicial é depois da final');return;}qs='desde='+de+'&ate='+ate;}
+    let r;try{r=await api('/api/fluxo-caixa/relatorio-mensal?'+qs+'&hoje='+isoHoje());}catch(err){showToast('Erro ao gerar relatório');console.error(err);return;}
     document.getElementById('ov-relmes').classList.remove('open');
-    const [y,m]=mes.split('-');const mesLbl=new Date(+y,+m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-    const linhaE=i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}</td><td>${esc(i.origem||'')}</td><td class="r">${brl(i.valor)}</td></tr>`;
-    const linhaS=i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}</td><td>${esc(i.categoria||i.origem||'')}</td><td class="c">${i.pago?'Pago':'Pendente'}</td><td class="r">${brl(i.valor)}</td></tr>`;
-    const entRows=(r.entradas||[]).map(linhaE).join('')||'<tr><td colspan="4" class="c">Sem entradas no mês.</td></tr>';
-    const saiRows=(r.saidas||[]).map(linhaS).join('')||'<tr><td colspan="5" class="c">Sem saídas no mês.</td></tr>';
-    const obraRows=(r.entradas_por_obra||[]).map(o=>`<tr><td>${esc(o.obra)}</td><td class="r">${brl(o.total)}</td></tr>`).join('')||'<tr><td colspan="2" class="c">—</td></tr>';
-    finPrint('Relatório '+mesLbl,`<h1 style="text-transform:capitalize">Entradas e Saídas — ${esc(mesLbl)}</h1><p class="sub">Movimento do mês · Raspadora Brasília</p>
-      <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">✅ No mês — realizado até hoje</h3>
-      <div class="cards">
-        <div class="card"><div class="k">Entrou (recebido)</div><div class="v" style="color:#12805c">${brl(r.total_entradas)}</div></div>
-        <div class="card"><div class="k">Saiu (pago)</div><div class="v" style="color:#b91c1c">${brl(r.total_saidas_pagas||0)}</div></div>
-        <div class="card"><div class="k">Saldo realizado</div><div class="v" style="color:${(r.saldo_realizado||0)>=0?'#12805c':'#b91c1c'}">${brl(r.saldo_realizado||0)}</div></div></div>
-      <p class="sub" style="margin:-4px 0 14px">Ainda a pagar neste mês (saídas lançadas, não pagas): ${brl(r.total_saidas_a_pagar||0)} · Total de saídas lançadas no mês: ${brl(r.total_saidas)}.</p>
+    const fechado=!!r.mes_fechado;
+    const [y,m]=r.desde.split('-');
+    const mesLbl=fechado?new Date(+y,+m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):`${dtBR(r.desde)} a ${dtBR(r.ate)}`;
+    const noPer=fechado?'no mês':'no período';
+    // mês fechado: só entrou / saiu / saldo; parcial: + "a pagar", saldo de hoje e projeção
+    const blocoParcial=fechado?'':`<p class="sub" style="margin:-4px 0 14px">Ainda a pagar ${noPer} (saídas lançadas, não pagas): ${brl(r.total_saidas_a_pagar||0)} · Total de saídas lançadas ${noPer}: ${brl(r.total_saidas)}.</p>
       <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">📊 Previsto &amp; saldo projetado</h3>
       <div class="cards">
         <div class="card"><div class="k">Saldo atual (hoje)</div><div class="v">${brl(r.saldo_atual||0)}</div></div>
         <div class="card"><div class="k">Entradas previstas (a receber)</div><div class="v" style="color:#12805c">${brl(r.entrada_prevista||0)}</div></div>
         <div class="card"><div class="k">Saídas previstas (a pagar)</div><div class="v" style="color:#b91c1c">${brl(r.saida_prevista||0)}</div></div>
         <div class="card"><div class="k">Saldo projetado</div><div class="v" style="color:${(r.saldo_projetado||0)>=0?'#12805c':'#b91c1c'}">${brl(r.saldo_projetado||0)}</div></div></div>
-      <p class="sub" style="margin:-4px 0 14px">Projeção = saldo de hoje + tudo que ainda vai entrar (a receber das obras + previstos) − tudo que ainda vai sair (boletos e lançamentos a pagar). É a foto de agora, não só do mês.</p>
+      <p class="sub" style="margin:-4px 0 14px">Projeção = saldo de hoje + tudo que ainda vai entrar (a receber das obras + previstos) − tudo que ainda vai sair (boletos e lançamentos a pagar). É a foto de agora, não só do período.</p>`;
+    const rodapeSaidas=`<tr><td colspan="4" class="r" style="color:#12805c">Pago ${noPer}</td><td class="r" style="color:#12805c">${brl(r.total_saidas_pagas||0)}</td></tr>`
+      +((r.total_saidas_a_pagar||0)>0?`<tr><td colspan="4" class="r" style="color:#b91c1c">A pagar ${noPer}</td><td class="r" style="color:#b91c1c">${brl(r.total_saidas_a_pagar||0)}</td></tr><tr><td colspan="4" class="r">Total lançado ${noPer}</td><td class="r">${brl(r.total_saidas)}</td></tr>`:'');
+    const linhaE=i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}</td><td>${esc(i.origem||'')}</td><td class="r">${brl(i.valor)}</td></tr>`;
+    const linhaS=i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}</td><td>${esc(i.categoria||i.origem||'')}</td><td class="c">${i.pago?'Pago':'Pendente'}</td><td class="r">${brl(i.valor)}</td></tr>`;
+    const entRows=(r.entradas||[]).map(linhaE).join('')||`<tr><td colspan="4" class="c">Sem entradas ${noPer}.</td></tr>`;
+    const saiRows=(r.saidas||[]).map(linhaS).join('')||`<tr><td colspan="5" class="c">Sem saídas ${noPer}.</td></tr>`;
+    const obraRows=(r.entradas_por_obra||[]).map(o=>`<tr><td>${esc(o.obra)}</td><td class="r">${brl(o.total)}</td></tr>`).join('')||'<tr><td colspan="2" class="c">—</td></tr>';
+    finPrint('Relatório '+mesLbl,`<h1${fechado?' style="text-transform:capitalize"':''}>Entradas e Saídas — ${esc(mesLbl)}</h1><p class="sub">${fechado?'Fechamento do mês':'Movimento do período'} · Raspadora Brasília</p>
+      <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">${fechado?'✅ Resumo do mês':'✅ No período — realizado até hoje'}</h3>
+      <div class="cards">
+        <div class="card"><div class="k">Entrou (recebido)</div><div class="v" style="color:#12805c">${brl(r.total_entradas)}</div></div>
+        <div class="card"><div class="k">Saiu (pago)</div><div class="v" style="color:#b91c1c">${brl(r.total_saidas_pagas||0)}</div></div>
+        <div class="card"><div class="k">${fechado?'Saldo do mês':'Saldo realizado'}</div><div class="v" style="color:${(r.saldo_realizado||0)>=0?'#12805c':'#b91c1c'}">${brl(r.saldo_realizado||0)}</div></div></div>
+      ${blocoParcial}
       <h3 style="font-size:12px;text-transform:uppercase;color:#12805c">🏗️ Entradas por obra — o que entrou de cada</h3>
       <table style="margin-bottom:18px"><thead><tr><th>Obra</th><th>Total que entrou</th></tr></thead><tbody>${obraRows}</tbody>
         <tfoot><tr><td class="r">Total de Entradas</td><td class="r">${brl(r.total_entradas)}</td></tr></tfoot></table>
@@ -6019,7 +6047,7 @@
         <tfoot><tr><td colspan="3" class="r">Total de Entradas</td><td class="r">${brl(r.total_entradas)}</td></tr></tfoot></table>
       <h3 style="font-size:12px;text-transform:uppercase;color:#b91c1c">🔴 Saídas (${(r.saidas||[]).length})</h3>
       <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Situação</th><th>Valor</th></tr></thead><tbody>${saiRows}</tbody>
-        <tfoot><tr><td colspan="4" class="r" style="color:#12805c">Pago no mês</td><td class="r" style="color:#12805c">${brl(r.total_saidas_pagas||0)}</td></tr><tr><td colspan="4" class="r" style="color:#b91c1c">A pagar no mês</td><td class="r" style="color:#b91c1c">${brl(r.total_saidas_a_pagar||0)}</td></tr><tr><td colspan="4" class="r">Total lançado no mês</td><td class="r">${brl(r.total_saidas)}</td></tr></tfoot></table>`);
+        <tfoot>${rodapeSaidas}</tfoot></table>`);
   });
 
   // ---- Folha ----

@@ -1701,11 +1701,9 @@ export const db = {
   },
   // Relatório detalhado do mês: lista cada ENTRADA e cada SAÍDA (mesma definição do mesRealizado,
   // então os totais batem com os cards "Entradas do mês"/"Saídas do mês"). Para o PDF mensal.
-  async relatorioMensal(mesStr, hojeStr) {
-    if (!USING_SUPABASE) return { mes: mesStr, entradas: [], saidas: [], total_entradas: 0, total_saidas: 0, saldo: 0 };
-    const [y, m] = mesStr.split('-').map(Number);
-    const ini = mesStr + '-01';
-    const fim = new Date(y, m, 0).toISOString().slice(0, 10);
+  // Relatório de entradas e saídas de um período [ini, fim] (mês inteiro ou parcial, ex.: quinzena)
+  async relatorioPeriodo(ini, fim, hojeStr) {
+    if (!USING_SUPABASE) return { desde: ini, ate: fim, entradas: [], saidas: [], total_entradas: 0, total_saidas: 0, saldo: 0 };
     const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
     const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR, obrEntR, obrasF] = await Promise.all([
@@ -1743,7 +1741,7 @@ export const db = {
     const entradas_por_obra = Object.entries(porObra).map(([obra, total]) => ({ obra, total })).sort((a, b) => b.total - a.total);
     // Previsto (forward-looking, não é do mês): a receber das obras + previstos futuros / a pagar (boletos/lançamentos pendentes)
     const prev = await this.previstosTotais(hoje);
-    return { mes: mesStr, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, total_saidas_pagas, total_saidas_a_pagar, saldo: total_entradas - total_saidas, saldo_realizado: total_entradas - total_saidas_pagas, entrada_prevista: prev.entradas, saida_prevista: prev.saidas };
+    return { desde: ini, ate: fim, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, total_saidas_pagas, total_saidas_a_pagar, saldo: total_entradas - total_saidas, saldo_realizado: total_entradas - total_saidas_pagas, entrada_prevista: prev.entradas, saida_prevista: prev.saidas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.

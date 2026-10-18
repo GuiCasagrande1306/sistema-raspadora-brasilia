@@ -1616,8 +1616,23 @@ app.get('/api/fluxo-caixa/mes', async (req, res, next) => {
 // Relatório mensal detalhado de entradas e saídas (para o PDF — escolhe o mês)
 app.get('/api/fluxo-caixa/relatorio-mensal', async (req, res, next) => {
   try {
-    const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : new Date().toISOString().slice(0, 7);
-    const r = await db.relatorioMensal(mes, req.query.hoje);
+    // período: ?desde=AAAA-MM-DD&ate=AAAA-MM-DD (ex.: quinzena) ou ?mes=AAAA-MM (mês inteiro)
+    const ISO = /^\d{4}-\d{2}-\d{2}$/;
+    const ultimoDia = (y, m) => `${y}-${String(m).padStart(2, '0')}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+    let desde, ate;
+    if (ISO.test(req.query.desde || '') && ISO.test(req.query.ate || '')) {
+      [desde, ate] = [req.query.desde, req.query.ate];
+      if (desde > ate) return res.status(400).json({ erro: 'A data inicial é depois da final.' });
+      if ((Date.parse(ate) - Date.parse(desde)) / 86400000 > 366) return res.status(400).json({ erro: 'Período máximo de 1 ano.' });
+    } else {
+      const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : new Date().toISOString().slice(0, 7);
+      const [y, m] = mes.split('-').map(Number);
+      [desde, ate] = [mes + '-01', ultimoDia(y, m)];
+    }
+    const r = await db.relatorioPeriodo(desde, ate, req.query.hoje);
+    // mês fechado = do dia 1º ao último dia do MESMO mês → relatório só com entrou/saiu/saldo (sem "a pagar" e projeção)
+    const [yi, mi] = desde.split('-').map(Number);
+    r.mes_fechado = desde.endsWith('-01') && ate === ultimoDia(yi, mi);
     // saldo real de hoje (Conta Principal Sicoob + contas) e saldo projetado = saldo + entradas previstas − saídas previstas
     const base = await saldoPrincipalCentavos();
     r.saldo_atual = base || 0;
