@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v242</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v243</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5747,11 +5747,15 @@
     if(ehVale&&!id&&!colabVale){showToast('Selecione o colaborador do vale');return;}
     const payload={data:f.data.value,descricao:f.descricao.value,valor:parseBRL(f.valor.value)||0,categoria:f.categoria.value,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('lancdia-outro').value||null):null,forma:f.forma.value,pago:document.getElementById('lancdia-pago').checked};
     if(ehVale&&colabVale)payload.colaborador_id=colabVale;
+    // trava contra clique duplo / Enter + clique (gerava lançamento duplicado)
+    const btn=f.querySelector('button[type=submit]');if(btn.disabled)return;
+    btn.disabled=true;const txt=btn.textContent;btn.textContent='Salvando…';
     try{
       if(id)await api('/api/lancamentos-diarios/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/lancamentos-diarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-lancdia').classList.remove('open');showToast(id?'Lançamento atualizado':'Lançamento salvo');loadPagDiario();
-    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Lançamento: '+(m||'erro'));console.error(err);}});
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Lançamento: '+(m||'erro'));console.error(err);}
+    finally{btn.disabled=false;btn.textContent=txt;}});
 
   // ---- Gastos (pizza por categoria) ----
   const GASTO_CORES=['#ED7118','#3B82F6','#10B981','#8B5CF6','#EF4444','#F59E0B','#14B8A6','#EC4899','#6366F1','#84CC16'];

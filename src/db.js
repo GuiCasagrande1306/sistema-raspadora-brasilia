@@ -1183,6 +1183,22 @@ export const db = {
     return novo;
   },
   // Vale que abate na folha SEM debitar o caixa (o caixa é o próprio lançamento diário)
+  // Mesmo lançamento chegando 2x em poucos segundos (clique duplo / Enter + clique) → devolve o que já existe.
+  // Vale com colaborador só é repetido se o vale já gravado for do MESMO colaborador (vales iguais p/ pessoas diferentes são legítimos).
+  async lancDiarioRepetido({ data, descricao, valor, categoria, colaborador_id }, segundos = 10) {
+    if (!USING_SUPABASE) return null;
+    const desde = new Date(Date.now() - segundos * 1000).toISOString();
+    const { data: rows, error } = await sb('lancamentos_diarios').select('*')
+      .eq('data', data).eq('valor', valor).eq('categoria', categoria).eq('descricao', descricao).gte('criado_em', desde);
+    if (error) throw error;
+    for (const r of rows || []) {
+      if (!colaborador_id) return r;
+      const { data: v, error: e2 } = await sb('vales_diaria').select('id').eq('lancamento_diario_id', r.id).eq('colaborador_id', colaborador_id).limit(1);
+      if (e2) throw e2;
+      if (v && v.length) return r;
+    }
+    return null;
+  },
   async criarValeAbate(v) {
     if (!USING_SUPABASE) return { id: uid(), ...v };
     return insertSafe('vales_diaria', {   // tolerante: ignora lancamento_diario_id antes da migration

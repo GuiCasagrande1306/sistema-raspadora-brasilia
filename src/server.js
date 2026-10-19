@@ -1009,6 +1009,9 @@ app.post('/api/lancamentos-diarios', async (req, res, next) => {
     const dia = data || new Date().toISOString().slice(0, 10);
     const categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO';
     const valor = cents(req.body.valor);
+    const colaborador_id = categoria === 'VALE' ? (req.body.colaborador_id || null) : null;
+    const repetido = await db.lancDiarioRepetido({ data: dia, descricao, valor, categoria, colaborador_id });
+    if (repetido) return res.status(200).json({ ...repetido, repetido: true });
     const lanc = await db.createLancDiario({
       data: dia, descricao, valor, categoria,
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
