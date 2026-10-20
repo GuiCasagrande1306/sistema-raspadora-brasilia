@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v243</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v244</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5028,14 +5028,13 @@
   function saveCols(s){localStorage.setItem('rb_docs_cols_v3',JSON.stringify(s));}
   function abrirColab(id,nome){docTabAtiva='unico';docsState.nivel='docs';docsState.colabId=id;docsState.colabNome=nome;renderDocs();}
   let docsListaCache=[];
-  const EMP_ORDEM={RB_PISOS:0,ECO_PISOS:1};
   function renderColabView(lista){
     // filtro de setor (Produção × Administrativo)
     if(docsSetor!=='TODOS')lista=(lista||[]).filter(c=>setorDe(c)===docsSetor);
-    // ordena por empresa (RB primeiro, depois ECO) e, dentro de cada, alfabética
+    // produção (pedreiros, serventes…) em cima e escritório junto embaixo; dentro de cada grupo, ordem alfabética
     lista=(lista||[]).slice().sort((a,b)=>{
-      const ea=EMP_ORDEM[a.empresa]??9,eb=EMP_ORDEM[b.empresa]??9;
-      if(ea!==eb)return ea-eb;
+      const sa=setorDe(a)==='ADM'?1:0,sb=setorDe(b)==='ADM'?1:0;
+      if(sa!==sb)return sa-sb;
       return (a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'});
     });
     docsListaCache=lista;const el=document.getElementById('colab-view');if(!el)return;
@@ -5047,12 +5046,15 @@
     const cols=s.order.map(k=>COLS_DEF.find(c=>c.k===k)).filter(c=>c&&!s.hidden.includes(c.k));
     const ths=cols.map(c=>`<th draggable="true" data-col="${c.k}">${c.label}</th>`).join('');
     const mesAtual=isoHoje().slice(5,7);   // aniversariantes do mês corrente
-    const rows=lista.map(c=>{
+    const temProd=lista.some(c=>setorDe(c)!=='ADM');
+    const rows=lista.map((c,i)=>{
       const aniv=c.data_nascimento&&c.data_nascimento.slice(5,7)===mesAtual;
-      return `<tr class="${aniv?'aniversariante':''}" data-colab="${c.id}" data-nome="${esc(c.nome)}"${aniv?' title="🎂 Aniversariante do mês"':''}>${cols.map(col=>`<td>${col.get(c)}</td>`).join('')}</tr>`;
+      // título separando o escritório (só quando a lista tem os dois grupos)
+      const sep=(temProd&&setorDe(c)==='ADM'&&(i===0||setorDe(lista[i-1])!=='ADM'))?`<tr class="setor-sep"><td colspan="${cols.length}" style="background:var(--surface-2);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:8px 12px">Escritório / Administrativo</td></tr>`:'';
+      return sep+`<tr class="${aniv?'aniversariante':''}" data-colab="${c.id}" data-nome="${esc(c.nome)}"${aniv?' title="🎂 Aniversariante do mês"':''}>${cols.map(col=>`<td>${col.get(c)}</td>`).join('')}</tr>`;
     }).join('');
     el.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table></div>`;
-    el.querySelectorAll('tbody tr').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
+    el.querySelectorAll('tbody tr[data-colab]').forEach(r=>r.addEventListener('click',()=>abrirColab(r.dataset.colab,r.dataset.nome)));
     bindDiarToggles(el);
     let dragCol=null;
     el.querySelectorAll('th[draggable]').forEach(th=>{

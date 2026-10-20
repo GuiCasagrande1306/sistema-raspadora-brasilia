@@ -115,6 +115,7 @@ export const CATALOGO_DOCS = [
   // Docs. Únicos
   { codigo: '01', nome: 'Ficha de Registro', vencivel: false, tab: 'unico' },
   { codigo: '02', nome: 'CTPS / e-Social / Contrato', vencivel: false, tab: 'unico' },
+  { codigo: '23', nome: 'CPF / RG', vencivel: false, tab: 'unico' },
   { codigo: '03', nome: 'ASO (Atestado de Saúde Ocupacional)', vencivel: true, tab: 'unico' },
   { codigo: '04', nome: 'Cartão de Vacina', vencivel: false, tab: 'unico' },
   { codigo: '05', nome: 'Ordem de Serviço', vencivel: false, tab: 'unico' },
