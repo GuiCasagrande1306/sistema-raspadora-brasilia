@@ -274,6 +274,26 @@ export const db = {
     };
     return { retencoes, resumo };
   },
+  async aReceberPrevisto(hojeStr) {
+    if (!USING_SUPABASE) return [];
+    const hoje = /^\d{4}-\d{2}-\d{2}$/.test(hojeStr || '') ? hojeStr : new Date().toISOString().slice(0, 10);
+    const d3 = new Date(hoje + 'T00:00:00'); d3.setDate(d3.getDate() + 3); const ate = d3.toISOString().slice(0, 10);
+    const { data: meds, error } = await sb('medicoes_obra').select('id,obra_id,descricao,nome_obra,valor,imposto_valor,valor_retido,data_pagamento_previsto')
+      .eq('recebido', false).not('data_pagamento_previsto', 'is', null).lte('data_pagamento_previsto', ate).order('data_pagamento_previsto');
+    if (error) throw error;
+    const ids = [...new Set((meds || []).map(m => m.obra_id))];
+    let mapa = {};
+    if (ids.length) {
+      const { data: obras, error: e2 } = await sb('obras_financeiro').select('id,cliente').in('id', ids);
+      if (e2) throw e2;
+      mapa = Object.fromEntries((obras || []).map(o => [o.id, o.cliente]));
+    }
+    return (meds || []).map(m => ({
+      id: m.id, obra_id: m.obra_id, obra: m.nome_obra || mapa[m.obra_id] || '—', descricao: m.descricao || null,
+      liquido: Math.max(0, (m.valor || 0) - (m.imposto_valor || 0) - (m.valor_retido || 0)), data_pagamento_previsto: m.data_pagamento_previsto,
+      status: m.data_pagamento_previsto < hoje ? 'VENCIDO' : m.data_pagamento_previsto === hoje ? 'HOJE' : 'PROXIMO',
+    }));
+  },
   async createLancamento(l) {
     if (USING_SUPABASE) {
       const { data, error } = await sb('lancamentos').insert(l).select().single(); if (error) throw error;

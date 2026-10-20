@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v244</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v245</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2013,6 +2013,7 @@
         </div>
         <label class="docs-toggle" style="margin-top:2px"><input type="checkbox" id="mede-recebido"> Já foi recebido</label>
         <div class="field" id="mede-recdata-wrap" style="display:none"><label>Data do recebimento</label><input type="date" id="mede-recdata"></div>
+        <div class="field" id="mede-pagprev-wrap"><label>Pagamento previsto <span style="color:var(--ink-3);font-weight:400">(lembrete até marcar recebido)</span></label><input type="date" id="mede-pagprev"></div>
         <div id="mede-breakdown" style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px"></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar alterações</button></footer>
@@ -2363,6 +2364,7 @@
               <label class="docs-toggle" style="flex:0 0 auto;padding-bottom:10px"><input type="checkbox" id="med-recebido"> Recebido</label>
               <div class="field" style="flex:0 0 150px;display:none" id="med-receb-data-wrap"><label>Data do recebimento</label><input type="date" id="med-receb-data"></div>
               <div class="field" style="flex:0 0 150px"><label>Forma de pagamento</label><select id="med-forma"><option value="">—</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="BOLETO">Boleto</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
+              <div class="field" style="flex:0 0 160px" id="med-pagprev-wrap"><label>Pagamento previsto <span style="color:var(--ink-3);font-weight:400">(lembrete)</span></label><input type="date" id="med-pagprev" title="Data em que a nota deve ser paga — o sistema lembra até marcar Recebido"></div>
               <button type="button" class="primary" id="btn-add-medicao" style="min-height:40px">+ Adicionar</button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
@@ -2721,6 +2723,7 @@
     carregarLancamentos(id);
     document.getElementById('med-data').value=isoHoje();document.getElementById('med-nome-obra').value='';document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-receb-data-wrap').style.display='none';
+    document.getElementById('med-pagprev').value='';document.getElementById('med-pagprev-wrap').style.display='';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';document.getElementById('med-imposto').value='';
     {const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}}
     medDatas=[];renderMedChips();
@@ -2753,6 +2756,8 @@
         ${(m.imposto_valor||0)>0?`<span style="color:var(--danger)">Imposto −${brl(m.imposto_valor)}</span>`:''}
         <span>Líquido <b style="color:#12805c">${brl(liq)}</b></span>
       </div>`:'';
+      const pv=(!m.recebido&&m.data_pagamento_previsto)?m.data_pagamento_previsto:null;
+      const previstoLinha=pv?`<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:12px;font-weight:600;color:${pv<isoHoje()?'var(--danger)':pv===isoHoje()?'var(--laranja-2)':'var(--ink-2)'}">${pv<isoHoje()?'⚠ Pagamento previsto venceu em '+dtBR(pv)+' — cobrar ou marcar Recebido':pv===isoHoje()?'📅 Pagamento previsto para HOJE':'📅 Pagamento previsto em '+dtBR(pv)}</div>`:'';
       const retidoLinha=m.valor_retido?`<div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:12px">
         <span style="color:var(--laranja-2);font-weight:700">🔒 Retido ${brl(m.valor_retido)}</span>
         <span style="color:${(!m.retido_resgatado&&m.data_resgate&&m.data_resgate<=isoHoje())?'var(--danger)':'var(--ink-3)'}">${m.retido_resgatado?('✓ resgatado'+(m.data_retido_resgatado?' em '+dtBR(m.data_retido_resgatado):'')):(m.data_resgate?((m.data_resgate<=isoHoje()?'⚠ resgatar (venceu) ':'resgatar em ')+dtBR(m.data_resgate)):'sem data de resgate')}</span>
@@ -2766,7 +2771,7 @@
         <span class="tag" style="font-size:9.5px;${m.recebido?'background:#DCFCE7;color:#12805c':'background:#FEF3C7;color:#92400E'}">${m.recebido?('✓ Recebido'+(m.data_recebimento?' '+dtBR(m.data_recebimento):'')):'A receber'}</span>
         <button type="button" class="btn-ghost med-edit" data-med="${m.id}" style="min-height:30px;font-size:11.5px;padding:4px 10px">✏️ Editar</button>
         <button type="button" class="doc-cloud med-del" data-med="${m.id}" title="Excluir">${DE_TRASH}</button>
-      </div>${liquidoLinha}${retidoLinha}</div>`;}).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';
+      </div>${previstoLinha}${liquidoLinha}${retidoLinha}</div>`;}).join(''):'<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhuma medição/nota ainda.</div>';
     const rel=document.getElementById('oe-receb-lista');
     if(rel)rel.innerHTML=recsSemNota.length?recsSemNota.map(m=>`<div style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0"><b>${esc(m.descricao||'Recebimento')}</b> <span style="color:var(--ink-3)">${m.data_recebimento?dtBR(m.data_recebimento):(m.data?dtBR(m.data):'')}</span>${m.forma_pagamento?` <span class="tag" style="font-size:9px;background:#E7F0FF;color:#1D4ED8">${esc(FORMA_LBL[m.forma_pagamento]||m.forma_pagamento)}</span>`:''}</div>
@@ -2793,6 +2798,7 @@
   document.getElementById('med-recebido').addEventListener('change',e=>{
     const di=document.getElementById('med-receb-data');if(e.target.checked&&!di.value)di.value=isoHoje();
     const wrap=document.getElementById('med-receb-data-wrap');if(wrap)wrap.style.display=e.target.checked?'':'none';
+    document.getElementById('med-pagprev-wrap').style.display=e.target.checked?'none':'';
   });
   document.getElementById('med-add-dia').addEventListener('click',()=>{
     const inp=document.getElementById('med-data');const d=inp.value;if(!d){showToast('Escolha uma data');return;}
@@ -2838,10 +2844,12 @@
       data_recebimento:recebidoChk?(document.getElementById('med-receb-data').value||isoHoje()):null,
       forma_pagamento:document.getElementById('med-forma').value||null,
       valor_retido:parseBRL(document.getElementById('med-retido').value),data_resgate:document.getElementById('med-resgate').value||null,
-      imposto_valor:parseBRL(document.getElementById('med-imposto').value)};
+      imposto_valor:parseBRL(document.getElementById('med-imposto').value),
+      data_pagamento_previsto:recebidoChk?null:(document.getElementById('med-pagprev').value||null)};
     await api('/api/financeiro/obra/'+id+'/medicoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     document.getElementById('med-nome-obra').value='';document.getElementById('med-desc').value='';document.getElementById('med-valor').value='';document.getElementById('med-recebido').checked=false;
     document.getElementById('med-receb-data').value='';document.getElementById('med-forma').value='';document.getElementById('med-receb-data-wrap').style.display='none';
+    document.getElementById('med-pagprev').value='';document.getElementById('med-pagprev-wrap').style.display='';
     document.getElementById('med-retido').value='';document.getElementById('med-resgate').value='';document.getElementById('med-imposto').value='';
     const _mb=document.getElementById('med-breakdown');if(_mb){_mb.style.display='none';_mb.innerHTML='';}
     medDatas=[];renderMedChips();document.getElementById('med-data').value=isoHoje();
@@ -2879,11 +2887,14 @@
     document.getElementById('mede-recebido').checked=!!m.recebido;
     document.getElementById('mede-recdata').value=m.data_recebimento||'';
     document.getElementById('mede-recdata-wrap').style.display=m.recebido?'':'none';
+    document.getElementById('mede-pagprev').value=m.data_pagamento_previsto||'';
+    document.getElementById('mede-pagprev-wrap').style.display=m.recebido?'none':'';
     medEditBreakdown();openModal('ov-med-edit');
   }
   ['mede-valor','mede-imposto','mede-retido'].forEach(id=>document.getElementById(id).addEventListener('input',medEditBreakdown));
   document.getElementById('mede-recebido').addEventListener('change',e=>{
     const w=document.getElementById('mede-recdata-wrap');w.style.display=e.target.checked?'':'none';
+    document.getElementById('mede-pagprev-wrap').style.display=e.target.checked?'none':'';
     const di=document.getElementById('mede-recdata');if(e.target.checked&&!di.value)di.value=isoHoje();
   });
   document.getElementById('form-med-edit').addEventListener('submit',async e=>{
@@ -2894,7 +2905,8 @@
       forma_pagamento:document.getElementById('mede-forma').value||null,
       imposto_valor:parseBRL(document.getElementById('mede-imposto').value),
       valor_retido:parseBRL(document.getElementById('mede-retido').value),
-      recebido,data_recebimento:recebido?(document.getElementById('mede-recdata').value||isoHoje()):null};
+      recebido,data_recebimento:recebido?(document.getElementById('mede-recdata').value||isoHoje()):null,
+      data_pagamento_previsto:recebido?null:(document.getElementById('mede-pagprev').value||null)};
     try{await api('/api/financeiro/medicao/'+medId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       document.getElementById('ov-med-edit').classList.remove('open');showToast('Medição atualizada ✓');
       if(MED_OBRA_ID)carregarMedicoes(MED_OBRA_ID);if(typeof atualizarBadges==='function')atualizarBadges();
@@ -3145,6 +3157,11 @@
         setBadge('badge-retencoes',ret.resumo.vencidos||0);
         (ret.retencoes||[]).filter(x=>x.status==='VENCIDO').forEach(x=>NOTIFS.push({txt:`Valor retido a resgatar — ${esc(x.obra_cliente)}`,sub:brl(x.valor_retido)+' · resgate '+(x.data_resgate?dtBR(x.data_resgate):'—'),goto:'retencoes'}));
       }catch(_){/* silencioso */}
+      // notas com pagamento previsto vencido, de hoje ou chegando (até marcar Recebido)
+      try{const ar=await api('/api/financeiro/a-receber-previsto?hoje='+isoHoje());
+        (ar||[]).forEach(x=>NOTIFS.push({txt:(x.status==='VENCIDO'?'⚠ Pagamento atrasado':x.status==='HOJE'?'Pagamento previsto hoje':'Pagamento chegando')+' — '+esc(x.obra),
+          sub:brl(x.liquido)+' · previsto '+dtBR(x.data_pagamento_previsto)+(x.descricao?' · '+esc(x.descricao):''),obra:x.obra_id}));
+      }catch(_){/* silencioso */}
       // pendências do dia (agenda): pagamentos/documentos/medições de hoje
       try{const hoje=isoHoje();const evHoje=await api('/api/agenda/eventos?desde='+hoje+'&ate='+hoje);
         (evHoje||[]).forEach(e=>{
@@ -3160,7 +3177,7 @@
   function renderNotifPop(){
     const pop=document.getElementById('notif-pop');
     pop.innerHTML='<h5>Notificações</h5>'+(NOTIFS.length?NOTIFS.map((n,i)=>`<div class="notif-item" data-ni="${i}"><span>🔔</span><div><b>${n.txt}</b><div style="font-size:11px;color:var(--ink-3)">${n.sub}</div></div></div>`).join(''):'<div class="notif-empty">Sem novidades por aqui.</div>');
-    pop.querySelectorAll('[data-ni]').forEach(it=>it.addEventListener('click',()=>{const n=NOTIFS[+it.dataset.ni];pop.classList.add('hidden');if(n&&n.goto)irParaView(n.goto);}));
+    pop.querySelectorAll('[data-ni]').forEach(it=>it.addEventListener('click',()=>{const n=NOTIFS[+it.dataset.ni];pop.classList.add('hidden');if(n&&n.obra)abrirObraExec(n.obra);else if(n&&n.goto)irParaView(n.goto);}));
   }
   document.getElementById('btn-sino').addEventListener('click',e=>{e.stopPropagation();const pop=document.getElementById('notif-pop');
     if(pop.classList.contains('hidden')){renderNotifPop();pop.classList.remove('hidden');}else pop.classList.add('hidden');});

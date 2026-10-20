@@ -1290,6 +1290,7 @@ app.post('/api/financeiro/obra/:id/medicoes', async (req, res, next) => {
       sem_nota: req.body.sem_nota === true || req.body.sem_nota === 'true',
       valor_retido: Math.round((Number(req.body.valor_retido) || 0) * 100), data_resgate: req.body.data_resgate || null,
       imposto_valor: Math.round((Number(req.body.imposto_valor) || 0) * 100),
+      data_pagamento_previsto: /^\d{4}-\d{2}-\d{2}$/.test(req.body.data_pagamento_previsto || '') ? req.body.data_pagamento_previsto : null,
     }));
   } catch (e) { next(e); }
 });
@@ -1297,6 +1298,7 @@ app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
   try {
     const patch = {};
     for (const k of ['data', 'descricao', 'data_resgate', 'forma_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.data_pagamento_previsto !== undefined) patch.data_pagamento_previsto = /^\d{4}-\d{2}-\d{2}$/.test(req.body.data_pagamento_previsto || '') ? req.body.data_pagamento_previsto : null;
     if (req.body.valor !== undefined) patch.valor = Math.round((Number(req.body.valor) || 0) * 100);
     if (req.body.valor_retido !== undefined) patch.valor_retido = Math.round((Number(req.body.valor_retido) || 0) * 100);
     if (req.body.imposto_valor !== undefined) patch.imposto_valor = Math.round((Number(req.body.imposto_valor) || 0) * 100);
@@ -1317,6 +1319,10 @@ app.patch('/api/financeiro/medicao/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 // Retenções: todas as notas com valor retido a resgatar (lembrete de cobrança)
+// Notas não recebidas com pagamento previsto vencido, de hoje ou nos próximos 3 dias (lembrete do sino)
+app.get('/api/financeiro/a-receber-previsto', async (req, res, next) => {
+  try { res.json(await db.aReceberPrevisto(req.query.hoje)); } catch (e) { next(e); }
+});
 app.get('/api/financeiro/retencoes', async (req, res, next) => {
   try { res.json(await db.listRetencoes(req.query.hoje || null)); }
   catch (e) { next(e); }
