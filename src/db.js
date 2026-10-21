@@ -1129,6 +1129,25 @@ export const db = {
     if (!USING_SUPABASE) return { id: uid(), ...f };
     return insertSafe('pagamentos_fixos', f);
   },
+  // Leva a edição do fixo para os boletos dele ainda NÃO pagos, da competência `compMin` em diante (pagos ficam como estão)
+  async aplicarFixoNosPendentes(fixoId, compMin, excetoBoletoId = null) {
+    if (!USING_SUPABASE) return { atualizados: 0 };
+    const { data: f, error } = await sb('pagamentos_fixos').select('*').eq('id', fixoId).single();
+    if (error) throw error;
+    const { data: bs, error: e2 } = await sb('boletos').select('id,competencia').eq('fixo_id', fixoId).eq('pago', false).gte('competencia', compMin);
+    if (e2) throw e2;
+    const alvo = (bs || []).filter(b => b.id !== excetoBoletoId);   // o boleto editado à mão mantém o que foi digitado (ex.: vencimento)
+    for (const b of alvo) {
+      const [y, m] = String(b.competencia).split('-').map(Number);
+      const dia = Math.min(Math.max(1, f.dia_vencimento || 5), new Date(y, m, 0).getDate());
+      await updateSafeById('boletos', b.id, {
+        descricao: f.descricao, fornecedor: f.fornecedor || null, valor: f.valor,
+        categoria: f.categoria || 'OUTRO', categoria_custom: f.categoria_custom || null,
+        forma_pagamento: f.forma_pagamento || null, vencimento: b.competencia + '-' + String(dia).padStart(2, '0'),
+      });
+    }
+    return { atualizados: alvo.length };
+  },
   async updateFixo(id, patch) {
     if (!USING_SUPABASE) return { id, ...patch };
     return updateSafeById('pagamentos_fixos', id, patch);   // tolerante: ignora forma_pagamento antes da migration

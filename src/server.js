@@ -740,7 +740,14 @@ app.patch('/api/fixos/:id', async (req, res, next) => {
     if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
     if (req.body.forma_pagamento !== undefined) patch.forma_pagamento = formaPag(req.body.forma_pagamento);
     if (req.body.ativo !== undefined) patch.ativo = !!req.body.ativo;
-    res.json(await db.updateFixo(req.params.id, patch));
+    const fixo = await db.updateFixo(req.params.id, patch);
+    // editar o fixo corrige também os boletos dele ainda não pagos (deste mês em diante)
+    if (req.body.aplicar_pendentes) {
+      const comp = /^\d{4}-\d{2}$/.test(req.body.competencia_min || '') ? req.body.competencia_min : new Date().toISOString().slice(0, 7);
+      const r = await db.aplicarFixoNosPendentes(req.params.id, comp, req.body.exceto_boleto || null);
+      return res.json({ ...fixo, boletos_atualizados: r.atualizados });
+    }
+    res.json(fixo);
   } catch (e) { next(e); }
 });
 app.delete('/api/fixos/:id', async (req, res, next) => {

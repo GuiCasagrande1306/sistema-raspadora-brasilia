@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v245</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v246</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1617,6 +1617,7 @@
           <div class="field"><label>Forma de pagamento</label><select name="forma_pagamento" id="boleto-forma"><option value="">—</option><option value="BOLETO">Boleto</option><option value="PIX">PIX</option><option value="TED_DOC">Transferência</option><option value="DINHEIRO">Dinheiro</option><option value="CHEQUE">Cheque</option><option value="CARTAO">Cartão</option><option value="OUTRO">Outro</option></select></div>
         </div>
         <div class="field" id="boleto-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="boleto-outro" placeholder="Ex.: reforma do galpão"></div>
+        <label class="docs-toggle" id="boleto-repetir-wrap" style="display:none;margin-top:4px"><input type="checkbox" id="boleto-repetir"> 🔁 Repetir nos próximos meses <span style="color:var(--ink-3);font-weight:400">(atualiza o pagamento fixo: descrição, valor, categoria e forma)</span></label>
         <label class="docs-toggle" style="margin-top:4px"><input type="checkbox" name="pago" id="boleto-pago"> Já foi pago</label>
         <div class="field" id="boleto-datapag-wrap" style="display:none;margin-top:6px"><label>Data do pagamento <span style="color:var(--ink-3);font-weight:400">— o dia que o dinheiro saiu do caixa</span></label><input name="data_pagamento" id="boleto-datapag" type="date"></div>
       </div>
@@ -1632,8 +1633,9 @@
     <div class="body">
       <div class="login-hint" style="text-align:left">Cadastre uma vez (aluguel, contador, internet, salários fixos…). Todo mês, ao abrir os <b>Boletos</b>, eles entram sozinhos como conta a pagar — no dia que você escolher e <b>sem duplicar</b>.</div>
       <div id="fixos-lista" style="margin:12px 0"></div>
-      <h5 style="margin:6px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Adicionar pagamento fixo</h5>
+      <h5 id="fixo-form-titulo" style="margin:6px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:800">Adicionar pagamento fixo</h5>
       <form id="form-fixo">
+        <input type="hidden" id="fixo-id">
         <div class="field"><label>Descrição *</label><input name="descricao" required placeholder="Ex.: Aluguel do galpão"></div>
         <div class="grid2">
           <div class="field"><label>Valor (R$) *</label><input name="valor" type="text" inputmode="decimal" class="money-mask" required placeholder="0,00"></div>
@@ -1645,7 +1647,7 @@
         </div>
         <div class="field"><label>Fornecedor</label><input name="fornecedor" placeholder="Opcional"></div>
         <div class="field" id="fixo-outro-wrap" style="display:none"><label>Especifique (Outro)</label><input name="categoria_custom" id="fixo-outro" placeholder="Ex.: mensalidade do sistema"></div>
-        <footer style="padding:0;margin-top:4px"><button type="submit" class="primary">Adicionar fixo</button></footer>
+        <footer style="padding:0;margin-top:4px"><button type="button" class="btn-ghost" id="fixo-cancelar-edicao" style="display:none">Cancelar edição</button><button type="submit" class="primary" id="fixo-submit">Adicionar fixo</button></footer>
       </form>
     </div>
   </div>
@@ -5589,12 +5591,15 @@
     b.classList.add('on');boletoFiltro=b.dataset.bf;loadBoletos();}));
   document.getElementById('boletos-mes').addEventListener('change',loadBoletos);
   document.getElementById('boletos-todos-meses').addEventListener('change',loadBoletos);
-  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.getElementById('boleto-titulo').textContent='Novo Boleto';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();boletoOutroToggle();openModal('ov-boleto');});
+  document.getElementById('btn-novo-boleto').addEventListener('click',()=>{boletoRepetir(null);const f=document.getElementById('form-boleto');f.reset();document.getElementById('boleto-id').value='';document.getElementById('boleto-titulo').textContent='Novo Boleto';document.querySelector('#form-boleto [name=vencimento]').value=isoHoje();boletoOutroToggle();openModal('ov-boleto');});
   const boletoOutroToggle=()=>{document.getElementById('boleto-outro-wrap').style.display=document.getElementById('boleto-cat').value==='OUTRO'?'':'none';};
   document.getElementById('boleto-cat').addEventListener('change',boletoOutroToggle);
   const boletoPagoToggle=()=>{const chk=document.getElementById('boleto-pago');document.getElementById('boleto-datapag-wrap').style.display=chk.checked?'':'none';if(chk.checked&&!document.getElementById('boleto-datapag').value)document.getElementById('boleto-datapag').value=isoHoje();};
   document.getElementById('boleto-pago').addEventListener('change',boletoPagoToggle);
   // abre o modal do boleto pra editar (forcarPago=false) ou registrar pagamento (forcarPago=true: pago✓ + data=hoje editável)
+  // boleto gerado por pagamento fixo: opção de levar a edição para os próximos meses (some ao registrar pagamento c/ juros)
+  let boletoFixoId=null;
+  function boletoRepetir(fixoId){boletoFixoId=fixoId||null;document.getElementById('boleto-repetir').checked=false;document.getElementById('boleto-repetir-wrap').style.display=boletoFixoId?'':'none';}
   function abrirBoletoForm(bo,forcarPago){
     const f=document.getElementById('form-boleto');f.reset();
     document.getElementById('boleto-id').value=bo.id;
@@ -5603,7 +5608,7 @@
     f.categoria.value=bo.categoria||'OUTRO';if(!f.categoria.value)f.categoria.value='OUTRO';document.getElementById('boleto-outro').value=bo.categoria_custom||'';f.empresa.value=bo.empresa||'';document.getElementById('boleto-forma').value=bo.forma_pagamento||'';boletoOutroToggle();
     document.getElementById('boleto-pago').checked=forcarPago?true:!!bo.pago;
     document.getElementById('boleto-datapag').value=forcarPago?isoHoje():(bo.data_pagamento||'');
-    boletoPagoToggle();openModal('ov-boleto');
+    boletoPagoToggle();boletoRepetir(forcarPago?null:bo.fixo_id);openModal('ov-boleto');
     if(forcarPago)setTimeout(()=>document.getElementById('boleto-datapag').focus(),120);
   }
   document.getElementById('form-boleto').addEventListener('submit',async e=>{
@@ -5617,17 +5622,40 @@
     try{
       if(id)await api('/api/boletos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/boletos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-boleto').classList.remove('open');showToast(id?'Boleto atualizado':'Boleto salvo');loadBoletos();
+      let extra='';
+      if(id&&boletoFixoId&&document.getElementById('boleto-repetir').checked){
+        // próximos meses: muda o fixo e os outros boletos dele ainda não pagos (deste mês em diante)
+        await api('/api/fixos/'+boletoFixoId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao:payload.descricao,fornecedor:payload.fornecedor,valor:payload.valor,categoria:payload.categoria,categoria_custom:payload.categoria_custom,forma_pagamento:payload.forma_pagamento,aplicar_pendentes:true,competencia_min:isoHoje().slice(0,7),exceto_boleto:id})});
+        extra=' · pagamento fixo atualizado';
+      }
+      document.getElementById('ov-boleto').classList.remove('open');showToast((id?'Boleto atualizado':'Boleto salvo')+extra);loadBoletos();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Boleto: '+(m||'erro'));console.error(err);}});
 
   // ---- Pagamentos fixos mensais ----
   const fixoOutroToggle=()=>{document.getElementById('fixo-outro-wrap').style.display=document.getElementById('fixo-cat').value==='OUTRO'?'':'none';};
   document.getElementById('btn-fixos').addEventListener('click',()=>{
     document.getElementById('fixo-cat').innerHTML=CAT_SAIDA_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
-    document.getElementById('form-fixo').reset();document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();
+    fixoModoAdicionar();
     loadFixos();openModal('ov-fixos');
   });
   document.getElementById('fixo-cat').addEventListener('change',fixoOutroToggle);
+  function fixoModoAdicionar(){
+    document.getElementById('form-fixo').reset();document.getElementById('fixo-id').value='';
+    document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();
+    document.getElementById('fixo-form-titulo').textContent='Adicionar pagamento fixo';
+    document.getElementById('fixo-submit').textContent='Adicionar fixo';document.getElementById('fixo-cancelar-edicao').style.display='none';
+  }
+  function fixoModoEdicao(fx){
+    const f=document.getElementById('form-fixo');
+    document.getElementById('fixo-id').value=fx.id;f.descricao.value=fx.descricao||'';setMoneyInput(f.valor,fx.valor?fx.valor/100:'');
+    f.dia_vencimento.value=fx.dia_vencimento||5;f.categoria.value=fx.categoria||'OUTRO';if(!f.categoria.value)f.categoria.value='OUTRO';
+    document.getElementById('fixo-outro').value=fx.categoria_custom||'';fixoOutroToggle();
+    document.getElementById('fixo-forma').value=fx.forma_pagamento||'BOLETO';f.fornecedor.value=fx.fornecedor||'';
+    document.getElementById('fixo-form-titulo').textContent='Editando: '+(fx.descricao||'pagamento fixo');
+    document.getElementById('fixo-submit').textContent='Salvar alterações';document.getElementById('fixo-cancelar-edicao').style.display='';
+    f.descricao.focus();f.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  document.getElementById('fixo-cancelar-edicao').addEventListener('click',fixoModoAdicionar);
   async function loadFixos(){
     const el=document.getElementById('fixos-lista');let lista=[];
     try{lista=await api('/api/fixos');}catch(e){el.innerHTML='<div class="dv" style="color:var(--danger)">Erro ao carregar. Rode a migration de pagamentos_fixos.</div>';return;}
@@ -5639,9 +5667,11 @@
         <div class="fi-main"><h4>${esc(f.descricao)}${f.ativo?'':' <span class="tag" style="font-size:9.5px">inativo</span>'} <span class="tag" style="font-size:9.5px;${f.forma_pagamento&&f.forma_pagamento!=='BOLETO'?'background:#E7F0FF;color:#1D4ED8':'background:var(--concreto);color:var(--ink-2)'}">${esc(formaLbl)}</span></h4><div class="fi-sub">Todo dia ${f.dia_vencimento}${f.fornecedor?' · '+esc(f.fornecedor):''} · ${cat}</div></div>
         <div class="fi-val">${brl(f.valor)}</div>
         <div class="fi-act">
+          <button class="btn-ghost" data-fixoedit="${f.id}" style="padding:3px 9px;font-size:11.5px">✏️ Editar</button>
           <button class="btn-ghost" data-fixotoggle="${f.id}" data-ativo="${f.ativo?1:0}" style="padding:3px 9px;font-size:11.5px">${f.ativo?'Pausar':'Ativar'}</button>
           <button class="doc-cloud" data-fixodel="${f.id}" title="Excluir">${DE_TRASH}</button></div></div>`;
     }).join('')+'</div>';
+    el.querySelectorAll('[data-fixoedit]').forEach(b=>b.addEventListener('click',()=>{const fx=lista.find(x=>x.id===b.dataset.fixoedit);if(fx)fixoModoEdicao(fx);}));
     el.querySelectorAll('[data-fixotoggle]').forEach(b=>b.addEventListener('click',async()=>{
       try{await api('/api/fixos/'+b.dataset.fixotoggle,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ativo:b.dataset.ativo!=='1'})});loadFixos();}
       catch(e){showToast('Erro');console.error(e);}}));
@@ -5653,11 +5683,17 @@
   document.getElementById('form-fixo').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;
     const payload={descricao:f.descricao.value,valor:parseBRL(f.valor.value)||0,dia_vencimento:parseInt(f.dia_vencimento.value,10)||5,categoria:f.categoria.value,fornecedor:f.fornecedor.value||null,categoria_custom:f.categoria.value==='OUTRO'?(document.getElementById('fixo-outro').value||null):null,forma_pagamento:document.getElementById('fixo-forma').value||null};
-    try{await api('/api/fixos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      f.reset();document.getElementById('fixo-cat').value='OUTRO';fixoOutroToggle();showToast('Pagamento fixo cadastrado');
+    const fixoId=document.getElementById('fixo-id').value;
+    const btn=document.getElementById('fixo-submit');if(btn.disabled)return;btn.disabled=true;
+    try{
+      if(fixoId){const r=await api('/api/fixos/'+fixoId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,aplicar_pendentes:true,competencia_min:isoHoje().slice(0,7)})});
+        showToast('Fixo atualizado'+(r.boletos_atualizados?` · ${r.boletos_atualizados} boleto(s) a pagar corrigido(s)`:''));}
+      else{await api('/api/fixos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});showToast('Pagamento fixo cadastrado');}
+      fixoModoAdicionar();
       // gera já o boleto do mês atual e atualiza a lista de boletos por trás do modal
       fixosGerados=false;loadFixos();loadBoletos();
-    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixo: '+(m||'erro'));console.error(err);}});
+    }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Fixo: '+(m||'erro'));console.error(err);}
+    finally{btn.disabled=false;}});
 
   // ---- Pagamento Diário ----
   function anexarComprovante(url,reload){
@@ -5735,7 +5771,7 @@
         openModal('ov-lancdia');
       }else{
         const f=document.getElementById('form-boleto');f.reset();
-        document.getElementById('boleto-id').value=it.id;document.getElementById('boleto-titulo').textContent='Editar boleto';
+        document.getElementById('boleto-id').value=it.id;document.getElementById('boleto-titulo').textContent='Editar boleto';boletoRepetir(it.fixo_id);
         f.descricao.value=it.descricao||'';f.fornecedor.value=it.fornecedor||'';f.valor.value=it.valor?(it.valor/100).toFixed(2):'';f.vencimento.value=it.vencimento||'';
         f.categoria.value=it.categoria||'OUTRO';if(!f.categoria.value)f.categoria.value='OUTRO';document.getElementById('boleto-outro').value=it.categoria_custom||'';f.empresa.value=it.empresa||'';document.getElementById('boleto-forma').value=it.forma_pagamento||'';boletoOutroToggle();
         openModal('ov-boleto');
