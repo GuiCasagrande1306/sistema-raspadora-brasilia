@@ -207,6 +207,19 @@ export function categorizarMov(texto, credito) {
   return 'OUTROS';
 }
 
+// Busca TODAS as linhas paginando de 1.000 em 1.000 (o Supabase corta em 1.000 sem avisar). `q()` monta a consulta do zero a cada página.
+// Boleto PAGO conta no dia em que foi pago (sem data de pagamento, cai no vencimento)
+const boletoPagoNoPeriodo = (desde, ate) => `and(data_pagamento.gte.${desde},data_pagamento.lte.${ate}),and(data_pagamento.is.null,vencimento.gte.${desde},vencimento.lte.${ate})`;
+async function todasPaginas(q) {
+  const out = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await q().range(de, de + 999);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < 1000) return out;
+  }
+}
+
 export const db = {
   // ---- OBRAS ----
   async listObras() {
@@ -1418,13 +1431,14 @@ export const db = {
     let boletos, lancs;
     if (USING_SUPABASE) {
       const [b, l] = await Promise.all([
-        sb('boletos').select('categoria,categoria_custom,valor').gte('vencimento', desde).lte('vencimento', ate),
-        sb('lancamentos_diarios').select('categoria,categoria_custom,valor').gte('data', desde).lte('data', ate),
+        todasPaginas(() => sb('boletos').select('categoria,categoria_custom,valor').eq('pago', true).or(boletoPagoNoPeriodo(desde, ate)).order('id')),
+        todasPaginas(() => sb('lancamentos_diarios').select('categoria,categoria_custom,valor').eq('pago', true).gte('data', desde).lte('data', ate).order('id')),
       ]);
-      boletos = b.data || []; lancs = l.data || [];
+      boletos = b; lancs = l;
     } else {
-      boletos = mock.boletos.filter(x => x.vencimento >= desde && x.vencimento <= ate);
-      lancs = mock.lancDiarios.filter(x => x.data >= desde && x.data <= ate);
+      const noPer = (x, d) => x.pago && x[d] >= desde && x[d] <= ate;
+      boletos = mock.boletos.filter(x => x.pago && (x.data_pagamento || x.vencimento) >= desde && (x.data_pagamento || x.vencimento) <= ate);
+      lancs = mock.lancDiarios.filter(x => noPer(x, 'data'));
     }
     const acc = {}; const outroSub = {};
     for (const x of [...boletos, ...lancs]) {
@@ -1445,16 +1459,17 @@ export const db = {
     let boletos, lancs;
     if (USING_SUPABASE) {
       const [b, l] = await Promise.all([
-        sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,pago').eq('categoria', categoria).gte('vencimento', desde).lte('vencimento', ate),
-        sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').eq('categoria', categoria).gte('data', desde).lte('data', ate),
+        todasPaginas(() => sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,data_pagamento,pago').eq('categoria', categoria).eq('pago', true).or(boletoPagoNoPeriodo(desde, ate)).order('id')),
+        todasPaginas(() => sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').eq('categoria', categoria).eq('pago', true).gte('data', desde).lte('data', ate).order('id')),
       ]);
-      boletos = b.data || []; lancs = l.data || [];
+      boletos = b; lancs = l;
     } else {
-      boletos = mock.boletos.filter(x => (x.categoria || 'OUTRO') === categoria && x.vencimento >= desde && x.vencimento <= ate);
-      lancs = mock.lancDiarios.filter(x => (x.categoria || 'OUTRO') === categoria && x.data >= desde && x.data <= ate);
+      const noPer = (x, d) => x.pago && x[d] >= desde && x[d] <= ate;
+      boletos = mock.boletos.filter(x => (x.categoria || 'OUTRO') === categoria && x.pago && (x.data_pagamento || x.vencimento) >= desde && (x.data_pagamento || x.vencimento) <= ate);
+      lancs = mock.lancDiarios.filter(x => (x.categoria || 'OUTRO') === categoria && noPer(x, 'data'));
     }
     const itens = [
-      ...boletos.map(x => ({ data: x.vencimento, descricao: x.descricao || '', detalhe: x.fornecedor || x.categoria_custom || '', valor: x.valor || 0, origem: 'Boleto', categoria_custom: x.categoria_custom || null, pago: !!x.pago })),
+      ...boletos.map(x => ({ data: x.data_pagamento || x.vencimento, descricao: x.descricao || '', detalhe: x.fornecedor || x.categoria_custom || '', valor: x.valor || 0, origem: 'Boleto', categoria_custom: x.categoria_custom || null, pago: !!x.pago })),
       ...lancs.map(x => ({ data: x.data, descricao: x.descricao || '', detalhe: x.categoria_custom || '', valor: x.valor || 0, origem: 'Pagamento diário', categoria_custom: x.categoria_custom || null, pago: !!x.pago })),
     ].sort((a, b) => (a.data || '').localeCompare(b.data || ''));
     const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
@@ -1764,8 +1779,10 @@ export const db = {
     const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR, obrEntR, obrasF] = await Promise.all([
       sb('medicoes_obra').select('obra_id,descricao,valor,recebido,data_recebimento,data,forma_pagamento,imposto_valor,valor_retido'),
-      sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').gte('data', ini).lte('data', fim),
-      sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,pago').gte('vencimento', ini).lte('vencimento', fim),
+      todasPaginas(() => sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').gte('data', ini).lte('data', fim).order('id')).then(data => ({ data })),
+      todasPaginas(() => sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,data_pagamento,pago')
+        // pago → no dia do pagamento (sem data → vencimento); pendente → no vencimento ("a pagar")
+        .or(`and(pago.eq.true,data_pagamento.gte.${ini},data_pagamento.lte.${fim}),and(pago.eq.true,data_pagamento.is.null,vencimento.gte.${ini},vencimento.lte.${fim}),and(pago.eq.false,vencimento.gte.${ini},vencimento.lte.${fim})`).order('id')).then(data => ({ data })),
       sb('movimentacoes_caixa').select('valor,tipo,data_movimento,status,descricao').gte('data_movimento', ini).lte('data_movimento', fim),
       sb('lancamentos').select('valor,created_at,obra_id,descricao').eq('tipo', 'entrada').gte('created_at', ini).lte('created_at', fim + 'T23:59:59'),
       sb('obras_financeiro').select('id,cliente'),
@@ -1782,7 +1799,7 @@ export const db = {
     const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', SUPERMERCADO: 'Supermercado', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', FERIAS: 'Férias', DECIMO_TERCEIRO: 'Décimo terceiro', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA_PEDREIRO: 'Diária - Pedreiros', DIARIA_SERVENTE: 'Diária - Serventes', DIARIA: 'Diária (antiga)', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', MIDIA: 'Mídia', EDVARD: 'Edvard', GILSON: 'Gilson', DEBORA: 'Débora', VALE: 'Vale', ENTRADA_OBRA_AVULSA: 'Entrada - Obras avulsas' };
     const catTxt = x => (x.categoria === 'OUTRO' && x.categoria_custom) ? x.categoria_custom : (catLabel[x.categoria] || x.categoria || '');
     (ldR.data || []).forEach(x => saidas.push({ data: x.data, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Pagamento diário', valor: x.valor || 0, pago: !!x.pago }));
-    (boR.data || []).forEach(x => saidas.push({ data: x.vencimento, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Boleto', valor: x.valor || 0, pago: !!x.pago }));
+    (boR.data || []).forEach(x => saidas.push({ data: x.pago ? (x.data_pagamento || x.vencimento) : x.vencimento, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Boleto', valor: x.valor || 0, pago: !!x.pago }));
     (movR.data || []).forEach(x => { if (x.tipo !== 'SAIDA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; saidas.push({ data: x.data_movimento, descricao: x.descricao || 'Movimentação', categoria: '', origem: 'Movimentação', valor: x.valor || 0, pago: x.status !== 'PREVISTO' }); });
     entradas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
     saidas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));

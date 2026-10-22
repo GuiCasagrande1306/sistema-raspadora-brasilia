@@ -1245,6 +1245,7 @@ app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
     for (const k of ['cliente', 'endereco', 'tipo_piso', 'categoria_servico', 'responsavel', 'comissao_responsavel', 'equipe_responsavel', 'data_inicio', 'data_prevista_termino', 'status_pagamento', 'cor']) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
+    if (req.body.observacao !== undefined) patch.observacao = String(req.body.observacao || '').trim().slice(0, 5000) || null;
     if (req.body.dias_servico !== undefined) {
       // cada dia = {data, tipo, acabamento?, m2}; aceita string legada (vira {data}).
       // Concreto pode ter acabamento (mesmos da programação da Agenda); vários serviços no mesmo dia, dedup por data+tipo+acabamento

@@ -1157,7 +1157,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v246</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v247</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2315,6 +2315,7 @@
             <div class="field"><label>Metragem (m²)</label><input name="metragem_m2" id="oe-metragem" type="number" step="0.01" min="0"></div>
             <div class="field"><label>Valor do contrato (R$)</label><input name="valor_contrato" id="oe-valor" type="text" inputmode="decimal" class="money-mask" placeholder="R$ 0,00"></div>
           </div>
+          <div class="field"><label>Observação</label><textarea name="observacao" id="oe-obs" rows="3" style="resize:vertical" placeholder="Anotações da obra: acesso, contato no local, combinados com o cliente…"></textarea></div>
         </div>
 
         <div class="orc-block" style="margin-top:12px">
@@ -2716,7 +2717,7 @@
     (async()=>{try{if(!COLABS_NOMES){COLABS_NOMES=ordNome(await api('/api/dp/vt/colaboradores'));}document.getElementById('oe-comissao-list').innerHTML=(COLABS_NOMES||[]).map(c=>`<option value="${esc(c.nome)}">`).join('');}catch(_){} })();
     obraDias=normObraDias(o.dias_servico);renderObraDias();
     document.getElementById('oe-dia-servico').value='';document.getElementById('oe-dia-tipo').value='';document.getElementById('oe-dia-m2').value='';
-    f.coluna_kanban.value=o.coluna_kanban||'aprovado';f.status_pagamento.value=o.status_pagamento||'';
+    f.coluna_kanban.value=o.coluna_kanban||'aprovado';f.status_pagamento.value=o.status_pagamento||'';f.observacao.value=o.observacao||'';
     document.getElementById('oe-insumos').textContent=brl(o.custo_insumos||0);
     document.getElementById('oe-maoobra').textContent=brl(o.custo_mao_obra||0);
     document.getElementById('oe-custo').textContent=brl((o.custo_insumos||0)+(o.custo_mao_obra||0));
@@ -3036,7 +3037,7 @@
   document.getElementById('form-obra-exec').addEventListener('submit',async e=>{
     e.preventDefault();const f=e.target;const id=document.getElementById('oe-id').value;
     const payload={cliente:f.cliente.value,endereco:f.endereco.value||null,tipo_piso:f.tipo_piso.value||null,categoria_servico:f.categoria_servico.value||null,
-      metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseBRL(f.valor_contrato.value)||0,
+      metragem_m2:parseFloat(f.metragem_m2.value)||0,valor_contrato:parseBRL(f.valor_contrato.value)||0,observacao:f.observacao.value.trim()||null,
       data_inicio:f.data_inicio.value||null,data_prevista_termino:f.data_prevista_termino.value||null,
       responsavel:f.responsavel.value||null,comissao_responsavel:f.comissao_responsavel.value||null,dias_servico:obraDias,
       coluna_kanban:f.coluna_kanban.value,status_pagamento:f.status_pagamento.value||null};
@@ -5629,6 +5630,7 @@
         extra=' · pagamento fixo atualizado';
       }
       document.getElementById('ov-boleto').classList.remove('open');showToast((id?'Boleto atualizado':'Boleto salvo')+extra);loadBoletos();
+      if(PD_STATE)loadPagDiario();   // aberto pelo Pagamento Diário: atualiza a lista do dia também
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Boleto: '+(m||'erro'));console.error(err);}});
 
   // ---- Pagamentos fixos mensais ----
@@ -5728,6 +5730,9 @@
       if(!r.itens.length){cont.innerHTML='<div class="orc-empty">Nada lançado nem vencendo neste dia. Boletos com vencimento nesta data aparecem aqui automaticamente.</div>';return;}
       itens=r.itens;
     }
+    // ordem alfabética pela descrição (ignora maiúscula, acento e espaço sobrando; "Diária 2" antes de "Diária 10")
+    itens=itens.slice().sort((a,b)=>String(a.descricao||'').trim().localeCompare(String(b.descricao||'').trim(),'pt',{sensitivity:'base',numeric:true}));
+    PD_STATE.itens=itens;   // PDF do dia sai na mesma ordem da tela
     cont.innerHTML=(buscando?'<div class="dv" style="font-size:12px;color:var(--ink-3);margin:-4px 0 10px">🔎 '+itens.length+' resultado(s) para "'+esc(_q)+'" <b>em todas as datas</b></div>':'')+'<div class="doc-list">'+itens.map(i=>{
       const tag=i.origem==='BOLETO'?'<span class="tag t-lar">Boleto</span>':`<span class="tag">${esc(i.forma||'Lançamento')}</span>`;
       const st=i.pago?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
@@ -5737,7 +5742,7 @@
         <div class="fi-main"><h4>${esc(i.descricao)}${i.empresa?`<span class="emp-tag emp-${i.empresa==='ECO_PISOS'?'eco':'rb'}">${i.empresa==='ECO_PISOS'?'ECO PISOS':'R.B PISOS'}</span>`:''}</h4><div class="fi-sub">${buscando?'<span style="color:var(--laranja-2);font-weight:600">'+dtBR(i.data||i.vencimento)+'</span> · ':''}${i.categoria==='OUTRO'&&i.categoria_custom?esc(i.categoria_custom):(CAT_LABEL[i.categoria]||i.categoria||'')}${i.atrasado?' · <span style="color:var(--danger);font-weight:700">⚠ atrasado (venc. '+dtBR(i.vencimento)+')</span>':''}</div></div>
         <div class="fi-val">${brl(i.valor)}</div>${tag}${st}
         <div class="fi-act">${comp}
-          ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}">Marcar pago</button>`}
+          ${i.pago?'':`<button class="btn-ghost" data-pd-pagar="${base}" data-pd-pid="${i.id}" data-pd-pog="${i.origem}">Marcar pago</button>`}
           ${i.origem==='BOLETO'&&!i.fixo_id?`<button class="btn-ghost" data-pd-fixar="${i.id}" title="Transformar em pagamento fixo mensal">★ Fixar</button>`:''}
           ${i.origem==='BOLETO'&&i.fixo_id?'<span class="tag t-lar" title="Já é pagamento fixo">★ fixo</span>':''}
           <button class="btn-ghost" data-pd-edit="${i.id}" data-pd-og="${i.origem}" title="Editar (categoria, valor, data…)" style="padding:4px 10px;font-size:12px">✏️ Editar</button>
@@ -5745,6 +5750,8 @@
           <button class="doc-cloud" data-pd-delu="${base}" title="Excluir">${DE_TRASH}</button></div></div>`;
     }).join('')+'</div>';
     cont.querySelectorAll('[data-pd-pagar]').forEach(b=>b.addEventListener('click',async()=>{
+      // boleto: mesma janela da aba Boletos (data em que foi pago + valor c/ juros), senão o atrasado ia pago com a data de hoje
+      if(b.dataset.pdPog==='BOLETO'){const it=(PD_STATE.itens||[]).find(x=>String(x.id)===b.dataset.pdPid&&x.origem==='BOLETO');if(it){abrirBoletoForm(it,true);return;}}
       try{await api(b.dataset.pdPagar,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pago:true})});showToast('Marcado como pago');loadPagDiario();}
       catch(e){showToast('Erro');console.error(e);}}));
     cont.querySelectorAll('[data-pd-comp]').forEach(b=>b.addEventListener('click',()=>anexarComprovante(b.dataset.pdComp,loadPagDiario)));
@@ -5839,7 +5846,7 @@
     const rg=gastosRange();
     let r;try{r=await api('/api/gastos/resumo?desde='+rg.desde+'&ate='+rg.ate);}catch(e){el.innerHTML='<div class="orc-empty">Erro ao carregar gastos.</div>';console.error(e);return;}
     GASTOS_STATE={...rg,...r};
-    if(!r.total_geral){el.innerHTML='<div class="orc-empty">Nenhum gasto em '+rg.subt+'. Cadastre boletos e lançamentos para ver a distribuição por categoria.</div>';return;}
+    if(!r.total_geral){el.innerHTML='<div class="orc-empty">Nenhum gasto pago em '+rg.subt+'. Só entram boletos e lançamentos já marcados como pagos.</div>';return;}
     const C=2*Math.PI*80;let off=0;
     const slices=r.categorias.map((c,i)=>{const len=(c.total/r.total_geral)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('');
     const legenda=r.categorias.map((c,i)=>{
@@ -5886,7 +5893,7 @@
   document.getElementById('gcat-pdf').addEventListener('click',()=>{
     const g=GCAT_STATE;if(!g||!g.itens.length){showToast('Abra uma categoria primeiro');return;}
     const rows=g.itens.map(i=>`<tr><td>${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?' — '+esc(i.detalhe):''}</td><td>${i.origem}</td><td class="r">${brl(i.valor)}</td></tr>`).join('');
-    finPrint('Gastos — '+g.rotulo,`<h1>Gastos — ${esc(g.rotulo)}</h1><p class="sub">${esc(g.subt)} · ${g.itens.length} lançamentos</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th>Valor</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">${brl(g.total)}</td></tr></tfoot></table>`);
+    finPrint('Gastos — '+g.rotulo,`<h1>Gastos — ${esc(g.rotulo)}</h1><p class="sub">${esc(g.subt)} · ${g.itens.length} lançamentos pagos</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th>Valor</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">${brl(g.total)}</td></tr></tfoot></table>`);
   });
   function setGastosPeriodo(p){
     gastosPeriodo=p;
@@ -5943,7 +5950,7 @@
     if(!GASTOS_STATE||!GASTOS_STATE.total_geral){showToast('Sem gastos no período para exportar');return;}
     const g=GASTOS_STATE;const periodoBR=g.subt||'';
     const rows=g.categorias.map((c,i)=>`<tr><td><span class="dot" style="background:${GASTO_CORES[i%GASTO_CORES.length]}"></span>${CAT_LABEL[c.categoria]||c.categoria}</td><td class="r">${brl(c.total)}</td><td class="r">${(c.total/g.total_geral*100).toFixed(1)}%</td></tr>`).join('');
-    finPrint('Relatório de gastos — '+periodoBR,`<h1>Relatório de gastos por categoria</h1><p class="sub">${esc(periodoBR)}</p>
+    finPrint('Relatório de gastos — '+periodoBR,`<h1>Relatório de gastos por categoria</h1><p class="sub">${esc(periodoBR)} · somente o que já foi pago</p>
       <div class="row2"><div>${donutSVG(g.categorias,g.total_geral)}</div>
         <table style="flex:1;min-width:280px"><thead><tr><th>Categoria</th><th>Valor</th><th>%</th></tr></thead><tbody>${rows}</tbody>
           <tfoot><tr><td>${g.rotulo||'Total'}</td><td class="r">${brl(g.total_geral)}</td><td class="r">100%</td></tr></tfoot></table></div>`);
