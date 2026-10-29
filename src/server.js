@@ -8,7 +8,7 @@ import { db, USING_SUPABASE, docStatus, supabase, BUCKET, categorizarMov } from 
 import { sendTextMessage, WHATSAPP_ON } from './whatsappService.js';
 import { sicoobStatus, getSaldo as sicoobSaldo, getExtrato as sicoobExtrato, CONTAS as SICOOB_CONTAS, saldoPrincipalCentavos } from './sicoobService.js';
 import { createZip } from './zip.js';
-import { META_LEADS_ON, verificarDesafio, assinaturaValida, buscarLead, leadParaRegistro, listarLeadsRecentes, assinarPagina } from './metaLeads.js';
+import { META_LEADS_ON, verificarDesafio, assinaturaValida, buscarLead, leadParaRegistro, listarLeadsRecentes } from './metaLeads.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -413,22 +413,36 @@ app.post('/api/webhooks/meta-leads', async (req, res) => {
   }
 });
 
+// Agendamento da Vercel (a cada 10 min): puxa os leads novos dos últimos 2 dias.
+// Exige CRON_SECRET (a Vercel manda "Authorization: Bearer <CRON_SECRET>") — sem ele, recusa: evita consultas de fora na conta da Meta.
+app.get('/api/cron/meta-leads', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || (req.headers.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ erro: 'não autorizado' });
+  if (!META_LEADS_ON) return res.json({ ok: false, motivo: 'integração Meta não configurada' });
+  try {
+    const r = await sincronizarLeadsMeta(2);
+    console.log(`[cron-meta-leads] encontrados=${r.encontrados} novos=${r.novos}`);
+    res.json({ ok: true, ...r });
+  } catch (e) { console.error('[cron-meta-leads] falhou', e.message); res.status(500).json({ ok: false, motivo: e.message }); }
+});
+
 // ---------- LEADS (comercial) ----------
 const LEAD_ORIGENS = ['GOOGLE', 'META', 'INSTAGRAM', 'INDICACAO', 'PARCEIRO'];
 const LEAD_STATUS = ['MARCAR_VISITA', 'VISITA_AGENDADA', 'EM_EXECUCAO', 'EM_ESPERA', 'FECHADO', 'PERDIDO'];
 const LEAD_PAGTO = ['PENDENTE', 'CONCLUIDO'];
 app.use('/api/leads', requireAdmin);
-// Busca na Meta os leads dos últimos N dias que ainda não estão aqui (e reassina o webhook da Página)
+// Busca na Meta os leads dos últimos N dias que ainda não estão aqui (externo_id único → não duplica)
+async function sincronizarLeadsMeta(dias) {
+  const lista = await listarLeadsRecentes(Math.floor(Date.now() / 1000) - dias * 86400);
+  let novos = 0;
+  for (const { ml, form } of lista) if ((await db.importarLead(leadParaRegistro(ml, form))).criado) novos++;
+  return { encontrados: lista.length, novos };
+}
 app.post('/api/leads/sincronizar-meta', async (req, res, next) => {
   try {
     if (!META_LEADS_ON) return res.status(503).json({ erro: 'Integração com a Meta não configurada (META_PAGE_ID / META_PAGE_TOKEN).' });
     const dias = Math.min(90, Math.max(1, Number(req.body?.dias) || 30));
-    let assinatura = 'ok';
-    try { await assinarPagina(); } catch (e) { assinatura = e.message; }
-    const lista = await listarLeadsRecentes(Math.floor(Date.now() / 1000) - dias * 86400);
-    let novos = 0;
-    for (const { ml, form } of lista) if ((await db.importarLead(leadParaRegistro(ml, form))).criado) novos++;
-    res.json({ ok: true, encontrados: lista.length, novos, assinatura });
+    res.json({ ok: true, ...(await sincronizarLeadsMeta(dias)) });
   } catch (e) { next(e); }
 });
 app.get('/api/leads', async (req, res, next) => {
