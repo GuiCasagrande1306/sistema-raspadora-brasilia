@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v248</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v249</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5934,7 +5934,9 @@
   }
   function donutSVG(cats,total){
     const C=2*Math.PI*80;let off=0;
-    return `<svg viewBox="0 0 200 200" width="200" height="200">${cats.map((c,i)=>{const len=(c.total/total)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('')}</svg>`;
+    return `<svg viewBox="0 0 200 200" width="200" height="200">${cats.map((c,i)=>{const len=(c.total/total)*C;const s=`<circle cx="100" cy="100" r="80" fill="none" stroke="${GASTO_CORES[i%GASTO_CORES.length]}" stroke-width="38" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 100 100)"/>`;off+=len;return s;}).join('')}
+      <text x="100" y="93" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#888">Total</text>
+      <text x="100" y="113" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="${brl(total).length>13?13:15}" font-weight="800" fill="#1E1E1E">${brl(total)}</text></svg>`;
   }
   // Pagamento Diário (lista do dia)
   document.getElementById('btn-pd-pdf').addEventListener('click',()=>{
