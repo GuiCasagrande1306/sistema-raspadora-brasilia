@@ -1813,13 +1813,16 @@ export const db = {
     entradas.forEach(e => { const k = e.obra || 'Outras entradas (sem obra)'; porObra[k] = (porObra[k] || 0) + e.valor; });
     const entradas_por_obra = Object.entries(porObra).map(([obra, total]) => ({ obra, total })).sort((a, b) => b.total - a.total);
     // Previsto (forward-looking, não é do mês): a receber das obras + previstos futuros / a pagar (boletos/lançamentos pendentes)
-    const prev = await this.previstosTotais(hoje);
-    return { desde: ini, ate: fim, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, total_saidas_pagas, total_saidas_a_pagar, saldo: total_entradas - total_saidas, saldo_realizado: total_entradas - total_saidas_pagas, entrada_prevista: prev.entradas, saida_prevista: prev.saidas };
+    const [fy, fm] = fim.split('-').map(Number);
+    const fimMes = `${fy}-${String(fm).padStart(2, '0')}-${String(new Date(Date.UTC(fy, fm, 0)).getUTCDate()).padStart(2, '0')}`;
+    const prev = await this.previstosTotais(hoje, fimMes);
+    return { desde: ini, ate: fim, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, total_saidas_pagas, total_saidas_a_pagar, saldo: total_entradas - total_saidas, saldo_realizado: total_entradas - total_saidas_pagas, entrada_prevista: prev.entradas, saida_prevista: prev.saidas, a_pagar_ate_fim_mes: prev.saidas_ate_fim, a_pagar_depois: prev.saidas_depois, fim_mes: fimMes, hoje };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
   // Saídas: boletos não pagos + lançamentos diários não pagos + movimentações PREVISTO SAIDA.
-  async previstosTotais(hojeStr) {
+  // fimMes (opcional): separa o que falta pagar até essa data (inclui atrasados) do que vence depois
+  async previstosTotais(hojeStr, fimMes = null) {
     if (!USING_SUPABASE) return { entradas: 0, saidas: 0 };
     const hoje = (hojeStr && /^\d{4}-\d{2}-\d{2}$/.test(hojeStr)) ? hojeStr : new Date().toISOString().slice(0, 10);
     const [obrasR, medR, entR, boR, ldR, movR] = await Promise.all([
@@ -1827,8 +1830,8 @@ export const db = {
       sb('medicoes_obra').select('obra_id,valor,recebido'),
       // entradas já lançadas direto na obra (dinheiro que JÁ entrou) — abatem do "a receber"
       sb('lancamentos').select('obra_id,valor,tipo').eq('tipo', 'entrada'),
-      sb('boletos').select('valor,pago').eq('pago', false),
-      sb('lancamentos_diarios').select('valor,pago').eq('pago', false),
+      sb('boletos').select('valor,pago,vencimento').eq('pago', false),
+      sb('lancamentos_diarios').select('valor,pago,data').eq('pago', false),
       sb('movimentacoes_caixa').select('valor,tipo,status,data_movimento').eq('status', 'PREVISTO'),
     ]);
     // por obra: faturado por notas (bruto) e já recebido (medições recebidas + entradas lançadas)
@@ -1844,10 +1847,12 @@ export const db = {
       entradas += Math.max(0, base - (recPorObra[o.id] || 0));
     });
     // + entradas previstas manuais FUTURAS (data > hoje)
-    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') { if (x.data_movimento && x.data_movimento > hoje) entradas += (x.valor || 0); } else saidas += (x.valor || 0); });
-    (boR.data || []).forEach(x => saidas += (x.valor || 0));
-    (ldR.data || []).forEach(x => saidas += (x.valor || 0));
-    return { entradas, saidas };
+    let saidas_ate_fim = 0;
+    const ateFim = d => fimMes && (!d || d <= fimMes);   // sem data conta como "agora"
+    (movR.data || []).forEach(x => { if (x.tipo === 'ENTRADA') { if (x.data_movimento && x.data_movimento > hoje) entradas += (x.valor || 0); } else { saidas += (x.valor || 0); if (ateFim(x.data_movimento)) saidas_ate_fim += (x.valor || 0); } });
+    (boR.data || []).forEach(x => { saidas += (x.valor || 0); if (ateFim(x.vencimento)) saidas_ate_fim += (x.valor || 0); });
+    (ldR.data || []).forEach(x => { saidas += (x.valor || 0); if (ateFim(x.data)) saidas_ate_fim += (x.valor || 0); });
+    return { entradas, saidas, saidas_ate_fim, saidas_depois: saidas - saidas_ate_fim };
   },
   // Importa o extrato do Sicoob para o Cofre: cria/acha a conta espelho (sicoob_ref), insere só lançamentos novos
   // (dedupe por sicoob_tx_id) e ajusta o saldo da conta para o saldo real do banco. Idempotente.
