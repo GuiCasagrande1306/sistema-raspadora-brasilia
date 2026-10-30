@@ -67,6 +67,7 @@ export function leadParaRegistro(ml, nomeFormulario) {
     origem: ml.platform === 'ig' ? 'INSTAGRAM' : 'META',
     status: 'MARCAR_VISITA', situacao_pagamento: 'PENDENTE',
     observacao: obs, externo_id: 'meta:' + ml.id,
+    ...(ml.created_time ? { criado_em: new Date(ml.created_time).toISOString() } : {}),
   };
 }
 

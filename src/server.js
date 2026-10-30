@@ -428,7 +428,7 @@ app.get('/api/cron/meta-leads', async (req, res) => {
 
 // ---------- LEADS (comercial) ----------
 const LEAD_ORIGENS = ['GOOGLE', 'META', 'INSTAGRAM', 'INDICACAO', 'PARCEIRO'];
-const LEAD_STATUS = ['MARCAR_VISITA', 'VISITA_AGENDADA', 'EM_EXECUCAO', 'EM_ESPERA', 'FECHADO', 'PERDIDO'];
+const LEAD_STATUS = ['MARCAR_VISITA', 'VISITA_AGENDADA', 'EM_NEGOCIACAO', 'EM_ESPERA', 'FECHADO', 'EM_EXECUCAO', 'OBRA_CONCLUIDA', 'PERDIDO'];
 const LEAD_PAGTO = ['PENDENTE', 'CONCLUIDO'];
 app.use('/api/leads', requireAdmin);
 // Busca na Meta os leads dos últimos N dias que ainda não estão aqui (externo_id único → não duplica)

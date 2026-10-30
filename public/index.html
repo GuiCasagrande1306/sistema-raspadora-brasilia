@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v253</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v254</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -2092,14 +2092,7 @@
             <select name="situacao_pagamento"><option value="PENDENTE">Pendente</option><option value="CONCLUIDO">Concluído</option></select></div>
         </div>
         <div class="field"><label>Etapa</label>
-          <select name="status">
-            <option value="MARCAR_VISITA">Marcar visita</option>
-            <option value="VISITA_AGENDADA">Visita agendada</option>
-            <option value="EM_EXECUCAO">Em execução</option>
-            <option value="EM_ESPERA">Em espera</option>
-            <option value="FECHADO">Negócio fechado</option>
-            <option value="PERDIDO">Perdido</option>
-          </select></div>
+          <select name="status"></select></div>
         <div class="field"><label>Observações</label><textarea name="observacao" rows="3" placeholder="Detalhes do contato, necessidade, prazo…"></textarea></div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">Salvar</button></footer>
@@ -3770,14 +3763,21 @@
   // ---------- LEADS (comercial) ----------
   const LEAD_ORIG_LABEL={GOOGLE:'Google',META:'Meta',INSTAGRAM:'Instagram',INDICACAO:'Indicação',PARCEIRO:'Parceiro'};
   const LEAD_COLS=[
-    {k:'MARCAR_VISITA',t:'Marcar visita',c:'var(--wait)'},
-    {k:'VISITA_AGENDADA',t:'Visita agendada',c:'var(--info)'},
-    {k:'EM_EXECUCAO',t:'Em execução',c:'var(--laranja)'},
+    {k:'MARCAR_VISITA',t:'Marcar visita',c:'#CA8A04'},
+    {k:'VISITA_AGENDADA',t:'Visita agendada',c:'#2563EB'},
+    {k:'EM_NEGOCIACAO',t:'Em negociação',c:'#DB2777'},
     {k:'EM_ESPERA',t:'Em espera',c:'#8B5CF6'},
-    {k:'FECHADO',t:'Negócio fechado',c:'var(--ok)'},
-    {k:'PERDIDO',t:'Perdido',c:'var(--danger)'},
+    {k:'FECHADO',t:'Negócio fechado',c:'#16A34A'},
+    {k:'EM_EXECUCAO',t:'Em execução',c:'#ED7118'},
+    {k:'OBRA_CONCLUIDA',t:'Obra concluída',c:'#0F766E'},
+    {k:'PERDIDO',t:'Perdido',c:'#DC2626'},
   ];
   const LEAD_ST_LABEL=Object.fromEntries(LEAD_COLS.map(c=>[c.k,c.t]));
+  // etiqueta colorida da etapa + data em que o lead chegou; leads mais novos primeiro
+  const leadEtapaTag=st=>{const c=LEAD_COLS.find(x=>x.k===st);return `<span class="tag" style="background:${c?c.c:'#6B7280'};color:#fff">${esc(c?c.t:(st||'—'))}</span>`;};
+  const leadData=l=>l.criado_em?new Date(l.criado_em).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—';
+  const ordLeads=arr=>(arr||[]).slice().sort((a,b)=>String(b.criado_em||'').localeCompare(String(a.criado_em||'')));
+  document.querySelector('#form-lead [name=status]').innerHTML=LEAD_COLS.map(c=>`<option value="${c.k}">${c.t}</option>`).join('');
   const leadPagTag=p=>p==='CONCLUIDO'?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
   let LEADS=[], leadOrigemFiltro='', leadsViewMode='quadro';
   function leadCard(l){
@@ -3786,8 +3786,8 @@
     const resp=l.responsavel?`<span class="tag t-info">👤 ${esc(l.responsavel)}</span>`:'';
     return `<div class="card" draggable="true" data-card="${l.id}">
       <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(l.nome)}</h4><button class="doc-cloud" data-leaddel="${l.id}" title="Excluir" style="padding:2px">${DE_TRASH}</button></div>
-      <div class="role">${esc(l.servico||'—')}</div>
-      <div class="tags" style="margin-top:8px">${org}${resp}${fone}${leadPagTag(l.situacao_pagamento)}</div>
+      <div class="role">${esc(l.servico||'—')} · <span style="color:var(--ink-3)">📅 ${leadData(l)}</span></div>
+      <div class="tags" style="margin-top:8px">${leadEtapaTag(l.status)}${org}${resp}${fone}${leadPagTag(l.situacao_pagamento)}</div>
       <div class="cardfoot"><button class="miniact" data-lead="${l.id}">Abrir / editar</button></div></div>`;
   }
   function renderLeads(){
@@ -3798,10 +3798,10 @@
       if(!lista.length){listEl.innerHTML='<div class="orc-empty">Nenhum lead ainda. Clique em <b>Novo Lead</b>.</div>';}
       else{
         const rows=lista.map(l=>`<tr data-lead="${l.id}" style="cursor:pointer">
-          <td><b>${esc(l.nome)}</b></td><td>${LEAD_ORIG_LABEL[l.origem]||'—'}</td><td>${esc(l.servico||'—')}</td>
+          <td style="white-space:nowrap">${leadData(l)}</td><td><b>${esc(l.nome)}</b></td><td>${LEAD_ORIG_LABEL[l.origem]||'—'}</td><td>${esc(l.servico||'—')}</td>
           <td>${esc(l.responsavel||'—')}</td><td>${esc(l.telefone||'—')}</td><td>${l.data_inicio?dtBR(l.data_inicio):'—'}</td>
-          <td>${leadPagTag(l.situacao_pagamento)}</td><td>${LEAD_ST_LABEL[l.status]||l.status}</td></tr>`).join('');
-        listEl.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Nome</th><th>Origem</th><th>Serviço</th><th>Responsável</th><th>Telefone</th><th>Início</th><th>Pagamento</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+          <td>${leadPagTag(l.situacao_pagamento)}</td><td>${leadEtapaTag(l.status)}</td></tr>`).join('');
+        listEl.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Chegou em</th><th>Nome</th><th>Origem</th><th>Serviço</th><th>Responsável</th><th>Telefone</th><th>Início</th><th>Pagamento</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
         listEl.querySelectorAll('[data-lead]').forEach(r=>r.addEventListener('click',()=>abrirLead(LEADS.find(x=>x.id===r.dataset.lead))));
       }
     }else{
@@ -3816,7 +3816,7 @@
       catch(err){showToast('Erro ao excluir');console.error(err);}}));
     document.querySelectorAll('#board-leads [data-lead]').forEach(b=>b.addEventListener('click',()=>abrirLead(LEADS.find(x=>x.id===b.dataset.lead))));
   }
-  async function loadLeads(){try{LEADS=ordNome(await api('/api/leads'));}catch(e){LEADS=[];console.error(e);}renderLeads();sincronizarMeta(true);}
+  async function loadLeads(){try{LEADS=ordLeads(await api('/api/leads'));}catch(e){LEADS=[];console.error(e);}renderLeads();sincronizarMeta(true);}
   // Rede de segurança do webhook: ao abrir Leads busca na Meta (no máx. a cada 5 min); no botão, sempre e com aviso
   let _metaSyncEm=0;
   async function sincronizarMeta(silencioso){
@@ -3825,7 +3825,7 @@
     const btn=document.getElementById('btn-lead-meta');if(!silencioso&&btn){btn.disabled=true;btn.textContent='Buscando…';}
     try{
       const r=await api('/api/leads/sincronizar-meta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dias:30})});
-      if(r.novos){LEADS=ordNome(await api('/api/leads'));renderLeads();}
+      if(r.novos){LEADS=ordLeads(await api('/api/leads'));renderLeads();}
       if(!silencioso)showToast(r.novos?`${r.novos} lead(s) novo(s) da Meta`:'Nenhum lead novo na Meta (últimos 30 dias)');
     }catch(e){
       if(!silencioso){let m=e.message;try{const j=JSON.parse(m);m=j.detalhe||j.erro||m;}catch(_){}alert('Não foi possível buscar na Meta:\n\n'+m);}
@@ -4921,7 +4921,7 @@
     'board-orc':{ path:id=>'/api/orcamentos/'+id, campo:'status',
       reload:loadOrc, rotulos:{PENDENTE_MEDICAO:'1º A Medir',AGUARDANDO_PROPOSTA:'2º Aguardando Proposta',PROPOSTA_ENVIADA:'3º Proposta Enviada',APROVADO:'4º Aprovado'} },
     'board-leads':{ path:id=>'/api/leads/'+id, campo:'status',
-      reload:loadLeads, rotulos:{MARCAR_VISITA:'Marcar visita',VISITA_AGENDADA:'Visita agendada',EM_EXECUCAO:'Em execução',EM_ESPERA:'Em espera',FECHADO:'Negócio fechado',PERDIDO:'Perdido'} },
+      reload:loadLeads, rotulos:LEAD_ST_LABEL },
   };
   let dragCardId=null, dragBoard=null;
   function setupDnD(boardId){

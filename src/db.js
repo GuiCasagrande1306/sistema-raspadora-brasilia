@@ -2113,6 +2113,8 @@ export const db = {
     }
     for (const d of descontos) {
       const p = porColab[d.colaborador_id]; if (!p) continue;
+      // falta é do dia em que aconteceu: fora do período não entra (antes as de setembro somavam em outubro)
+      if (d.tipo === 'FALTA' && !(d.data_lancamento >= desde && d.data_lancamento <= ate)) continue;
       if (d.tipo === 'INSS') p.inss += d.valor;
       else if (d.tipo === 'FALTA') { p.faltas += d.valor; p.faltas_itens.push({ id: d.id, data: d.data_lancamento, valor: d.valor, observacao: d.observacao || null }); }
       else p.outros_desc += d.valor;
