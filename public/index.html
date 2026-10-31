@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v254</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v255</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1263,6 +1263,7 @@
             <option value="INDICACAO">Indicação</option>
             <option value="PARCEIRO">Parceiro</option>
           </select>
+          <span style="position:relative"><button class="btn-ghost" id="btn-lead-cols" title="Escolher as colunas da lista">⚙️ Colunas</button><div class="cols-menu hidden" id="lead-cols-menu"></div></span>
           <button class="btn-ghost" id="btn-lead-meta" title="Busca os leads dos formulários da Meta (Facebook/Instagram) que ainda não estão aqui">↻ Buscar da Meta</button>
           <button class="primary" id="btn-lead-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lead</button>
         </div>
@@ -3776,6 +3777,18 @@
   // etiqueta colorida da etapa + data em que o lead chegou; leads mais novos primeiro
   const leadEtapaTag=st=>{const c=LEAD_COLS.find(x=>x.k===st);return `<span class="tag" style="background:${c?c.c:'#6B7280'};color:#fff">${esc(c?c.t:(st||'—'))}</span>`;};
   const leadData=l=>l.criado_em?new Date(l.criado_em).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}):'—';
+  const LEAD_LIST_COLS=[
+    ['chegou','Chegou em',l=>`<td style="white-space:nowrap">${leadData(l)}</td>`],
+    ['nome','Nome',l=>`<td><b>${esc(l.nome)}</b></td>`],
+    ['origem','Origem',l=>`<td>${LEAD_ORIG_LABEL[l.origem]||'—'}</td>`],
+    ['servico','Serviço',l=>`<td>${esc(l.servico||'—')}</td>`],
+    ['responsavel','Responsável',l=>`<td>${esc(l.responsavel||'—')}</td>`],
+    ['telefone','Telefone',l=>`<td>${esc(l.telefone||'—')}</td>`],
+    ['inicio','Início',l=>`<td>${l.data_inicio?dtBR(l.data_inicio):'—'}</td>`],
+    ['pagamento','Pagamento',l=>`<td>${leadPagTag(l.situacao_pagamento)}</td>`],
+    ['etapa','Etapa',l=>`<td>${leadEtapaTag(l.status)}</td>`],
+  ];
+  const leadColsOcultas=()=>{try{const v=JSON.parse(localStorage.getItem('rb_leads_cols'));if(Array.isArray(v))return v;}catch(_){}return ['pagamento'];};
   const ordLeads=arr=>(arr||[]).slice().sort((a,b)=>String(b.criado_em||'').localeCompare(String(a.criado_em||'')));
   document.querySelector('#form-lead [name=status]').innerHTML=LEAD_COLS.map(c=>`<option value="${c.k}">${c.t}</option>`).join('');
   const leadPagTag=p=>p==='CONCLUIDO'?'<span class="tag t-ok">Pago</span>':'<span class="tag t-wait">Pendente</span>';
@@ -3787,7 +3800,7 @@
     return `<div class="card" draggable="true" data-card="${l.id}">
       <div class="crow" style="justify-content:space-between;align-items:flex-start"><h4 style="margin:0">${esc(l.nome)}</h4><button class="doc-cloud" data-leaddel="${l.id}" title="Excluir" style="padding:2px">${DE_TRASH}</button></div>
       <div class="role">${esc(l.servico||'—')} · <span style="color:var(--ink-3)">📅 ${leadData(l)}</span></div>
-      <div class="tags" style="margin-top:8px">${leadEtapaTag(l.status)}${org}${resp}${fone}${leadPagTag(l.situacao_pagamento)}</div>
+      <div class="tags" style="margin-top:8px">${leadEtapaTag(l.status)}${org}${resp}${fone}${leadColsOcultas().includes('pagamento')?'':leadPagTag(l.situacao_pagamento)}</div>
       <div class="cardfoot"><button class="miniact" data-lead="${l.id}">Abrir / editar</button></div></div>`;
   }
   function renderLeads(){
@@ -3797,11 +3810,9 @@
       board.classList.add('hidden');if(tabs)tabs.innerHTML='';listEl.classList.remove('hidden');
       if(!lista.length){listEl.innerHTML='<div class="orc-empty">Nenhum lead ainda. Clique em <b>Novo Lead</b>.</div>';}
       else{
-        const rows=lista.map(l=>`<tr data-lead="${l.id}" style="cursor:pointer">
-          <td style="white-space:nowrap">${leadData(l)}</td><td><b>${esc(l.nome)}</b></td><td>${LEAD_ORIG_LABEL[l.origem]||'—'}</td><td>${esc(l.servico||'—')}</td>
-          <td>${esc(l.responsavel||'—')}</td><td>${esc(l.telefone||'—')}</td><td>${l.data_inicio?dtBR(l.data_inicio):'—'}</td>
-          <td>${leadPagTag(l.situacao_pagamento)}</td><td>${leadEtapaTag(l.status)}</td></tr>`).join('');
-        listEl.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr><th>Chegou em</th><th>Nome</th><th>Origem</th><th>Serviço</th><th>Responsável</th><th>Telefone</th><th>Início</th><th>Pagamento</th><th>Etapa</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        const cols=LEAD_LIST_COLS.filter(([k])=>!leadColsOcultas().includes(k));
+        const rows=lista.map(l=>`<tr data-lead="${l.id}" style="cursor:pointer">${cols.map(([,,td])=>td(l)).join('')}</tr>`).join('');
+        listEl.innerHTML=`<div class="lwrap"><table class="ltable"><thead><tr>${cols.map(([,t])=>`<th>${t}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
         listEl.querySelectorAll('[data-lead]').forEach(r=>r.addEventListener('click',()=>abrirLead(LEADS.find(x=>x.id===r.dataset.lead))));
       }
     }else{
@@ -3833,6 +3844,15 @@
     }finally{if(btn){btn.disabled=false;btn.textContent='↻ Buscar da Meta';}}
   }
   document.getElementById('btn-lead-meta').addEventListener('click',()=>sincronizarMeta(false));
+  document.getElementById('btn-lead-cols').addEventListener('click',()=>{
+    const m=document.getElementById('lead-cols-menu');m.classList.toggle('hidden');if(m.classList.contains('hidden'))return;
+    const oc=leadColsOcultas();
+    m.innerHTML='<div class="cm-h">Colunas visíveis</div>'+LEAD_LIST_COLS.map(([k,t])=>`<label><input type="checkbox" data-leadcol="${k}" ${oc.includes(k)?'':'checked'} ${k==='nome'?'disabled':''}> ${t}</label>`).join('');
+    m.querySelectorAll('[data-leadcol]').forEach(cb=>cb.addEventListener('change',()=>{
+      const v=leadColsOcultas().filter(x=>x!==cb.dataset.leadcol);if(!cb.checked)v.push(cb.dataset.leadcol);
+      try{localStorage.setItem('rb_leads_cols',JSON.stringify(v));}catch(_){}
+      renderLeads();}));
+  });
   function abrirLead(l){
     const f=document.getElementById('form-lead');f.reset();
     document.getElementById('lead-titulo').textContent=l?'Editar Lead':'Novo Lead';
