@@ -898,7 +898,7 @@ app.get('/api/cronograma', async (req, res, next) => {
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
       .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO' && !isAdminCargo(c.cargo))   // administrativo não vai pro cronograma
-      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo, is_diarista: c.is_diarista || false }))
+      .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo, is_diarista: c.is_diarista || false, status_colaborador: c.status_colaborador || 'ATIVO' }))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor, observacao: f.observacao || null }));
     const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
