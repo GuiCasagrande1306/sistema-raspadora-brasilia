@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v258</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v259</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -4354,8 +4354,18 @@
     f.funcao.innerHTML='<option value="">— função / equipamento —</option>'+FUNCOES.map(fu=>`<option value="${esc(fu.nome)}" data-val="${fu.valor}">${esc(fu.nome)} · ${brl(fu.valor)}</option>`).join('');
     if(colabId)f.colaborador_id.value=colabId;
     if(obraId)f.obra_id.value=obraId;
+    if(aloc&&aloc.funcao&&!FUNCOES.some(fu=>fu.nome===aloc.funcao))f.funcao.insertAdjacentHTML('beforeend',`<option value="${esc(aloc.funcao)}">${esc(aloc.funcao)}</option>`);
     if(aloc){f.funcao.value=aloc.funcao||'';f.valor_diaria.value=aloc.valor_diaria?(aloc.valor_diaria/100).toFixed(2):'';f.observacao.value=aloc.observacao||'';}
     openModal('ov-alocar');
+  }
+  async function editarAlocFolha(l,d){
+    FUNCOES=await api('/api/cronograma/funcoes');
+    CRON=await api('/api/cronograma?data='+d.data);CRON.colaboradores=ordNome(CRON.colaboradores);
+    // obra concluída / colaborador desligado não vêm na lista do dia
+    if(d.obra_id&&!CRON.obras.some(o=>o.id===d.obra_id))CRON.obras.push({id:d.obra_id,cliente:d.obra||'—'});
+    if(!CRON.colaboradores.some(c=>c.id===l.colaborador_id))CRON.colaboradores.push({id:l.colaborador_id,nome:l.nome});
+    abrirAlocar(l.colaborador_id,d.obra_id,{id:d.id,funcao:d.funcao,valor_diaria:d.valor,observacao:d.observacao});
+    document.getElementById('alocar-titulo').textContent='Editar diária — '+dtBR(d.data);
   }
   document.getElementById('alocar-funcao').addEventListener('change',e=>{
     const opt=e.target.selectedOptions[0];const v=opt&&opt.dataset.val?(+opt.dataset.val/100):null;
@@ -4369,7 +4379,8 @@
     try{
       if(id)await api('/api/cronograma/alocacao/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       else await api('/api/cronograma/alocacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      document.getElementById('ov-alocar').classList.remove('open');showToast('Alocação salva');loadCronograma();
+      document.getElementById('ov-alocar').classList.remove('open');showToast('Alocação salva');
+      if(!document.getElementById('view-folha').classList.contains('hidden'))await calcularFolha();else loadCronograma();
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Alocar: '+(m||'erro'));console.error(err);}});
   document.getElementById('cron-data').addEventListener('change',loadCronograma);
   document.getElementById('cron-busca').addEventListener('input',()=>renderCron());
@@ -6275,7 +6286,8 @@
       const prodCell=d.is_producao&&d.apontamento_id
         ?`<button class="btn-ghost" data-apedit="${d.apontamento_id}" title="Editar produção" style="padding:2px 7px;font-size:11px;margin-right:4px">✏️</button><button class="doc-cloud" data-apdel="${d.apontamento_id}" title="Excluir produção" style="padding:2px">${DE_TRASH}</button>`:'';
       const valorCell=(d.is_gratificacao&&d.gratificacao_paga)?`<span style="text-decoration:line-through;color:var(--ink-3)" title="Paga à parte — fora do total da folha">${brl(d.valor)}</span>`:brl(d.valor);
-      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:var(--ink-3);font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td style="padding:4px">${esc(d.funcao||'—')}${d.acabamento?' <span style="color:var(--ink-3)">· '+esc(d.acabamento)+'</span>':''}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}</td></tr>`;
+      const alocCell=!d.is_producao&&d.id?`<button class="btn-ghost" data-alocedit="${idx}|${d.id}" title="Editar diária" style="padding:2px 7px;font-size:11px;margin-left:4px">✏️</button>`:'';
+      return `<tr${isChild?' class="__CHILD__"':''}><td style="padding:${isChild?'4px 4px 4px 22px':'4px'}">${isChild?'':(d.data?dtBR(d.data):'—')}</td><td style="padding:4px">${esc(d.obra||'—')}${d.observacao?'<div style="font-size:10px;color:var(--ink-3);font-style:italic">📝 '+esc(d.observacao)+'</div>':''}</td><td style="padding:4px">${esc(d.funcao||'—')}${d.acabamento?' <span style="color:var(--ink-3)">· '+esc(d.acabamento)+'</span>':''}</td><td style="padding:4px;text-align:right">${valorCell}</td><td style="padding:4px;text-align:right;white-space:nowrap">${gratifCell}${prodCell}${alocCell}</td></tr>`;
     };
     const prod=(detalhe||[]).filter(d=>d.is_producao), outros=(detalhe||[]).filter(d=>!d.is_producao);
     const byDate={}; prod.forEach(d=>{(byDate[d.data]||=[]).push(d);});
@@ -6380,6 +6392,11 @@
       try{await api('/api/cronograma/alocacao/'+b.dataset.gratif,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({gratificacao_paga:novo})});
         showToast(novo?'Gratificação marcada como paga':'Gratificação desmarcada');await calcularFolha();}
       catch(err){b.disabled=false;let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}showToast('Gratificação: '+(m||'erro'));console.error(err);}
+    }));
+    document.querySelectorAll('#folha-content [data-alocedit]').forEach(b=>b.addEventListener('click',e=>{
+      e.stopPropagation();const [i,id]=b.dataset.alocedit.split('|');const l=folhaAtual&&folhaAtual.colaboradores[+i];
+      const d=l&&(l.detalhe||[]).find(x=>String(x.id)===id);if(!d)return;
+      editarAlocFolha(l,d).catch(err=>{showToast('Erro ao abrir a diária');console.error(err);});
     }));
     document.querySelectorAll('#folha-content [data-apedit]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();abrirApontEdicao(b.dataset.apedit);}));
     document.querySelectorAll('#folha-content [data-apdel]').forEach(b=>b.addEventListener('click',async e=>{
