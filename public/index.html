@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v257</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v258</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -1885,7 +1885,7 @@
       <div class="body">
         <div class="field"><label>Mês</label><input type="month" id="ponto-mes" required></div>
         <div class="field"><label>Folhas em branco <span style="color:var(--ink-3);font-weight:400">(nome escrito à mão)</span></label><input type="number" id="ponto-brancos" min="0" max="20" value="3"></div>
-        <div class="login-hint" style="text-align:left">Uma página por servente e pedreiro <b>registrado</b> (sem diaristas e desligados), em ordem alfabética, com sábados, domingos e feriados nacionais marcados.</div>
+        <div class="login-hint" style="text-align:left">Uma página por servente e pedreiro <b>registrado</b> (sem diaristas e desligados), em ordem alfabética, com sábados, domingos e feriados (nacionais + 30/11 do DF) marcados.</div>
       </div>
       <footer><button type="button" class="btn-ghost" data-close>Cancelar</button><button type="submit" class="primary">🖨️ Imprimir</button></footer>
     </form>
@@ -4407,13 +4407,13 @@
   }
   document.getElementById('btn-relatorio-semana').addEventListener('click',()=>{relModo='semana';relRef=document.getElementById('cron-data').value||isoHoje();carregarRelatorio();openModal('ov-relatorio');});
   // ---- Folha de ponto mensal (papel): 1 página por registrado + folhas em branco ----
-  function feriadosNacionais(ano){   // fixos + Sexta-feira Santa (Páscoa − 2 dias)
+  function feriadosNacionais(ano){   // fixos + Sexta-feira Santa (Páscoa − 2 dias) + 30/11 Dia do Evangélico (DF)
     const a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
     const mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1,pascoa=new Date(Date.UTC(ano,mes-1,dia));
     const sexta=new Date(pascoa.getTime()-2*86400000).toISOString().slice(5,10);
-    return new Set(['01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','12-25',sexta]);
+    return new Set(['01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','11-30','12-25',sexta]);
   }
-  console.assert(feriadosNacionais(2026).has('04-03')&&feriadosNacionais(2025).has('04-18'),'Sexta-feira Santa errada');
+  console.assert(feriadosNacionais(2026).has('04-03')&&feriadosNacionais(2025).has('04-18')&&feriadosNacionais(2026).has('11-30'),'feriado errado');
   document.getElementById('btn-folha-ponto').addEventListener('click',()=>{document.getElementById('ponto-mes').value=isoHoje().slice(0,7);openModal('ov-ponto');});
   document.getElementById('form-ponto').addEventListener('submit',e=>{
     e.preventDefault();
