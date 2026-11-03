@@ -1779,8 +1779,8 @@ export const db = {
     const noMes = d => d && d >= ini && d <= fim;
     const [medR, ldR, boR, movR, obrEntR, obrasF] = await Promise.all([
       sb('medicoes_obra').select('obra_id,descricao,valor,recebido,data_recebimento,data,forma_pagamento,imposto_valor,valor_retido'),
-      todasPaginas(() => sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').gte('data', ini).lte('data', fim).order('id')).then(data => ({ data })),
-      todasPaginas(() => sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,data_pagamento,pago')
+      todasPaginas(() => sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago,obra_id').gte('data', ini).lte('data', fim).order('id')).then(data => ({ data })),
+      todasPaginas(() => sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,data_pagamento,pago,obra_id')
         // pago → no dia do pagamento (sem data → vencimento); pendente → no vencimento ("a pagar")
         .or(`and(pago.eq.true,data_pagamento.gte.${ini},data_pagamento.lte.${fim}),and(pago.eq.true,data_pagamento.is.null,vencimento.gte.${ini},vencimento.lte.${fim}),and(pago.eq.false,vencimento.gte.${ini},vencimento.lte.${fim})`).order('id')).then(data => ({ data })),
       sb('movimentacoes_caixa').select('valor,tipo,data_movimento,status,descricao').gte('data_movimento', ini).lte('data_movimento', fim),
@@ -1791,15 +1791,15 @@ export const db = {
     const liqMed = x => Math.max(0, (x.valor || 0) - (x.imposto_valor || 0) - (x.valor_retido || 0));
     const entradas = [], saidas = [];
     // ENTRADAS (líquido no caixa)
-    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (!noMes(d)) return; entradas.push({ data: d, obra: obraNome[x.obra_id] || null, descricao: (obraNome[x.obra_id] || 'Obra') + (x.descricao ? ' · ' + x.descricao : ''), origem: 'Medição/nota', valor: liqMed(x) }); });
+    (medR.data || []).forEach(x => { const realizado = x.recebido || x.forma_pagamento === 'PIX'; if (!realizado) return; const d = x.recebido ? (x.data_recebimento || x.data) : x.data; if (!noMes(d)) return; entradas.push({ obra_id: x.obra_id, data: d, obra: obraNome[x.obra_id] || null, descricao: (obraNome[x.obra_id] || 'Obra') + (x.descricao ? ' · ' + x.descricao : ''), origem: 'Medição/nota', valor: liqMed(x) }); });
     // movimentações: só entra/sai de VERDADE se status = REALIZADO (PREVISTO vencido não aconteceu)
     (movR.data || []).forEach(x => { if (x.tipo !== 'ENTRADA') return; if (x.status === 'PREVISTO') return; entradas.push({ data: x.data_movimento, obra: null, descricao: x.descricao || 'Movimentação', origem: 'Recebimento', valor: x.valor || 0 }); });
-    (obrEntR.data || []).forEach(x => entradas.push({ data: (x.created_at || '').slice(0, 10), obra: obraNome[x.obra_id] || null, descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
+    (obrEntR.data || []).forEach(x => entradas.push({ obra_id: x.obra_id, data: (x.created_at || '').slice(0, 10), obra: obraNome[x.obra_id] || null, descricao: obraNome[x.obra_id] || x.descricao || 'Entrada', origem: 'Entrada na obra', valor: x.valor || 0 }));
     // SAÍDAS
     const catLabel = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar', SUPERMERCADO: 'Supermercado', COMBUSTIVEL: 'Combustível', FRETE: 'Frete', MULTA: 'Multa', VALE_TRANSPORTE: 'Vale-transporte', CONSERTO_MAQUINA: 'Conserto máquinas', LOCACAO_MAQUINA: 'Locação de Maquinário', FERRAMENTAS_MAQUINARIO: 'Ferramentas/Maquinário', MANUTENCAO_CARRO: 'Manutenção carros', FORNECEDOR: 'Fornecedor', FOLHA: 'Folha', FERIAS: 'Férias', DECIMO_TERCEIRO: 'Décimo terceiro', IMPOSTO: 'Imposto', INSUMO: 'Materiais', DIARIA_PEDREIRO: 'Diária - Pedreiros', DIARIA_SERVENTE: 'Diária - Serventes', DIARIA: 'Diária (Pedreiros e Serventes - Sábado)', GRATIFICACAO_SERVENTE: 'Gratificação', DESPESA_FUNCIONARIO: 'Despesa de Funcionário', DESPESAS_LOJA: 'Despesas - Loja', MIDIA: 'Mídia', EDVARD: 'Edvard', GILSON: 'Gilson', DEBORA: 'Débora', VALE: 'Vale', ENTRADA_OBRA_AVULSA: 'Entrada - Obras avulsas' };
     const catTxt = x => (x.categoria === 'OUTRO' && x.categoria_custom) ? x.categoria_custom : (catLabel[x.categoria] || x.categoria || '');
-    (ldR.data || []).forEach(x => saidas.push({ data: x.data, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Pagamento diário', valor: x.valor || 0, pago: !!x.pago }));
-    (boR.data || []).forEach(x => saidas.push({ data: x.pago ? (x.data_pagamento || x.vencimento) : x.vencimento, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Boleto', valor: x.valor || 0, pago: !!x.pago }));
+    (ldR.data || []).forEach(x => saidas.push({ obra_id: x.obra_id || null, cat: x.categoria, data: x.data, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Pagamento diário', valor: x.valor || 0, pago: !!x.pago }));
+    (boR.data || []).forEach(x => saidas.push({ obra_id: x.obra_id || null, cat: x.categoria, data: x.pago ? (x.data_pagamento || x.vencimento) : x.vencimento, descricao: x.descricao || '', categoria: catTxt(x), origem: 'Boleto', valor: x.valor || 0, pago: !!x.pago }));
     (movR.data || []).forEach(x => { if (x.tipo !== 'SAIDA') return; if (x.status === 'PREVISTO' && x.data_movimento > hoje) return; saidas.push({ data: x.data_movimento, descricao: x.descricao || 'Movimentação', categoria: '', origem: 'Movimentação', valor: x.valor || 0, pago: x.status !== 'PREVISTO' }); });
     entradas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
     saidas.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
@@ -1817,6 +1817,41 @@ export const db = {
     const fimMes = `${fy}-${String(fm).padStart(2, '0')}-${String(new Date(Date.UTC(fy, fm, 0)).getUTCDate()).padStart(2, '0')}`;
     const prev = await this.previstosTotais(hoje, fimMes);
     return { desde: ini, ate: fim, entradas, saidas, entradas_por_obra, total_entradas, total_saidas, total_saidas_pagas, total_saidas_a_pagar, saldo: total_entradas - total_saidas, saldo_realizado: total_entradas - total_saidas_pagas, entrada_prevista: prev.entradas, saida_prevista: prev.saidas, a_pagar_ate_fim_mes: prev.saidas_ate_fim, a_pagar_depois: prev.saidas_depois, fim_mes: fimMes, hoje };
+  },
+  // Por serviço (categoria da obra): recebido × custo. Custo = o que SAIU do caixa (mesmo "Saiu" do Entradas e Saídas).
+  // Direto: saída com obra marcada; categoria GILSON → Raspagem (equipe fora do cronograma).
+  // Sem obra (combustível, alimentação, folha…): dividido pelos dias trabalhados no Cronograma no período.
+  async relatorioServicos(desde, ate, hojeStr) {
+    const r = await this.relatorioPeriodo(desde, ate, hojeStr);
+    const [obR, alR] = await Promise.all([
+      sb('obras_financeiro').select('id,categoria_servico'),
+      todasPaginas(() => sb('cronograma_alocacoes').select('obra_id,data').gte('data', desde).lte('data', ate).order('id')).then(data => ({ data })),
+    ]);
+    if (obR.error) throw obR.error;
+    const servDaObra = Object.fromEntries((obR.data || []).map(o => [o.id, o.categoria_servico || 'SEM_CATEGORIA']));
+    const linha = {};
+    const L = k => (linha[k] ||= { servico: k, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0 });
+    for (const e of r.entradas) L(e.obra_id ? (servDaObra[e.obra_id] || 'SEM_CATEGORIA') : 'SEM_OBRA').recebido += e.valor;
+    let semObra = 0;
+    for (const x of r.saidas) {
+      if (!x.pago) continue;
+      if (x.obra_id && servDaObra[x.obra_id]) L(servDaObra[x.obra_id]).custo_direto += x.valor;
+      else if (x.cat === 'GILSON') L('RASPAGEM').custo_direto += x.valor;
+      else semObra += x.valor;
+    }
+    const alocs = (alR.data || []).filter(a => servDaObra[a.obra_id]);
+    for (const a of alocs) L(servDaObra[a.obra_id]).dias++;
+    const totDias = alocs.length;
+    // rateio em centavos inteiros; o resto do arredondamento vai p/ quem tem mais dias (soma fecha exata)
+    if (totDias) {
+      const comDias = Object.values(linha).filter(l => l.dias).sort((a, b) => b.dias - a.dias);
+      let distribuido = 0;
+      for (const l of comDias) { l.custo_dividido = Math.floor(semObra * l.dias / totDias); distribuido += l.custo_dividido; }
+      comDias[0].custo_dividido += semObra - distribuido;
+    }
+    const servicos = Object.values(linha).map(l => ({ ...l, custo_total: l.custo_direto + l.custo_dividido, resultado: l.recebido - l.custo_direto - l.custo_dividido, pct_dias: totDias ? l.dias / totDias : 0 }))
+      .sort((a, b) => b.recebido - a.recebido || b.custo_total - a.custo_total);
+    return { desde, ate, servicos, sem_obra_nao_dividido: totDias ? 0 : semObra, total_dias: totDias, total_recebido: r.total_entradas, total_custos: r.total_saidas_pagas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
@@ -2106,15 +2141,18 @@ export const db = {
       // linha de produção no detalhe: mostra por dia/obra o valor que o pedreiro ganha pelo m²
       p.detalhe.push({ id: 'ap-' + r.id, apontamento_id: r.apontamento_id, obra_id: apObraId[r.apontamento_id] || null, data: r.data, obra: apObra[r.apontamento_id] || '—', m2: Math.round(m * 100) / 100, acabamento: acab, funcao: 'Produção — ' + (Math.round(m * 100) / 100) + ' m²', valor: Math.round(m * rate), is_producao: true });
     }
+    // vale, falta e demais descontos entram só na folha do período em que foram lançados
+    // (nenhuma folha era fechada no sistema → os "não abatidos" de meses anteriores somavam em todos os meses)
+    const noPeriodo = d => d >= desde && d <= ate;
     for (const v of (vales || [])) {
       const p = porColab[v.colaborador_id]; if (!p) continue;
+      if (!noPeriodo(v.data_lancamento)) continue;
       p.vales += v.valor;
       p.lancamentos.push({ id: v.id, origem: 'vale', tipo: 'VALE', data: v.data_lancamento, valor: v.valor });
     }
     for (const d of descontos) {
       const p = porColab[d.colaborador_id]; if (!p) continue;
-      // falta é do dia em que aconteceu: fora do período não entra (antes as de setembro somavam em outubro)
-      if (d.tipo === 'FALTA' && !(d.data_lancamento >= desde && d.data_lancamento <= ate)) continue;
+      if (!noPeriodo(d.data_lancamento)) continue;
       if (d.tipo === 'INSS') p.inss += d.valor;
       else if (d.tipo === 'FALTA') { p.faltas += d.valor; p.faltas_itens.push({ id: d.id, data: d.data_lancamento, valor: d.valor, observacao: d.observacao || null }); }
       else p.outros_desc += d.valor;

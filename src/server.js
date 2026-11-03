@@ -660,6 +660,7 @@ const cents = (v) => Math.round((Number(v) || 0) * 100);
 const CAT_GASTO = ['ALIMENTACAO', 'JANTAR', 'SUPERMERCADO', 'COMBUSTIVEL', 'FRETE', 'MULTA', 'VALE_TRANSPORTE', 'CONSERTO_MAQUINA', 'LOCACAO_MAQUINA', 'FERRAMENTAS_MAQUINARIO', 'MANUTENCAO_CARRO', 'FORNECEDOR', 'FOLHA', 'FERIAS', 'DECIMO_TERCEIRO', 'IMPOSTO', 'INSUMO', 'DIARIA_PEDREIRO', 'DIARIA_SERVENTE', 'DIARIA', 'GRATIFICACAO_SERVENTE', 'DESPESA_FUNCIONARIO', 'DESPESAS_LOJA', 'MIDIA', 'EDVARD', 'GILSON', 'DEBORA', 'VALE', 'ENTRADA_OBRA_AVULSA', 'OUTRO'];
 const FORMAS_PAG = ['PIX', 'TED_DOC', 'DINHEIRO', 'BOLETO', 'CHEQUE', 'CARTAO', 'OUTRO'];
 const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
+const obraIdOuNull = v => (/^[0-9a-f-]{36}$/i.test(v || '') ? v : null);   // obra (opcional) da saída — custo direto por serviço
 // Administrativo (não vai a campo): fora do Cronograma Diário e do Vale-Transporte
 const isAdminCargo = cg => /ADMINISTR|ESCRIT|FINANC|GERENT|\bRH\b|SECRET/i.test(String(cg || ''));
 const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
@@ -689,6 +690,7 @@ app.post('/api/boletos', async (req, res, next) => {
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
       empresa: EMP_VALID.includes(req.body.empresa) ? req.body.empresa : null,
       forma_pagamento: formaPag(req.body.forma_pagamento),
+      obra_id: obraIdOuNull(req.body.obra_id),
       pago: false,
     }));
   } catch (e) { next(e); }
@@ -697,6 +699,7 @@ app.patch('/api/boletos/:id', async (req, res, next) => {
   try {
     const patch = {};
     for (const k of ['descricao', 'fornecedor', 'vencimento', 'data_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.obra_id !== undefined) patch.obra_id = obraIdOuNull(req.body.obra_id);
     if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
     if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = patch.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
     if (req.body.empresa !== undefined) patch.empresa = EMP_VALID.includes(req.body.empresa) ? req.body.empresa : null;
@@ -1036,7 +1039,7 @@ app.post('/api/lancamentos-diarios', async (req, res, next) => {
     const lanc = await db.createLancDiario({
       data: dia, descricao, valor, categoria,
       categoria_custom: req.body.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null,
-      forma: req.body.forma || 'PIX', pago: req.body.pago !== undefined ? !!req.body.pago : true,
+      forma: req.body.forma || 'PIX', pago: req.body.pago !== undefined ? !!req.body.pago : true, obra_id: obraIdOuNull(req.body.obra_id),
       data_pagamento: (req.body.pago === false ? null : dia),
     });
     // Vale com colaborador → também abate na folha (sem debitar o caixa de novo; o caixa é este lançamento)
@@ -1050,6 +1053,7 @@ app.patch('/api/lancamentos-diarios/:id', async (req, res, next) => {
   try {
     const patch = {};
     for (const k of ['descricao', 'data', 'forma', 'data_pagamento']) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.obra_id !== undefined) patch.obra_id = obraIdOuNull(req.body.obra_id);
     if (req.body.valor !== undefined) patch.valor = cents(req.body.valor);
     if (req.body.categoria !== undefined) { patch.categoria = CAT_GASTO.includes(req.body.categoria) ? req.body.categoria : 'OUTRO'; patch.categoria_custom = patch.categoria === 'OUTRO' ? (req.body.categoria_custom || null) : null; }
     if (req.body.pago !== undefined) { patch.pago = !!req.body.pago; if (patch.pago && !patch.data_pagamento) patch.data_pagamento = new Date().toISOString().slice(0, 10); }
@@ -1645,6 +1649,14 @@ app.get('/api/fluxo-caixa/mes', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 // Relatório mensal detalhado de entradas e saídas (para o PDF — escolhe o mês)
+app.get('/api/fluxo-caixa/relatorio-servicos', async (req, res, next) => {
+  try {
+    const ISO = /^\d{4}-\d{2}-\d{2}$/;
+    const { desde, ate } = req.query;
+    if (!ISO.test(desde || '') || !ISO.test(ate || '') || desde > ate) return res.status(400).json({ erro: 'período inválido' });
+    res.json(await db.relatorioServicos(desde, ate, req.query.hoje));
+  } catch (e) { next(e); }
+});
 app.get('/api/fluxo-caixa/relatorio-mensal', async (req, res, next) => {
   try {
     // período: ?desde=AAAA-MM-DD&ate=AAAA-MM-DD (ex.: quinzena) ou ?mes=AAAA-MM (mês inteiro)
