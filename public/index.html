@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v259</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v260</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6205,13 +6205,15 @@
     document.getElementById('ov-relserv').classList.remove('open');
     const cor=v=>v>=0?'#12805c':'#b91c1c';
     const tot=r.servicos.reduce((t,l)=>({rec:t.rec+l.recebido,dir:t.dir+l.custo_direto,div:t.div+l.custo_dividido}),{rec:0,dir:0,div:0});
-    const rows=r.servicos.map(l=>`<tr><td><b>${esc(SERV_LBL[l.servico]||l.servico)}</b></td><td class="r" style="color:#12805c">${brl(l.recebido)}</td><td class="r">${brl(l.custo_direto)}</td><td class="r">${brl(l.custo_dividido)}</td><td class="r" style="color:#b91c1c">${brl(l.custo_total)}</td><td class="r" style="color:${cor(l.resultado)};font-weight:800">${brl(l.resultado)}</td><td class="c">${l.recebido>0?Math.round(l.resultado/l.recebido*100)+'%':'—'}</td><td class="c">${l.dias?l.dias+' ('+Math.round(l.pct_dias*100)+'%)':'—'}</td></tr>`).join('')||'<tr><td colspan="8" class="c">Sem movimento no período.</td></tr>';
+    const cels=l=>`<td class="r" style="color:#12805c">${brl(l.recebido)}</td><td class="r">${brl(l.custo_direto)}</td><td class="r">${brl(l.custo_dividido)}</td><td class="r" style="color:#b91c1c">${brl(l.custo_total)}</td><td class="r" style="color:${cor(l.resultado)};font-weight:800">${brl(l.resultado)}</td><td class="c">${l.recebido>0?Math.round(l.resultado/l.recebido*100)+'%':'—'}</td><td class="c">${l.dias?l.dias+' ('+Math.round(l.pct_dias*100)+'%)':'—'}</td>`;
+    const rows=r.servicos.map(l=>`<tr style="background:#f3f3f3"><td><b>${esc(SERV_LBL[l.servico]||l.servico)}</b></td>${cels(l)}</tr>`
+      +(l.obras||[]).map(o=>`<tr style="font-size:11px;color:#444"><td style="padding-left:22px">${esc(o.nome)}</td>${cels(o).replace(';font-weight:800','')}</tr>`).join('')).join('')||'<tr><td colspan="8" class="c">Sem movimento no período.</td></tr>';
     const naoDiv=r.sem_obra_nao_dividido?`<p class="sub" style="color:#b91c1c">Sem dias no Cronograma neste período: ${brl(r.sem_obra_nao_dividido)} de gastos sem obra não puderam ser divididos (não estão na tabela).</p>`:'';
     finPrint('Por serviço — '+rotulo,`<h1>Relatório por serviço — ${esc(rotulo)}</h1><p class="sub">${dtBR(desde)} a ${dtBR(ate)} · Raspadora Brasília</p>
       <table><thead><tr><th>Serviço</th><th>Recebido</th><th>Custo direto</th><th>Custo dividido</th><th>Custo total</th><th>Resultado</th><th>Margem</th><th>Dias trabalhados</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td class="r">Total</td><td class="r">${brl(tot.rec)}</td><td class="r">${brl(tot.dir)}</td><td class="r">${brl(tot.div)}</td><td class="r">${brl(tot.dir+tot.div)}</td><td class="r" style="color:${cor(tot.rec-tot.dir-tot.div)}">${brl(tot.rec-tot.dir-tot.div)}</td><td></td><td class="c">${r.total_dias||'—'}</td></tr></tfoot></table>
       ${naoDiv}
-      <p class="sub" style="margin-top:12px"><b>Recebido</b>: entradas de cada obra pela categoria dela. <b>Custo direto</b>: gastos pagos com a obra marcada (e "Gilson (Raspagem)" → Raspagem). <b>Custo dividido</b>: os demais gastos pagos (combustível, alimentação, folha…), divididos pela proporção de dias trabalhados de cada serviço no Cronograma. Os totais batem com o relatório de Entradas e Saídas do mesmo período.</p>`);
+      <p class="sub" style="margin-top:12px"><b>Recebido</b>: entradas de cada obra pela categoria dela. <b>Custo direto</b>: gastos pagos com a obra marcada (e "Gilson (Raspagem)" → Raspagem). <b>Custo dividido</b>: os demais gastos pagos (combustível, alimentação, folha…), divididos pela proporção de dias trabalhados de cada obra no Cronograma. Abaixo de cada serviço, as obras dele. Os totais batem com o relatório de Entradas e Saídas do mesmo período.</p>`);
   });
   let relmesModo='mes';
   document.querySelectorAll('#relmes-modo button').forEach(b=>b.addEventListener('click',()=>{

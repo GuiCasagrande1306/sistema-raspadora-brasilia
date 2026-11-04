@@ -1824,33 +1824,46 @@ export const db = {
   async relatorioServicos(desde, ate, hojeStr) {
     const r = await this.relatorioPeriodo(desde, ate, hojeStr);
     const [obR, alR] = await Promise.all([
-      sb('obras_financeiro').select('id,categoria_servico'),
+      sb('obras_financeiro').select('id,cliente,categoria_servico'),
       todasPaginas(() => sb('cronograma_alocacoes').select('obra_id,data').gte('data', desde).lte('data', ate).order('id')).then(data => ({ data })),
     ]);
     if (obR.error) throw obR.error;
-    const servDaObra = Object.fromEntries((obR.data || []).map(o => [o.id, o.categoria_servico || 'SEM_CATEGORIA']));
-    const linha = {};
-    const L = k => (linha[k] ||= { servico: k, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0 });
-    for (const e of r.entradas) L(e.obra_id ? (servDaObra[e.obra_id] || 'SEM_CATEGORIA') : 'SEM_OBRA').recebido += e.valor;
+    const obra = Object.fromEntries((obR.data || []).map(o => [o.id, o]));
+    // calcula por obra (ou linha avulsa) e depois soma no serviço
+    const und = {};
+    const U = (k, servico, nome, obra_id = null) => (und[k] ||= { obra_id, nome, servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0 });
+    const UO = id => U(id, obra[id].categoria_servico || 'SEM_CATEGORIA', obra[id].cliente || '—', id);
+    for (const e of r.entradas) {
+      if (obra[e.obra_id]) UO(e.obra_id).recebido += e.valor;
+      else if (e.obra_id) U('OBRA_EXCLUIDA', 'SEM_CATEGORIA', 'Obra excluída').recebido += e.valor;
+      else U('SEM_OBRA', 'SEM_OBRA', 'Entradas sem obra').recebido += e.valor;
+    }
     let semObra = 0;
     for (const x of r.saidas) {
       if (!x.pago) continue;
-      if (x.obra_id && servDaObra[x.obra_id]) L(servDaObra[x.obra_id]).custo_direto += x.valor;
-      else if (x.cat === 'GILSON') L('RASPAGEM').custo_direto += x.valor;
+      if (obra[x.obra_id]) UO(x.obra_id).custo_direto += x.valor;
+      else if (x.cat === 'GILSON') U('GILSON', 'RASPAGEM', 'Equipe Gilson (sem obra marcada)').custo_direto += x.valor;
       else semObra += x.valor;
     }
-    const alocs = (alR.data || []).filter(a => servDaObra[a.obra_id]);
-    for (const a of alocs) L(servDaObra[a.obra_id]).dias++;
+    const alocs = (alR.data || []).filter(a => obra[a.obra_id]);
+    for (const a of alocs) UO(a.obra_id).dias++;
     const totDias = alocs.length;
     // rateio em centavos inteiros; o resto do arredondamento vai p/ quem tem mais dias (soma fecha exata)
     if (totDias) {
-      const comDias = Object.values(linha).filter(l => l.dias).sort((a, b) => b.dias - a.dias);
+      const comDias = Object.values(und).filter(l => l.dias).sort((a, b) => b.dias - a.dias);
       let distribuido = 0;
       for (const l of comDias) { l.custo_dividido = Math.floor(semObra * l.dias / totDias); distribuido += l.custo_dividido; }
       comDias[0].custo_dividido += semObra - distribuido;
     }
-    const servicos = Object.values(linha).map(l => ({ ...l, custo_total: l.custo_direto + l.custo_dividido, resultado: l.recebido - l.custo_direto - l.custo_dividido, pct_dias: totDias ? l.dias / totDias : 0 }))
-      .sort((a, b) => b.recebido - a.recebido || b.custo_total - a.custo_total);
+    const fecha = l => ({ ...l, custo_total: l.custo_direto + l.custo_dividido, resultado: l.recebido - l.custo_direto - l.custo_dividido, pct_dias: totDias ? l.dias / totDias : 0 });
+    const ord = (a, b) => b.recebido - a.recebido || b.custo_total - a.custo_total;
+    const porServ = {};
+    for (const u of Object.values(und)) {
+      const s = (porServ[u.servico] ||= { servico: u.servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, obras: [] });
+      for (const k of ['recebido', 'custo_direto', 'custo_dividido', 'dias']) s[k] += u[k];
+      s.obras.push(fecha(u));
+    }
+    const servicos = Object.values(porServ).map(s => ({ ...fecha(s), obras: s.obras.sort(ord) })).sort(ord);
     return { desde, ate, servicos, sem_obra_nao_dividido: totDias ? 0 : semObra, total_dias: totDias, total_recebido: r.total_entradas, total_custos: r.total_saidas_pagas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
