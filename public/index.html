@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v261</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v262</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5982,11 +5982,14 @@
     el.innerHTML=`<div class="gastos-wrap">
       <div class="gastos-chart"><svg viewBox="0 0 200 200">${slices}</svg><div class="gastos-center"><span>Total</span><b class="money" style="font-size:16px">${brl(r.total_geral)}</b></div></div>
       <div class="gastos-leg"><div class="dv" style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-3);margin-bottom:8px;gap:8px"><span>${esc(rg.subt)}</span><span><b class="money" style="font-size:15px">${brl(r.total_geral)}</b> <span style="color:var(--ink-3)">${rg.rotulo.toLowerCase()}</span></span></div>
-      <input id="gastos-busca" placeholder="🔎 Filtrar categoria…" autocomplete="off" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+      <input id="gastos-busca" placeholder="🔎 Filtrar categoria ou buscar pelo nome (ex.: FLEX)…" autocomplete="off" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+      <button type="button" class="btn-ghost hidden" id="gastos-busca-lista" style="width:100%;margin-bottom:8px;min-height:36px"></button>
       <div id="gastos-legenda">${legenda}</div></div></div>`;
+    document.getElementById('gastos-busca-lista').addEventListener('click',()=>{const q=gbusca.value.trim();if(q.length>=2)abrirGastoCat(null,q);});
     el.querySelectorAll('[data-gcat]').forEach(h=>h.addEventListener('click',()=>abrirGastoCat(h.dataset.gcat)));
     const gbusca=document.getElementById('gastos-busca');
     if(gbusca)gbusca.addEventListener('input',()=>{const q=gbusca.value.trim().toLowerCase();
+      const bl=document.getElementById('gastos-busca-lista');bl.classList.toggle('hidden',q.length<2);bl.textContent=`📄 Ver tudo com “${gbusca.value.trim()}” — lista com total e PDF`;
       document.querySelectorAll('#gastos-legenda .gasto-leg').forEach(row=>{
         const nome=(row.querySelector('.gl-nome')?.textContent||'').toLowerCase();
         const hit=!q||nome.includes(q);row.style.display=hit?'':'none';
@@ -5996,18 +5999,19 @@
   }
   // Detalhe/relatório de UMA categoria de gasto (itens + PDF)
   let GCAT_STATE=null;
-  async function abrirGastoCat(categoria){
+  async function abrirGastoCat(categoria,busca){
     const rg=gastosRange();const el=document.getElementById('gcat-conteudo');
-    document.getElementById('gcat-titulo').textContent='Gastos — '+(CAT_LABEL[categoria]||categoria);
+    const rotulo=busca?'“'+busca+'”':(CAT_LABEL[categoria]||categoria);
+    document.getElementById('gcat-titulo').textContent='Gastos — '+rotulo;
     document.getElementById('gcat-resumo').textContent='';el.innerHTML='<div class="dv" style="padding:12px;color:var(--ink-3)">Carregando…</div>';
     openModal('ov-gastos-cat');
     try{
-      const r=await api('/api/gastos/detalhe?desde='+rg.desde+'&ate='+rg.ate+'&categoria='+encodeURIComponent(categoria));
+      const r=await api('/api/gastos/detalhe?desde='+rg.desde+'&ate='+rg.ate+(busca?'&busca='+encodeURIComponent(busca):'&categoria='+encodeURIComponent(categoria)));
       // itens da categoria por DATA (pedido da Maressa); descrição desempata no mesmo dia — tela e PDF
       r.itens=(r.itens||[]).slice().sort((a,b)=>String(a.data||'').localeCompare(String(b.data||''))||String(a.descricao||'').trim().localeCompare(String(b.descricao||'').trim(),'pt',{sensitivity:'base',numeric:true}));
-      GCAT_STATE={...r,rotulo:CAT_LABEL[categoria]||categoria,subt:rg.subt};
+      GCAT_STATE={...r,rotulo,subt:rg.subt};
       document.getElementById('gcat-resumo').innerHTML=`<b>${esc(rg.subt)}</b> · ${r.itens.length} lançamento(s) · Total <b>${brl(r.total)}</b>`;
-      if(!r.itens.length){el.innerHTML='<div class="orc-empty">Nenhum lançamento nesta categoria no período.</div>';return;}
+      if(!r.itens.length){el.innerHTML='<div class="orc-empty">'+(busca?'Nenhum gasto pago com esse nome no período.':'Nenhum lançamento nesta categoria no período.')+'</div>';return;}
       const rows=r.itens.map(i=>`<tr><td style="white-space:nowrap">${i.data?dtBR(i.data):'—'}</td><td>${esc(i.descricao||'—')}${i.detalhe?`<div style="font-size:10.5px;color:var(--ink-3)">${esc(i.detalhe)}</div>`:''}</td><td style="white-space:nowrap;color:var(--ink-3);font-size:11.5px">${i.origem}</td><td style="text-align:right;white-space:nowrap;font-weight:700">${brl(i.valor)}</td></tr>`).join('');
       el.innerHTML=`<table class="ltable" style="min-width:560px"><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table>`;
     }catch(err){let m=err.message||'';try{m=JSON.parse(m).erro||m;}catch{}el.innerHTML='<div class="orc-empty">Erro ao carregar os itens'+(m?': '+esc(String(m)).slice(0,120):'')+'.</div>';GCAT_STATE=null;console.error(err);}
@@ -6347,7 +6351,7 @@
         ${liqCell}</tr>`;
       const diariasBlock=temDet?`<div style="padding:8px 10px"><div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="btn-ghost" data-recibofolha="${idx}" style="padding:4px 12px;font-size:12px">🖨️ Exportar PDF deste colaborador</button></div><table style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:4px">Dia</th><th style="text-align:left;padding:4px">Obra</th><th style="text-align:left;padding:4px">Função / equipamento</th><th style="text-align:right;padding:4px">Diária</th><th style="text-align:right;padding:4px">Gratificação</th></tr></thead>
-        <tbody>${folhaDetRows(l.detalhe,idx)}</tbody></table></div>`:'';
+        <tbody>${folhaDetRows(l.detalhe,idx)}</tbody><tfoot><tr style="font-weight:800"><td colspan="3" style="padding:6px 4px;text-align:right">Total</td><td style="padding:6px 4px;text-align:right">${brl((l.detalhe||[]).reduce((s,d)=>s+((d.is_gratificacao&&d.gratificacao_paga)?0:(d.valor||0)),0))}</td><td></td></tr></tfoot></table></div>`:'';
       const TIPO_LBL={VALE:'Vale',ADIANTAMENTO_VALE:'Vale',REEMBOLSO_COMBUSTIVEL:'Reembolso',BONUS_METRAGEM:'Bônus',FALTA:'Falta',INSS:'INSS',OUTRO:'Outro desconto'};
       const lancBlock=temLanc?`<div style="padding:8px 10px 12px">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin-bottom:4px">Lançamentos do período — vales e descontos</div>
@@ -6495,11 +6499,13 @@
     const porValor={};let atestQt=0,atestVal=0;
     (o.presenca||[]).forEach(d=>{if(d.is_producao||d.is_gratificacao)return;const v=d.valor||0;if(v<=0)return;if(/ATESTADO/i.test((d.obra||'')+' '+(d.funcao||''))){atestQt++;atestVal+=v;return;}porValor[v]=(porValor[v]||0)+1;});
     const diariaLinhas=Object.entries(porValor).sort((a,b)=>Number(b[0])-Number(a[0])).map(([v,qt])=>lin(`Diárias de ${brl(Number(v))} <span style="color:#777">(${qt}×)</span>`,brl(Number(v)*qt)));
-    const diariasResumo=isPedreiro?'':((diariaLinhas.join('')||lin('Diárias',brl(o.diarias||0)))+(atestQt?lin(`Atestado <span style="color:#777">(${atestQt}×)</span>`,brl(atestVal)):''));
+    const diariasResumo=(isPedreiro&&!(o.diarias>0))?'':((diariaLinhas.join('')||lin('Diárias',brl(o.diarias||0)))+(atestQt?lin(`Atestado <span style="color:#777">(${atestQt}×)</span>`,brl(atestVal)):''));
     // Comissão por m² é SÓ para pedreiro — servente não tem. Mostra se é pedreiro OU se há comissão > 0.
     const comissaoLinha=(isPedreiro||(o.comissao||0)>0)?lin('Comissão por m²',brl(o.comissao||0)):'';
     const inssLinha=isPedreiro?lin('(−) INSS',o.inss?'− '+brl(o.inss):'—'):(o.inss?lin('(−) INSS','− '+brl(o.inss)):'');
-    const secTitulo=isPedreiro?'Produção por m²':'Presença — diárias';
+    const secTitulo=(isPedreiro&&!(o.diarias>0))?'Produção por m²':'Presença — diárias';
+    // gratificação já paga à parte não soma (mesma regra do líquido)
+    const totLinhas=(o.presenca||[]).reduce((s,d)=>s+((d.is_gratificacao&&d.gratificacao_paga)?0:(d.valor||0)),0);
     return `<h1>Folha de Pagamento — ${esc(o.nome||'')}</h1><p class="sub">${esc(o.ref||'')}</p>`+`
       <div class="cards">
         <div class="card"><div class="k">Presença</div><div class="v">${diasPresenca} dia(s)</div></div>
@@ -6507,7 +6513,7 @@
         <div class="card"><div class="k">Gratificação</div><div class="v">${brl(gratTotal)}</div></div>
         <div class="card"><div class="k">Líquido a receber</div><div class="v">${brl(o.liquido||0)}</div></div></div>
       <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">${secTitulo}</h3>
-      <table><thead><tr><th>Dia</th><th>Obra</th><th>Função / equipamento</th><th style="text-align:right">Diária</th></tr></thead><tbody>${presRows}</tbody></table>
+      <table><thead><tr><th>Dia</th><th>Obra</th><th>Função / equipamento</th><th style="text-align:right">Diária</th></tr></thead><tbody>${presRows}</tbody>${(o.presenca||[]).length?`<tfoot><tr><td colspan="3" class="r">Total</td><td class="r">${brl(totLinhas)}</td></tr></tfoot>`:''}</table>
       ${faltasSec}
       <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118;margin-top:16px">Resumo</h3>
       <table><tbody>

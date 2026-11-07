@@ -1455,18 +1455,24 @@ export const db = {
     return { desde, ate, total_geral, categorias };
   },
   // Itens individuais de uma categoria no período (boletos + lançamentos diários) — para ver/imprimir tudo de uma categoria
-  async gastosDetalhe(desde, ate, categoria) {
+  // busca (opcional): em vez da categoria, traz de TODAS as categorias o que tem o texto na descrição/fornecedor
+  async gastosDetalhe(desde, ate, categoria, busca = '') {
     let boletos, lancs;
+    const termo = String(busca || '').replace(/[,%()]/g, ' ').trim();   // sanitiza p/ o filtro .or
     if (USING_SUPABASE) {
-      const [b, l] = await Promise.all([
-        todasPaginas(() => sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,data_pagamento,pago').eq('categoria', categoria).eq('pago', true).or(boletoPagoNoPeriodo(desde, ate)).order('id')),
-        todasPaginas(() => sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').eq('categoria', categoria).eq('pago', true).gte('data', desde).lte('data', ate).order('id')),
-      ]);
+      const txt = campos => campos.map(c => `${c}.ilike.%${termo}%`).join(',');
+      // boleto já usa .or() p/ o período: período E texto vão num .or() só (dois .or() não combinam)
+      const bolQ = () => { const q = sb('boletos').select('descricao,fornecedor,categoria,categoria_custom,valor,vencimento,data_pagamento,pago').eq('pago', true);
+        return (termo ? q.or(`and(or(${boletoPagoNoPeriodo(desde, ate)}),or(${txt(['descricao', 'fornecedor'])}))`) : q.eq('categoria', categoria).or(boletoPagoNoPeriodo(desde, ate))).order('id'); };
+      const ldQ = () => { const q = sb('lancamentos_diarios').select('descricao,categoria,categoria_custom,valor,data,pago').eq('pago', true).gte('data', desde).lte('data', ate);
+        return (termo ? q.or(txt(['descricao', 'categoria_custom'])) : q.eq('categoria', categoria)).order('id'); };
+      const [b, l] = await Promise.all([todasPaginas(bolQ), todasPaginas(ldQ)]);
       boletos = b; lancs = l;
     } else {
       const noPer = (x, d) => x.pago && x[d] >= desde && x[d] <= ate;
-      boletos = mock.boletos.filter(x => (x.categoria || 'OUTRO') === categoria && x.pago && (x.data_pagamento || x.vencimento) >= desde && (x.data_pagamento || x.vencimento) <= ate);
-      lancs = mock.lancDiarios.filter(x => (x.categoria || 'OUTRO') === categoria && noPer(x, 'data'));
+      const bate = (x, campos) => termo ? campos.some(c => String(x[c] || '').toLowerCase().includes(termo.toLowerCase())) : (x.categoria || 'OUTRO') === categoria;
+      boletos = mock.boletos.filter(x => bate(x, ['descricao', 'fornecedor']) && x.pago && (x.data_pagamento || x.vencimento) >= desde && (x.data_pagamento || x.vencimento) <= ate);
+      lancs = mock.lancDiarios.filter(x => bate(x, ['descricao', 'categoria_custom']) && noPer(x, 'data'));
     }
     const itens = [
       ...boletos.map(x => ({ data: x.data_pagamento || x.vencimento, descricao: x.descricao || '', detalhe: x.fornecedor || x.categoria_custom || '', valor: x.valor || 0, origem: 'Boleto', categoria_custom: x.categoria_custom || null, pago: !!x.pago })),
@@ -2192,8 +2198,9 @@ export const db = {
     const _chaveObra = d => d.data + '|' + (d.obra_id || _normObra(d.obra));
     for (const p of Object.values(porColab)) {
       if (/PEDREIRO/i.test(p.cargo || '')) {
-        // Pedreiro é pago por m² — dias do cronograma sem produção não geram linha no recibo
-        p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao);
+        // Pedreiro é pago por m² — dias do cronograma SEM valor não geram linha no recibo;
+        // diária com valor (ex.: Vanderlan no vibrador) aparece, senão some da folha embora entre no total
+        p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0);
       } else {
         const prodKeys = new Set(p.detalhe.filter(d => d.is_producao).map(_chaveObra));
         if (prodKeys.size) p.detalhe = p.detalhe.filter(d => d.is_producao || d.is_gratificacao || (d.valor || 0) > 0 || !prodKeys.has(_chaveObra(d)));
