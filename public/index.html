@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v262</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v263</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6489,8 +6489,13 @@
   function reciboBody(o){
     const has=a=>a&&a.length;
     const isPedreiro=/PEDREIRO/i.test(o.cargo||'');
-    const presRows=reciboPresRows(o.presenca);
-    const diasPresenca=new Set((o.presenca||[]).map(d=>d.data).filter(Boolean)).size;   // dias DISTINTOS (não a qtd de linhas)
+    // Pedreiro (Maressa): gratificação é controle interno — no PDF não aparece linha nem no resumo; só o cartão "Gratificações pagas"
+    // dia que só tem gratificação continua como dia trabalhado (obra + data), sem a função/valor da gratificação
+    const presVis=!isPedreiro?(o.presenca||[]):(()=>{const v=(o.presenca||[]).filter(d=>!d.is_gratificacao);const dias=new Set(v.map(d=>d.data));
+      (o.presenca||[]).filter(d=>d.is_gratificacao&&!dias.has(d.data)).forEach(d=>{dias.add(d.data);v.push({data:d.data,obra:d.obra,funcao:'—',valor:0});});return v;})();
+    const gratPagas=(o.presenca||[]).filter(d=>d.is_gratificacao&&d.gratificacao_paga).reduce((s,d)=>s+(d.valor||0),0);
+    const presRows=reciboPresRows(presVis);
+    const diasPresenca=new Set(presVis.map(d=>d.data).filter(Boolean)).size;   // dias DISTINTOS (não a qtd de linhas)
     const gratTotal=(o.gratifTotal!=null)?o.gratifTotal:(o.presenca||[]).filter(d=>d.is_gratificacao).reduce((s,d)=>s+(d.valor||0),0);
     const faltasSec=has(o.faltas)?`<h3 style="font-size:12px;text-transform:uppercase;color:#b91c1c;margin-top:16px">Faltas</h3>
       <table><thead><tr><th>Dia</th><th style="text-align:right">Desconto</th></tr></thead><tbody>${o.faltas.map(f=>`<tr><td>${f.data?dtBR(f.data):'—'}</td><td class="r">${f.valor?'− '+brl(f.valor):'—'}</td></tr>`).join('')}</tbody></table>`:'';
@@ -6505,21 +6510,21 @@
     const inssLinha=isPedreiro?lin('(−) INSS',o.inss?'− '+brl(o.inss):'—'):(o.inss?lin('(−) INSS','− '+brl(o.inss)):'');
     const secTitulo=(isPedreiro&&!(o.diarias>0))?'Produção por m²':'Presença — diárias';
     // gratificação já paga à parte não soma (mesma regra do líquido)
-    const totLinhas=(o.presenca||[]).reduce((s,d)=>s+((d.is_gratificacao&&d.gratificacao_paga)?0:(d.valor||0)),0);
+    const totLinhas=presVis.reduce((s,d)=>s+((d.is_gratificacao&&d.gratificacao_paga)?0:(d.valor||0)),0);
     return `<h1>Folha de Pagamento — ${esc(o.nome||'')}</h1><p class="sub">${esc(o.ref||'')}</p>`+`
       <div class="cards">
         <div class="card"><div class="k">Presença</div><div class="v">${diasPresenca} dia(s)</div></div>
         <div class="card"><div class="k">Faltas</div><div class="v">${has(o.faltas)?o.faltas.length:0}</div></div>
-        <div class="card"><div class="k">Gratificação</div><div class="v">${brl(gratTotal)}</div></div>
+        ${isPedreiro?`<div class="card"><div class="k">Gratificações pagas</div><div class="v">${brl(gratPagas)}</div></div>`:`<div class="card"><div class="k">Gratificação</div><div class="v">${brl(gratTotal)}</div></div>`}
         <div class="card"><div class="k">Líquido a receber</div><div class="v">${brl(o.liquido||0)}</div></div></div>
       <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">${secTitulo}</h3>
-      <table><thead><tr><th>Dia</th><th>Obra</th><th>Função / equipamento</th><th style="text-align:right">Diária</th></tr></thead><tbody>${presRows}</tbody>${(o.presenca||[]).length?`<tfoot><tr><td colspan="3" class="r">Total</td><td class="r">${brl(totLinhas)}</td></tr></tfoot>`:''}</table>
+      <table><thead><tr><th>Dia</th><th>Obra</th><th>Função / equipamento</th><th style="text-align:right">Diária</th></tr></thead><tbody>${presRows}</tbody>${presVis.length?`<tfoot><tr><td colspan="3" class="r">Total</td><td class="r">${brl(totLinhas)}</td></tr></tfoot>`:''}</table>
       ${faltasSec}
       <h3 style="font-size:12px;text-transform:uppercase;color:#ED7118;margin-top:16px">Resumo</h3>
       <table><tbody>
         ${diariasResumo}
         ${comissaoLinha}
-        ${o.bonus?lin('Gratificação',brl(o.bonus)):''}
+        ${(o.bonus&&!isPedreiro)?lin('Gratificação',brl(o.bonus)):''}
         ${o.vales?lin('(−) Vales adiantados','− '+brl(o.vales)):''}
         ${o.faltasTotal?lin('(−) Faltas','− '+brl(o.faltasTotal)):''}
         ${inssLinha}
