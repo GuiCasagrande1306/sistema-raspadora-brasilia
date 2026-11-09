@@ -2224,7 +2224,9 @@ export const db = {
       const bonus_assiduidade = dias > 22 ? 50000 : 0;   // R$ 500 (assiduidade) — somado à coluna Gratificação
       const gratificacoes = p.gratificacoes + bonus_assiduidade;   // coluna "Gratificação" (todas do período)
       // no total só entra o que ainda NÃO foi pago à parte (as pagas já saíram pelo caixa)
-      const bruto = diarias + comissao + (gratificacoes - p.gratifPagas);
+      // Pedreiro: gratificação é extra pago à parte quando dá — a NÃO paga também fica fora do líquido (Maressa); só a assiduidade soma
+      const gratifNoLiquido = /PEDREIRO/i.test(p.cargo || '') ? bonus_assiduidade : gratificacoes - p.gratifPagas;
+      const bruto = diarias + comissao + gratifNoLiquido;
       const total_liquido = bruto - p.vales - p.faltas - p.inss - p.outros_desc;
       return {
         colaborador_id: p.id, nome: p.nome, cargo: p.cargo, is_diarista: !!p.is_diarista,
