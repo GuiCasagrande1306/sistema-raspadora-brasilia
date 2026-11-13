@@ -2331,21 +2331,54 @@ export const db = {
       ...(custos || []).map(c => ({ descricao: c.descricao_insumo || 'Material', valor: c.custo_total || 0 })),
       ...(lancs || []).filter(l => l.categoria === 'insumo').map(l => ({ descricao: l.descricao || 'Material', valor: l.valor || 0 })),
     ];
-    // MÃO DE OBRA: apontamento (diária + comissão por colaborador-dia) + demais lançamentos de saída
+    // MÃO DE OBRA: mesmo cálculo da folha, agrupado por colaborador — produção m² (taxa do apontamento),
+    // diárias do Cronograma e gratificações (pedreiro: só as pagas) + demais lançamentos de saída
     const maoobra_itens = [];
+    const cx = (await this.custosCaixaObras([obraId]))[obraId];
+    const semAcento = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     const apIds = (aps || []).map(a => a.id);
-    if (apIds.length) {
-      const { data: apeq } = await sb('apontamento_equipe').select('m2_rateado,colaborador_id,apontamento_id').in('apontamento_id', apIds);
-      if (apeq && apeq.length) {
-        const ids = [...new Set(apeq.map(r => r.colaborador_id))];
-        const { data: cs } = await sb('colaboradores').select('id,nome,valor_diaria,comissao_por_m2').in('id', ids);
-        const map = Object.fromEntries((cs || []).map(c => [c.id, c]));
-        for (const r of apeq) {
-          const c = map[r.colaborador_id] || {};
-          const v = (c.valor_diaria || 0) + Math.round(Number(r.m2_rateado) * (c.comissao_por_m2 || 0));
-          maoobra_itens.push({ descricao: (c.nome || 'Colaborador') + ' — diária + comissão', valor: v });
-        }
-      }
+    const [apeq, alocs] = await Promise.all([
+      apIds.length ? todasPaginas(() => sb('apontamento_equipe').select('id,m2_rateado,valor_m2,colaborador_id,data').in('apontamento_id', apIds).order('id')) : [],
+      todasPaginas(() => sb('cronograma_alocacoes').select('id,colaborador_id,data,funcao,valor_diaria,gratificacao_paga').eq('obra_id', obraId).order('id')),
+    ]);
+    const ids = [...new Set([...apeq, ...alocs].map(r => r.colaborador_id))];
+    const { data: cs } = ids.length ? await sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2').in('id', ids) : { data: [] };
+    const cmap = Object.fromEntries((cs || []).map(c => [c.id, c]));
+    // diária/gratificação já lançada no caixa com esta obra (mesmo dia + tipo + nome na descrição) → não conta de novo.
+    // 1º nome repetido no dia (2 ANTONIOs) desempata pelos demais nomes.
+    const nomes = id => semAcento((cmap[id] || {}).nome).split(/[^A-Z]+/).filter(t => t.length >= 3 && !['DAS', 'DOS'].includes(t));
+    const jaNoCaixa = new Set();
+    for (const it of (cx ? cx.itens : [])) {
+      const cat = semAcento(it.categoria), desc = semAcento(it.descricao);
+      const gratif = /GRATIFICA/.test(cat); if (!gratif && !/DIARIA/.test(cat)) continue;
+      let cand = alocs.filter(a => a.data === it.data && /GRATIFICA/i.test(a.funcao || '') === gratif && desc.includes(nomes(a.colaborador_id)[0] || '#'));
+      const porPrimeiro = {};
+      for (const a of cand) (porPrimeiro[nomes(a.colaborador_id)[0]] ||= []).push(a);
+      cand = Object.values(porPrimeiro).flatMap(g => g.length > 1 ? g.filter(a => nomes(a.colaborador_id).slice(1).some(t => desc.includes(t))) : g);
+      for (const a of cand) jaNoCaixa.add(a.id);
+    }
+    // apontamento antigo sem Cronograma no dia: diária base do cadastro (igual à folha)
+    const datasAp = [...new Set(apeq.map(r => r.data))];
+    const cronDia = new Set(datasAp.length ? (await todasPaginas(() => sb('cronograma_alocacoes').select('id,colaborador_id,data').in('data', datasAp).in('colaborador_id', ids).order('id'))).map(a => a.colaborador_id + '|' + a.data) : []);
+    const grupos = {};
+    const soma = (c, tipo, valor, m2 = 0) => { if (!valor) return; const g = (grupos[c.id + '|' + tipo] ||= { nome: c.nome || 'Colaborador', tipo, n: 0, m2: 0, valor: 0 }); g.n++; g.m2 += m2; g.valor += valor; };
+    for (const r of apeq) {
+      const c = cmap[r.colaborador_id] || { id: r.colaborador_id };
+      const m = Number(r.m2_rateado) || 0;
+      soma(c, 'producao', Math.round(m * (r.valor_m2 ? Number(r.valor_m2) : (c.comissao_por_m2 || 0))), m);
+      if (!cronDia.has(r.colaborador_id + '|' + r.data)) soma(c, 'diaria', c.valor_diaria || 0);
+    }
+    for (const a of alocs) {
+      const c = cmap[a.colaborador_id] || { id: a.colaborador_id };
+      const gratif = /GRATIFICA/i.test(a.funcao || '');
+      if (gratif && /PEDREIRO/i.test(c.cargo || '') && !a.gratificacao_paga) continue;   // extra não pago não é custo
+      if (jaNoCaixa.has(a.id)) continue;
+      soma(c, gratif ? 'gratificacao' : 'diaria', a.valor_diaria || 0);
+    }
+    const fmtM2 = v => (Math.round(v * 100) / 100).toLocaleString('pt-BR');
+    for (const g of Object.values(grupos).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR') || a.tipo.localeCompare(b.tipo))) {
+      const det = g.tipo === 'producao' ? 'produção ' + fmtM2(g.m2) + ' m²' : g.tipo === 'diaria' ? g.n + (g.n > 1 ? ' diárias' : ' diária') : g.n + (g.n > 1 ? ' gratificações' : ' gratificação');
+      maoobra_itens.push({ descricao: g.nome + ' — ' + det, valor: g.valor });
     }
     for (const l of (lancs || [])) if (l.categoria !== 'insumo') maoobra_itens.push({ descricao: l.descricao || 'Mão de obra', valor: l.valor || 0 });
 
@@ -2354,7 +2387,6 @@ export const db = {
     if (!insumos_itens.length && obra.custo_insumos) custo_insumos = obra.custo_insumos;   // fallback denormalizado
     if (!maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
     // + o que foi lançado no caixa com esta obra marcada
-    const cx = (await this.custosCaixaObras([obraId]))[obraId];
     for (const it of (cx ? cx.itens : [])) {
       (it.insumo ? insumos_itens : maoobra_itens).push({ descricao: it.descricao + ' (caixa ' + String(it.data || '').split('-').reverse().join('/') + ')', valor: it.valor });
       if (it.insumo) custo_insumos += it.valor; else custo_mao_obra += it.valor;
