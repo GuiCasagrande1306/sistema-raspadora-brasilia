@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v264</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v265</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -3034,14 +3034,16 @@
     const el=document.getElementById('oe-lanc-lista');if(!el)return;
     el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Carregando lançamentos…</div>';
     let r;try{r=await api('/api/financeiro/obra/'+obraId+'/lancamentos');}catch(e){el.innerHTML='';console.error(e);return;}
-    const arr=r.lancamentos||[];
-    if(!arr.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhum lançamento nesta obra ainda.</div>';return;}
+    const arr=r.lancamentos||[], cx=r.caixa||[];
+    // lançados no Pagamento Diário/Boletos com esta obra: só leitura aqui (edita lá no caixa)
+    const cxHtml=cx.length?'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin:10px 0 2px">Do caixa (Pagamento Diário / Boletos) — '+brl(cx.reduce((s,x)=>s+(x.valor||0),0))+'</div>'+cx.map(x=>`<div style="display:flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;font-size:13px"><div style="flex:1;min-width:0"><b>${esc(x.descricao||'—')}</b><div style="font-size:11px;color:var(--ink-2)">${x.data?dtBR(x.data):'—'} · ${esc(x.origem)} · ${x.insumo?'Materiais':'Mão de obra'}</div></div><b class="money" style="color:var(--danger)">−${brl(x.valor||0)}</b></div>`).join(''):'';
+    if(!arr.length){el.innerHTML='<div class="dv" style="color:var(--ink-3);font-size:12px">Nenhum lançamento feito na obra.</div>'+cxHtml;return;}
     el.innerHTML='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);margin:2px 0">Lançamentos</div>'+arr.map(l=>`<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px">
         <div style="flex:1;min-width:0"><b>${esc(l.descricao||catLancLbl(l.tipo,l.categoria))}</b><div style="font-size:11px;color:var(--ink-2)">${l.tipo==='entrada'?'Entrada':'Saída'} · ${esc(catLancLbl(l.tipo,l.categoria))}</div></div>
         <b class="money" style="color:${l.tipo==='entrada'?'var(--ok)':'var(--danger)'}">${l.tipo==='entrada'?'+':'−'}${brl(l.valor||0)}</b>
         <button type="button" class="btn-ghost lanc-edit" data-lid="${l.id}" data-obra="${l.obra_id}" data-tipo="${l.tipo}" data-cat="${esc(l.categoria||'')}" data-valor="${l.valor||0}" data-desc="${esc(l.descricao||'')}" title="Editar" style="padding:3px 10px;font-size:12px">✏️</button>
         <button type="button" class="doc-cloud lanc-del" data-lid="${l.id}" title="Excluir">${DE_TRASH}</button>
-      </div>`).join('');
+      </div>`).join('')+cxHtml;
     el.querySelectorAll('.lanc-edit').forEach(b=>b.addEventListener('click',()=>{
       document.getElementById('lanc-id').value=b.dataset.lid;document.getElementById('lanc-titulo').textContent='Editar lançamento';
       const f=document.getElementById('form-lanc');

@@ -1236,7 +1236,7 @@ app.patch('/api/financeiro/obra/:id/mover', async (req, res, next) => {
 // ---------- FINANCEIRO ----------
 app.get('/api/financeiro/obras', async (_req, res, next) => {
   try {
-    const obras = (await db.listObras()).map(resumoObra);
+    const obras = (await db.comCustosCaixa(await db.listObras())).map(resumoObra);
     const colunas = { aprovado: [], execucao: [], afericao: [], liquidado: [] };
     for (const o of obras) (colunas[o.coluna_kanban] ||= []).push(o);
     const ativas = obras.filter(o => o.coluna_kanban !== 'liquidado');
@@ -1254,7 +1254,7 @@ app.get('/api/financeiro/obra/:id', async (req, res, next) => {
   try {
     const o = await db.getObra(req.params.id);
     if (!o) return res.status(404).json({ erro: 'obra não encontrada' });
-    res.json(o);
+    res.json(await db.comCustosCaixa(o));
   } catch (e) { next(e); }
 });
 app.patch('/api/financeiro/obra/:id', async (req, res, next) => {
@@ -1368,7 +1368,10 @@ app.post('/api/financeiro/lancamento', async (req, res, next) => {
 });
 // Lista os lançamentos (custos/entradas) de uma obra — para editar/excluir
 app.get('/api/financeiro/obra/:id/lancamentos', async (req, res, next) => {
-  try { res.json({ lancamentos: await db.listLancamentosObra(req.params.id) }); }
+  try {
+    const [lancamentos, cx] = await Promise.all([db.listLancamentosObra(req.params.id), db.custosCaixaObras([req.params.id])]);
+    res.json({ lancamentos, caixa: (cx[req.params.id] || {}).itens || [] });
+  }
   catch (e) { next(e); }
 });
 // Editar um lançamento (valor em REAIS → centavos); ajusta os custos da obra

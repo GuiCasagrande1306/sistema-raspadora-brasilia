@@ -328,6 +328,28 @@ export const db = {
     const { data: obra } = await sb('obras_financeiro').select(col).eq('id', obraId).single();
     if (obra) await sb('obras_financeiro').update({ [col]: Math.max(0, (obra[col] || 0) + delta) }).eq('id', obraId);
   },
+  // Custos lançados no CAIXA (Pagamento Diário/Boletos) com a obra marcada. Somados na LEITURA — não grava em
+  // obras_financeiro (não duplica com o "Lançar custo" da obra). INSUMO → materiais; o resto → mão de obra (mesma regra do DRE).
+  async custosCaixaObras(ids = null) {
+    const out = {};
+    if (!USING_SUPABASE || (ids && !ids.length)) return out;
+    const q = (t, sel) => todasPaginas(() => { let x = sb(t).select(sel).not('obra_id', 'is', null); if (ids) x = x.in('obra_id', ids); return x.order('id'); });
+    const [ld, bo] = await Promise.all([
+      q('lancamentos_diarios', 'id,obra_id,data,descricao,categoria,categoria_custom,valor'),
+      q('boletos', 'id,obra_id,vencimento,data_pagamento,descricao,fornecedor,categoria,valor'),
+    ]);
+    const add = (obra_id, it) => { const o = (out[obra_id] ||= { insumos: 0, maoobra: 0, itens: [] }); o[it.insumo ? 'insumos' : 'maoobra'] += it.valor; o.itens.push(it); };
+    for (const x of ld) add(x.obra_id, { id: x.id, origem: 'Pagamento diário', data: x.data, descricao: x.descricao || x.categoria_custom || x.categoria, categoria: x.categoria, valor: x.valor || 0, insumo: x.categoria === 'INSUMO' });
+    for (const x of bo) add(x.obra_id, { id: x.id, origem: 'Boleto', data: x.data_pagamento || x.vencimento, descricao: [x.descricao, x.fornecedor].filter(Boolean).join(' · ') || x.categoria, categoria: x.categoria, valor: x.valor || 0, insumo: x.categoria === 'INSUMO' });
+    for (const o of Object.values(out)) o.itens.sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+    return out;
+  },
+  async comCustosCaixa(obras) {
+    const lista = Array.isArray(obras) ? obras : [obras];
+    const m = await this.custosCaixaObras(lista.length === 1 ? [lista[0].id] : null);
+    const r = lista.map(o => { const c = m[o.id]; return c ? { ...o, custo_insumos: (o.custo_insumos || 0) + c.insumos, custo_mao_obra: (o.custo_mao_obra || 0) + c.maoobra } : o; });
+    return Array.isArray(obras) ? r : r[0];
+  },
   async listLancamentosObra(obra_id) {
     if (!USING_SUPABASE) return (mock.lancamentos || []).filter(l => l.obra_id === obra_id);
     const { data } = await sb('lancamentos').select('*').eq('obra_id', obra_id).order('created_at', { ascending: false });
@@ -2331,6 +2353,12 @@ export const db = {
     let custo_mao_obra = maoobra_itens.reduce((s, i) => s + i.valor, 0);
     if (!insumos_itens.length && obra.custo_insumos) custo_insumos = obra.custo_insumos;   // fallback denormalizado
     if (!maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
+    // + o que foi lançado no caixa com esta obra marcada
+    const cx = (await this.custosCaixaObras([obraId]))[obraId];
+    for (const it of (cx ? cx.itens : [])) {
+      (it.insumo ? insumos_itens : maoobra_itens).push({ descricao: it.descricao + ' (caixa ' + String(it.data || '').split('-').reverse().join('/') + ')', valor: it.valor });
+      if (it.insumo) custo_insumos += it.valor; else custo_mao_obra += it.valor;
+    }
     const receita_bruta = obra.valor_contrato || 0;
     const custo_direto = custo_insumos + custo_mao_obra;
     const lucro_bruto = receita_bruta - custo_direto;
