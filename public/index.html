@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v268</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v269</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6175,7 +6175,9 @@
     if(!BANCOS_STATE){showToast('Abra Contas & Fluxo primeiro');return;}
     const {saldos,fluxo}=BANCOS_STATE;
     const contasRows=(saldos.contas||[]).map(c=>`<tr><td>${esc(c.nome_instituicao)}</td><td>${esc(c.tipo_conta||'')}</td><td class="r">${brl(c.saldo_atual)}</td></tr>`).join('');
-    const fluxoRows=(fluxo.dias||[]).map(d=>`<tr><td>${new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="r">${d.entradas?brl(d.entradas):'—'}</td><td class="r">${d.saidas?brl(d.saidas):'—'}</td><td class="r">${brl(d.saldo_projetado)}</td></tr>`).join('')||'<tr><td colspan="4" class="c">Sem movimentações previstas.</td></tr>';
+    // entradas: quem pagou, igual à tela (entradas_itens embaixo do dia)
+    const fluxoRows=(fluxo.dias||[]).map(d=>`<tr><td>${new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="r">${d.entradas?brl(d.entradas):'—'}</td><td class="r">${d.saidas?brl(d.saidas):'—'}</td><td class="r">${brl(d.saldo_projetado)}</td></tr>`
+      +(d.entradas?(d.entradas_itens||[]).map(it=>`<tr style="font-size:10.5px;color:#555"><td style="padding-left:18px">↳ ${esc(it.origem||'')}${it.descricao?' · '+esc(it.descricao):''}</td><td class="r" style="color:#12805c">${brl(it.valor)}</td><td></td><td></td></tr>`).join(''):'')).join('')||'<tr><td colspan="4" class="c">Sem movimentações previstas.</td></tr>';
     finPrint('Fluxo de Caixa',`<h1>Bancos & Fluxo de Caixa</h1><p class="sub">Saldos e projeção de 30 dias</p>
       <div class="cards">
         <div class="card"><div class="k">Saldo consolidado</div><div class="v">${brl(saldos.total_consolidado)}</div></div>
