@@ -1859,7 +1859,7 @@ export const db = {
     const obra = Object.fromEntries((obR.data || []).map(o => [o.id, o]));
     // calcula por obra (ou linha avulsa) e depois soma no serviço
     const und = {};
-    const U = (k, servico, nome, obra_id = null) => (und[k] ||= { obra_id, nome, servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, mao_obra: 0 });
+    const U = (k, servico, nome, obra_id = null) => (und[k] ||= { obra_id, nome, servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, datas: new Set() });
     const UO = id => U(id, obra[id].categoria_servico || 'SEM_CATEGORIA', obra[id].cliente || '—', id);
     for (const e of r.entradas) {
       if (obra[e.obra_id]) UO(e.obra_id).recebido += e.valor;
@@ -1874,11 +1874,8 @@ export const db = {
       else semObra += x.valor;
     }
     const alocs = (alR.data || []).filter(a => obra[a.obra_id]);
-    for (const a of alocs) UO(a.obra_id).dias++;
+    for (const a of alocs) { const u = UO(a.obra_id); u.dias++; u.datas.add(a.data); }   // dias = pessoa-dia (peso do rateio); datas = dias do calendário
     const totDias = alocs.length;
-    // só informativo (não entra no custo): servente/pedreiro por obra, mesmo cálculo da folha (diárias + produção m² + gratificação)
-    const folha = await this.fecharFolha(desde, ate);
-    for (const c of folha.colaboradores) for (const d of c.detalhe || []) if (obra[d.obra_id]) UO(d.obra_id).mao_obra += d.valor || 0;
     // rateio em centavos inteiros; o resto do arredondamento vai p/ quem tem mais dias (soma fecha exata)
     if (totDias) {
       const comDias = Object.values(und).filter(l => l.dias).sort((a, b) => b.dias - a.dias);
@@ -1886,16 +1883,17 @@ export const db = {
       for (const l of comDias) { l.custo_dividido = Math.floor(semObra * l.dias / totDias); distribuido += l.custo_dividido; }
       comDias[0].custo_dividido += semObra - distribuido;
     }
-    const fecha = l => ({ ...l, custo_total: l.custo_direto + l.custo_dividido, resultado: l.recebido - l.custo_direto - l.custo_dividido, pct_dias: totDias ? l.dias / totDias : 0 });
+    const fecha = ({ datas, ...l }) => ({ ...l, dias_corridos: datas.size, custo_total: l.custo_direto + l.custo_dividido, resultado: l.recebido - l.custo_direto - l.custo_dividido, pct_dias: totDias ? l.dias / totDias : 0 });
     const ord = (a, b) => b.recebido - a.recebido || b.custo_total - a.custo_total;
     const porServ = {};
     for (const u of Object.values(und)) {
-      const s = (porServ[u.servico] ||= { servico: u.servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, mao_obra: 0, obras: [] });
-      for (const k of ['recebido', 'custo_direto', 'custo_dividido', 'dias', 'mao_obra']) s[k] += u[k];
+      const s = (porServ[u.servico] ||= { servico: u.servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, datas: new Set(), obras: [] });
+      for (const k of ['recebido', 'custo_direto', 'custo_dividido', 'dias']) s[k] += u[k];
+      for (const d of u.datas) s.datas.add(d);
       s.obras.push(fecha(u));
     }
     const servicos = Object.values(porServ).map(s => ({ ...fecha(s), obras: s.obras.sort(ord) })).sort(ord);
-    return { desde, ate, servicos, sem_obra_nao_dividido: totDias ? 0 : semObra, total_dias: totDias, total_recebido: r.total_entradas, total_custos: r.total_saidas_pagas };
+    return { desde, ate, servicos, sem_obra_nao_dividido: totDias ? 0 : semObra, total_dias: new Set(alocs.map(a => a.data)).size, total_recebido: r.total_entradas, total_custos: r.total_saidas_pagas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
