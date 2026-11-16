@@ -2315,15 +2315,23 @@ export const db = {
     return data || [];
   },
   // DRE individual da obra
-  async dreObra(obraId) {
+  // desde/ate (AAAA-MM-DD, opcionais): só o que aconteceu no período; receita vira o RECEBIDO no período
+  async dreObra(obraId, desde = null, ate = null) {
     if (!USING_SUPABASE) return null;
     const { data: obra } = await sb('obras_financeiro').select('*').eq('id', obraId).single();
     if (!obra) return null;
-    const [{ data: custos }, { data: aps }, { data: lancs }] = await Promise.all([
+    const per = !!(desde && ate);
+    const noPer = d => !per || (!!d && d >= desde && d <= ate);
+    let [{ data: custos }, { data: aps }, { data: lancs }] = await Promise.all([
       sb('custos_obras').select('descricao_insumo,custo_total').eq('obra_id', obraId),
       sb('apontamentos_diarios').select('id,data').eq('obra_id', obraId),
       sb('lancamentos').select('categoria,valor,descricao,tipo,created_at').eq('obra_id', obraId).eq('tipo', 'saida'),
     ]);
+    if (per) {
+      custos = [];   // custos_obras não tem data (tabela vazia hoje) — fora do filtro por período
+      aps = (aps || []).filter(a => noPer(a.data));
+      lancs = (lancs || []).filter(l => noPer(String(l.created_at || '').slice(0, 10)));
+    }
     // INSUMOS/MATERIAIS: custos de obra (planilha) + lançamentos marcados como insumo
     const insumos_itens = [
       ...(custos || []).map(c => ({ descricao: c.descricao_insumo || 'Material', valor: c.custo_total || 0 })),
@@ -2332,12 +2340,13 @@ export const db = {
     // MÃO DE OBRA: mesmo cálculo da folha, agrupado por colaborador — produção m² (taxa do apontamento),
     // diárias do Cronograma e gratificações (pedreiro: só as pagas) + demais lançamentos de saída
     const maoobra_itens = [];
-    const cx = (await this.custosCaixaObras([obraId]))[obraId];
+    let cx = (await this.custosCaixaObras([obraId]))[obraId];
+    if (cx && per) cx = { ...cx, itens: cx.itens.filter(it => noPer(it.data)) };
     const semAcento = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     const apIds = (aps || []).map(a => a.id);
     const [apeq, alocs] = await Promise.all([
       apIds.length ? todasPaginas(() => sb('apontamento_equipe').select('id,m2_rateado,valor_m2,colaborador_id,data').in('apontamento_id', apIds).order('id')) : [],
-      todasPaginas(() => sb('cronograma_alocacoes').select('id,colaborador_id,data,funcao,valor_diaria,gratificacao_paga').eq('obra_id', obraId).order('id')),
+      todasPaginas(() => sb('cronograma_alocacoes').select('id,colaborador_id,data,funcao,valor_diaria,gratificacao_paga').eq('obra_id', obraId).order('id')).then(a => a.filter(x => noPer(x.data))),
     ]);
     const ids = [...new Set([...apeq, ...alocs].map(r => r.colaborador_id))];
     const { data: cs } = ids.length ? await sb('colaboradores').select('id,nome,cargo,valor_diaria,comissao_por_m2').in('id', ids) : { data: [] };
@@ -2382,19 +2391,28 @@ export const db = {
 
     let custo_insumos = insumos_itens.reduce((s, i) => s + i.valor, 0);
     let custo_mao_obra = maoobra_itens.reduce((s, i) => s + i.valor, 0);
-    if (!insumos_itens.length && obra.custo_insumos) custo_insumos = obra.custo_insumos;   // fallback denormalizado
-    if (!maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
+    if (!per && !insumos_itens.length && obra.custo_insumos) custo_insumos = obra.custo_insumos;   // fallback denormalizado
+    if (!per && !maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
     // + o que foi lançado no caixa com esta obra marcada
     for (const it of (cx ? cx.itens : [])) {
       (it.insumo ? insumos_itens : maoobra_itens).push({ descricao: it.descricao + ' (caixa ' + String(it.data || '').split('-').reverse().join('/') + ')', valor: it.valor });
       if (it.insumo) custo_insumos += it.valor; else custo_mao_obra += it.valor;
     }
-    const receita_bruta = obra.valor_contrato || 0;
+    let receita_bruta = obra.valor_contrato || 0;
+    if (per) {   // recebido no período, mesma regra do relatório de Entradas e Saídas (líquido de imposto/retenção)
+      const [{ data: meds }, { data: ents }] = await Promise.all([
+        sb('medicoes_obra').select('valor,recebido,data_recebimento,data,forma_pagamento,imposto_valor,valor_retido').eq('obra_id', obraId),
+        sb('lancamentos').select('valor,created_at').eq('obra_id', obraId).eq('tipo', 'entrada'),
+      ]);
+      receita_bruta = (meds || []).filter(x => (x.recebido || x.forma_pagamento === 'PIX') && noPer(x.recebido ? (x.data_recebimento || x.data) : x.data))
+        .reduce((t, x) => t + Math.max(0, (x.valor || 0) - (x.imposto_valor || 0) - (x.valor_retido || 0)), 0)
+        + (ents || []).filter(x => noPer(String(x.created_at || '').slice(0, 10))).reduce((t, x) => t + (x.valor || 0), 0);
+    }
     const custo_direto = custo_insumos + custo_mao_obra;
     const lucro_bruto = receita_bruta - custo_direto;
     const margem = receita_bruta ? Math.round((lucro_bruto / receita_bruta) * 1000) / 10 : 0;
     return {
-      obra_id: obraId, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
+      obra_id: obraId, periodo: per ? { desde, ate } : null, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
       receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra,
       insumos_itens, maoobra_itens,
       lucro_bruto, margem_lucro_percentual: margem,

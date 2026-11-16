@@ -1542,7 +1542,9 @@ app.post('/api/obras', async (req, res, next) => {
 
 app.get('/api/obras/:id/dre', async (req, res, next) => {
   try {
-    const dre = await db.dreObra(req.params.id);
+    const ISO = /^\d{4}-\d{2}-\d{2}$/;
+    const [de, ate] = [req.query.desde, req.query.ate];
+    const dre = (ISO.test(de || '') && ISO.test(ate || '') && de <= ate) ? await db.dreObra(req.params.id, de, ate) : await db.dreObra(req.params.id);
     if (!dre) return res.status(404).json({ erro: 'obra não encontrada' });
     res.json(dre);
   } catch (e) { next(e); }

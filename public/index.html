@@ -967,6 +967,13 @@
       <div class="tabsrow">
         <div class="seg" id="fin-viewmode"><button data-vm="quadro" class="on">▦ Quadro</button><button data-vm="lista">☰ Lista</button></div>
         <input id="fin-busca" placeholder="🔍 Buscar obra por cliente ou local…" style="flex:1;min-width:170px;max-width:340px;padding:9px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:13px">
+        <div id="fin-periodo" title="Período do resultado (Ver resultado / PDF da obra)" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2)">
+          <span>Período</span>
+          <input type="date" id="fin-desde" style="padding:7px 8px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:12.5px">
+          <span>a</span>
+          <input type="date" id="fin-ate" style="padding:7px 8px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:12.5px">
+          <button type="button" class="btn-ghost" id="fin-periodo-limpar" style="padding:5px 10px;font-size:12px">Limpar</button>
+        </div>
         <div style="display:flex;gap:8px">
           <button class="btn-ghost" id="btn-nova-obra" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:15px;height:15px;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg> Nova Obra</button>
           <button class="primary" id="btn-novo-lanc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Novo Lançamento</button>
@@ -1162,7 +1169,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v270</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v271</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6773,13 +6780,18 @@
     :'<div style="font-size:11.5px;color:var(--ink-3);margin:-3px 20px 9px 34px">— sem itens lançados nesta linha —</div>';
   async function abrirDre(id){
     openModal('ov-dre');document.getElementById('dre-body').innerHTML='<div class="sec">Carregando…</div>';
-    try{const d=await api('/api/obras/'+id+'/dre');
+    const de=document.getElementById('fin-desde').value,ate=document.getElementById('fin-ate').value;
+    if((de||ate)&&!(de&&ate)){showToast('Preencha as duas datas do período (ou limpe)');document.getElementById('ov-dre').classList.remove('open');return;}
+    if(de&&ate&&de>ate){showToast('A data inicial é depois da final');document.getElementById('ov-dre').classList.remove('open');return;}
+    try{const d=await api('/api/obras/'+id+'/dre'+(de&&ate?`?desde=${de}&ate=${ate}`:''));
+      const perTxt=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:'';
+      const recLbl=d.periodo?'Recebido no período':'Receita bruta (contrato)';
       const cor=d.margem_lucro_percentual>=35?'var(--ok)':d.margem_lucro_percentual>=20?'var(--warn)':'var(--danger)';
       document.getElementById('dre-body').innerHTML=`
         <div class="dre-hero"><button class="x" data-close style="float:right;border:0;background:none;color:#9CA3AF;font-size:22px;cursor:pointer;line-height:1">×</button>
           <button type="button" id="dre-pdf" style="float:right;margin:2px 12px 0 0;border:1px solid #555;background:none;color:#fff;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">🖨 PDF</button>
-          <h3>${esc(d.cliente)}</h3><div class="sub">DRE · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²</div></div>
-        <div class="dre-line"><span>Receita bruta (contrato)</span><b>${brlD(d.receita_bruta)}</b></div>
+          <h3>${esc(d.cliente)}</h3><div class="sub">DRE · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²${perTxt}</div></div>
+        <div class="dre-line"><span>${recLbl}</span><b>${brlD(d.receita_bruta)}</b></div>
         <div class="dre-line neg"><span>(−) Materiais / Insumos</span><b>${brlD(d.custo_direto_insumos)}</b></div>
         ${dreItens(d.insumos_itens)}
         <div class="dre-line neg"><span>(−) Mão de obra (diárias + comissões)</span><b>${brlD(d.custo_direto_mao_obra)}</b></div>
@@ -6792,14 +6804,16 @@
       carregarDreLancs(id);
     }catch(err){document.getElementById('dre-body').innerHTML='<div class="sec">Erro ao carregar DRE.</div>';console.error(err);}
   }
+  document.getElementById('fin-periodo-limpar').addEventListener('click',()=>{document.getElementById('fin-desde').value='';document.getElementById('fin-ate').value='';});
   // PDF da ficha da obra (mesmo conteúdo do DRE na tela)
   function drePdf(d){
     const sec=(titulo,total,arr)=>`<tr style="background:#f3f3f3;font-weight:700"><td>${titulo}</td><td class="r" style="color:#b91c1c">${brlD(total)}</td></tr>`
       +((arr&&arr.length)?arr.map(i=>`<tr style="font-size:11px;color:#444"><td style="padding-left:22px">${esc(i.descricao)}</td><td class="r">${brlD(i.valor)}</td></tr>`).join(''):'<tr><td colspan="2" class="c" style="color:#888">sem itens lançados</td></tr>');
     const custo=d.custo_direto_insumos+d.custo_direto_mao_obra;
-    finPrint('Obra — '+d.cliente,`<h1>${esc(d.cliente)}</h1><p class="sub">Resultado da obra · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m² · Raspadora Brasília</p>
+    const per=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:' · todo o período';
+    finPrint('Obra — '+d.cliente,`<h1>${esc(d.cliente)}</h1><p class="sub">Resultado da obra · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²${per} · Raspadora Brasília</p>
       <div class="cards">
-        <div class="card"><div class="k">Receita (contrato)</div><div class="v" style="color:#12805c">${brlD(d.receita_bruta)}</div></div>
+        <div class="card"><div class="k">${d.periodo?'Recebido no período':'Receita (contrato)'}</div><div class="v" style="color:#12805c">${brlD(d.receita_bruta)}</div></div>
         <div class="card"><div class="k">Custo total</div><div class="v" style="color:#b91c1c">${brlD(custo)}</div></div>
         <div class="card"><div class="k">Lucro bruto</div><div class="v" style="color:${d.lucro_bruto>=0?'#12805c':'#b91c1c'}">${brlD(d.lucro_bruto)}</div></div>
         <div class="card"><div class="k">Margem de lucro</div><div class="v">${d.margem_lucro_percentual}%</div></div></div>
