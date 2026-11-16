@@ -2396,12 +2396,14 @@ export const db = {
     if (!per && !maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
     // + o que foi lançado no caixa com esta obra marcada
     // refeições (almoço/janta) e vale-transporte do caixa ficam numa linha própria, fora da mão de obra
-    const refeicoes_itens = [];
-    let custo_refeicoes = 0;
+    const refeicoes_itens = [], vale_itens = [];
+    let custo_refeicoes = 0, custo_vale = 0;
+    const SUB_REFEICAO = { ALIMENTACAO: 'Almoço', JANTAR: 'Jantar' };
     for (const it of (cx ? cx.itens : [])) {
       const item = { descricao: it.descricao + ' (caixa)', valor: it.valor, data: it.data || null };
       if (it.insumo) { insumos_itens.push(item); custo_insumos += it.valor; }
-      else if (['ALIMENTACAO', 'JANTAR', 'VALE_TRANSPORTE'].includes(it.categoria)) { refeicoes_itens.push(item); custo_refeicoes += it.valor; }
+      else if (SUB_REFEICAO[it.categoria]) { refeicoes_itens.push({ ...item, sub: SUB_REFEICAO[it.categoria] }); custo_refeicoes += it.valor; }
+      else if (it.categoria === 'VALE_TRANSPORTE') { vale_itens.push(item); custo_vale += it.valor; }
       else { maoobra_itens.push(item); custo_mao_obra += it.valor; }
     }
     let receita_bruta = obra.valor_contrato || 0;
@@ -2420,14 +2422,14 @@ export const db = {
         .reduce((t, x) => t + Math.max(0, (x.valor || 0) - (x.imposto_valor || 0) - (x.valor_retido || 0)), 0)
         + (ents || []).filter(x => noPer(String(x.created_at || '').slice(0, 10))).reduce((t, x) => t + (x.valor || 0), 0);
     }
-    const custo_direto = custo_insumos + custo_mao_obra + custo_refeicoes;
+    const custo_direto = custo_insumos + custo_mao_obra + custo_refeicoes + custo_vale;
     const lucro_bruto = receita_bruta - custo_direto;
     const margem = receita_bruta ? Math.round((lucro_bruto / receita_bruta) * 1000) / 10 : 0;
     return {
       obra_id: obraId, periodo: per ? { desde, ate } : null, receita_origem, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
       m2_produzido: Math.round(apeq.reduce((t, r) => t + (Number(r.m2_rateado) || 0), 0) * 100) / 100,   // soma da produção dos pedreiros (respeita o período)
-      receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra, custo_direto_refeicoes: custo_refeicoes,
-      insumos_itens, maoobra_itens, refeicoes_itens,
+      receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra, custo_direto_refeicoes: custo_refeicoes, custo_direto_vale: custo_vale,
+      insumos_itens, maoobra_itens, refeicoes_itens, vale_itens,
       lucro_bruto, margem_lucro_percentual: margem,
     };
   },

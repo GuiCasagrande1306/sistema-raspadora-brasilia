@@ -1169,7 +1169,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v275</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v276</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6776,8 +6776,11 @@
   document.getElementById('board-fin').addEventListener('click',e=>{const b=e.target.closest('[data-dre]');if(b)abrirDre(b.dataset.dre);});
   const brlD=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
   const dataItem=i=>dtBR(i.data).slice(0,5)+(i.data_fim?' a '+dtBR(i.data_fim).slice(0,5):'');   // dd/mm ou dd/mm a dd/mm
+  // subgrupos (ex.: Refeições → Almoço / Jantar): itens com `sub` viram blocos com subtotal
+  const dreGrupos=arr=>{const g=[];for(const i of arr){let x=g.find(y=>y.sub===(i.sub||''));if(!x)g.push(x={sub:i.sub||'',itens:[],total:0});x.itens.push(i);x.total+=i.valor;}return g.sort((a,b)=>a.sub.localeCompare(b.sub,'pt-BR'));};
   const dreItens=(arr)=>(arr&&arr.length)
-    ?`<div style="margin:1px 0 9px 20px;padding:3px 20px 3px 14px;border-left:2px solid var(--laranja-50)">${arr.map(i=>`<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;color:var(--ink-2);padding:3px 0"><span>${i.data?`<span style="color:var(--ink-3);font-size:11px;margin-right:6px">${dataItem(i)}</span>`:''}${esc(i.descricao)}</span><span style="white-space:nowrap;color:var(--ink);font-weight:600">${brlD(i.valor)}</span></div>`).join('')}</div>`
+    ?`<div style="margin:1px 0 9px 20px;padding:3px 20px 3px 14px;border-left:2px solid var(--laranja-50)">${dreGrupos(arr).map(g=>(g.sub?`<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;font-weight:700;color:var(--ink);padding:5px 0 2px"><span>${esc(g.sub)}</span><span>${brlD(g.total)}</span></div>`:'')
+      +g.itens.map(i=>`<div style="display:grid;grid-template-columns:96px 1fr auto;gap:10px;font-size:12px;color:var(--ink-2);padding:3px 0"><span style="color:var(--ink-3);font-size:11px;white-space:nowrap">${i.data?dataItem(i):'—'}</span><span>${esc(i.descricao)}</span><span style="white-space:nowrap;color:var(--ink);font-weight:600">${brlD(i.valor)}</span></div>`).join('')).join('')}</div>`
     :'<div style="font-size:11.5px;color:var(--ink-3);margin:-3px 20px 9px 34px">— sem itens lançados nesta linha —</div>';
   async function abrirDre(id){
     openModal('ov-dre');document.getElementById('dre-body').innerHTML='<div class="sec">Carregando…</div>';
@@ -6797,8 +6800,10 @@
         ${dreItens(d.insumos_itens)}
         <div class="dre-line neg"><span>(−) Mão de obra (diárias + comissões)</span><b>${brlD(d.custo_direto_mao_obra)}</b></div>
         ${dreItens(d.maoobra_itens)}
-        <div class="dre-line neg"><span>(−) Refeições e vale-transporte</span><b>${brlD(d.custo_direto_refeicoes||0)}</b></div>
+        <div class="dre-line neg"><span>(−) Refeições</span><b>${brlD(d.custo_direto_refeicoes||0)}</b></div>
         ${dreItens(d.refeicoes_itens)}
+        <div class="dre-line neg"><span>(−) Vale-transporte</span><b>${brlD(d.custo_direto_vale||0)}</b></div>
+        ${dreItens(d.vale_itens)}
         <div class="dre-line total"><span>Lucro bruto</span><b>${brlD(d.lucro_bruto)}</b></div>
         <div class="dre-margem">Margem de lucro<b style="color:${cor}">${d.margem_lucro_percentual}%</b></div>
         <div id="dre-lancs" style="margin-top:14px"></div>`;
@@ -6814,8 +6819,9 @@
   // PDF da ficha da obra (mesmo conteúdo do DRE na tela)
   function drePdf(d){
     const sec=(titulo,total,arr)=>`<tr style="background:#f3f3f3;font-weight:700"><td></td><td>${titulo}</td><td class="r" style="color:#b91c1c">${brlD(total)}</td></tr>`
-      +((arr&&arr.length)?arr.map(i=>`<tr style="font-size:11px;color:#444"><td style="white-space:nowrap">${i.data?dataItem(i):'—'}</td><td style="padding-left:22px">${esc(i.descricao)}</td><td class="r">${brlD(i.valor)}</td></tr>`).join(''):'<tr><td colspan="3" class="c" style="color:#888">sem itens lançados</td></tr>');
-    const custo=d.custo_direto_insumos+d.custo_direto_mao_obra+(d.custo_direto_refeicoes||0);
+      +((arr&&arr.length)?dreGrupos(arr).map(g=>(g.sub?`<tr style="font-size:11px;font-weight:700"><td></td><td style="padding-left:14px">${esc(g.sub)}</td><td class="r">${brlD(g.total)}</td></tr>`:'')
+        +g.itens.map(i=>`<tr style="font-size:11px;color:#444"><td style="white-space:nowrap">${i.data?dataItem(i):'—'}</td><td style="padding-left:${g.sub?32:22}px">${esc(i.descricao)}</td><td class="r">${brlD(i.valor)}</td></tr>`).join('')).join(''):'<tr><td colspan="3" class="c" style="color:#888">sem itens lançados</td></tr>');
+    const custo=d.custo_direto_insumos+d.custo_direto_mao_obra+(d.custo_direto_refeicoes||0)+(d.custo_direto_vale||0);
     const per=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:' · todo o período';
     finPrint('Obra — '+d.cliente,`<h1>${esc(d.cliente)}</h1><p class="sub">Resultado da obra · ${esc(d.tipo_servico||'')} · ${m2Txt(d)}${per} · Raspadora Brasília</p>
       <div class="cards">
@@ -6826,7 +6832,8 @@
       <table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>
         ${sec('(−) Materiais / Insumos',d.custo_direto_insumos,d.insumos_itens)}
         ${sec('(−) Mão de obra (diárias + comissões)',d.custo_direto_mao_obra,d.maoobra_itens)}
-        ${sec('(−) Refeições e vale-transporte',d.custo_direto_refeicoes||0,d.refeicoes_itens)}</tbody>
+        ${sec('(−) Refeições',d.custo_direto_refeicoes||0,d.refeicoes_itens)}
+        ${sec('(−) Vale-transporte',d.custo_direto_vale||0,d.vale_itens)}</tbody>
         <tfoot><tr><td></td><td>Lucro bruto</td><td class="r">${brlD(d.lucro_bruto)}</td></tr></tfoot></table>`);
   }
   // Lista editável dos lançamentos da obra dentro do popup "Ver resultado"
