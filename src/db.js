@@ -2335,7 +2335,7 @@ export const db = {
     // INSUMOS/MATERIAIS: custos de obra (planilha) + lançamentos marcados como insumo
     const insumos_itens = [
       ...(custos || []).map(c => ({ descricao: c.descricao_insumo || 'Material', valor: c.custo_total || 0 })),
-      ...(lancs || []).filter(l => l.categoria === 'insumo').map(l => ({ descricao: l.descricao || 'Material', valor: l.valor || 0 })),
+      ...(lancs || []).filter(l => l.categoria === 'insumo').map(l => ({ descricao: l.descricao || 'Material', valor: l.valor || 0, data: String(l.created_at || '').slice(0, 10) || null })),
     ];
     // MÃO DE OBRA: mesmo cálculo da folha, agrupado por colaborador — produção m² (taxa do apontamento),
     // diárias do Cronograma e gratificações (pedreiro: só as pagas) + demais lançamentos de saída
@@ -2368,26 +2368,27 @@ export const db = {
     const datasAp = [...new Set(apeq.map(r => r.data))];
     const cronDia = new Set(datasAp.length ? (await todasPaginas(() => sb('cronograma_alocacoes').select('id,colaborador_id,data').in('data', datasAp).in('colaborador_id', ids).order('id'))).map(a => a.colaborador_id + '|' + a.data) : []);
     const grupos = {};
-    const soma = (c, tipo, valor, m2 = 0) => { if (!valor) return; const g = (grupos[c.id + '|' + tipo] ||= { nome: c.nome || 'Colaborador', tipo, n: 0, m2: 0, valor: 0 }); g.n++; g.m2 += m2; g.valor += valor; };
+    // data/data_fim = primeiro e último dia daquele colaborador nesta linha
+    const soma = (c, tipo, valor, m2 = 0, dia = null) => { if (!valor) return; const g = (grupos[c.id + '|' + tipo] ||= { nome: c.nome || 'Colaborador', tipo, n: 0, m2: 0, valor: 0, d0: null, d1: null }); g.n++; g.m2 += m2; g.valor += valor; if (dia) { if (!g.d0 || dia < g.d0) g.d0 = dia; if (!g.d1 || dia > g.d1) g.d1 = dia; } };
     for (const r of apeq) {
       const c = cmap[r.colaborador_id] || { id: r.colaborador_id };
       const m = Number(r.m2_rateado) || 0;
-      soma(c, 'producao', Math.round(m * (r.valor_m2 ? Number(r.valor_m2) : (c.comissao_por_m2 || 0))), m);
-      if (!cronDia.has(r.colaborador_id + '|' + r.data)) soma(c, 'diaria', c.valor_diaria || 0);
+      soma(c, 'producao', Math.round(m * (r.valor_m2 ? Number(r.valor_m2) : (c.comissao_por_m2 || 0))), m, r.data);
+      if (!cronDia.has(r.colaborador_id + '|' + r.data)) soma(c, 'diaria', c.valor_diaria || 0, 0, r.data);
     }
     for (const a of alocs) {
       const c = cmap[a.colaborador_id] || { id: a.colaborador_id };
       const gratif = /GRATIFICA/i.test(a.funcao || '');
       if (gratif && /PEDREIRO/i.test(c.cargo || '') && !a.gratificacao_paga) continue;   // extra não pago não é custo
       if (jaNoCaixa.has(a.id)) continue;
-      soma(c, gratif ? 'gratificacao' : 'diaria', a.valor_diaria || 0);
+      soma(c, gratif ? 'gratificacao' : 'diaria', a.valor_diaria || 0, 0, a.data);
     }
     const fmtM2 = v => (Math.round(v * 100) / 100).toLocaleString('pt-BR');
     for (const g of Object.values(grupos).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR') || a.tipo.localeCompare(b.tipo))) {
       const det = g.tipo === 'producao' ? 'produção ' + fmtM2(g.m2) + ' m²' : g.tipo === 'diaria' ? g.n + (g.n > 1 ? ' diárias' : ' diária') : g.n + (g.n > 1 ? ' gratificações' : ' gratificação');
-      maoobra_itens.push({ descricao: g.nome + ' — ' + det, valor: g.valor });
+      maoobra_itens.push({ descricao: g.nome + ' — ' + det, valor: g.valor, data: g.d0, data_fim: g.d1 !== g.d0 ? g.d1 : null });
     }
-    for (const l of (lancs || [])) if (l.categoria !== 'insumo') maoobra_itens.push({ descricao: l.descricao || 'Mão de obra', valor: l.valor || 0 });
+    for (const l of (lancs || [])) if (l.categoria !== 'insumo') maoobra_itens.push({ descricao: l.descricao || 'Mão de obra', valor: l.valor || 0, data: String(l.created_at || '').slice(0, 10) || null });
 
     let custo_insumos = insumos_itens.reduce((s, i) => s + i.valor, 0);
     let custo_mao_obra = maoobra_itens.reduce((s, i) => s + i.valor, 0);
@@ -2398,7 +2399,7 @@ export const db = {
     const refeicoes_itens = [];
     let custo_refeicoes = 0;
     for (const it of (cx ? cx.itens : [])) {
-      const item = { descricao: it.descricao + ' (caixa ' + String(it.data || '').split('-').reverse().join('/') + ')', valor: it.valor };
+      const item = { descricao: it.descricao + ' (caixa)', valor: it.valor, data: it.data || null };
       if (it.insumo) { insumos_itens.push(item); custo_insumos += it.valor; }
       else if (['ALIMENTACAO', 'JANTAR', 'VALE_TRANSPORTE'].includes(it.categoria)) { refeicoes_itens.push(item); custo_refeicoes += it.valor; }
       else { maoobra_itens.push(item); custo_mao_obra += it.valor; }
@@ -2424,6 +2425,7 @@ export const db = {
     const margem = receita_bruta ? Math.round((lucro_bruto / receita_bruta) * 1000) / 10 : 0;
     return {
       obra_id: obraId, periodo: per ? { desde, ate } : null, receita_origem, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
+      m2_produzido: Math.round(apeq.reduce((t, r) => t + (Number(r.m2_rateado) || 0), 0) * 100) / 100,   // soma da produção dos pedreiros (respeita o período)
       receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra, custo_direto_refeicoes: custo_refeicoes,
       insumos_itens, maoobra_itens, refeicoes_itens,
       lucro_bruto, margem_lucro_percentual: margem,
