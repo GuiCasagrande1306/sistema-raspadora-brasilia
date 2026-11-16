@@ -1169,7 +1169,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v272</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v273</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6785,7 +6785,7 @@
     if(de&&ate&&de>ate){showToast('A data inicial é depois da final');document.getElementById('ov-dre').classList.remove('open');return;}
     try{const d=await api('/api/obras/'+id+'/dre'+(de&&ate?`?desde=${de}&ate=${ate}`:''));
       const perTxt=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:'';
-      const recLbl=d.periodo?'Recebido no período':'Receita bruta (contrato)';
+      const recLbl=RECEITA_LBL[d.receita_origem]||RECEITA_LBL.contrato;
       const cor=d.margem_lucro_percentual>=35?'var(--ok)':d.margem_lucro_percentual>=20?'var(--warn)':'var(--danger)';
       document.getElementById('dre-body').innerHTML=`
         <div class="dre-hero"><button class="x" data-close style="float:right;border:0;background:none;color:#9CA3AF;font-size:22px;cursor:pointer;line-height:1">×</button>
@@ -6807,6 +6807,7 @@
     }catch(err){document.getElementById('dre-body').innerHTML='<div class="sec">Erro ao carregar DRE.</div>';console.error(err);}
   }
   document.getElementById('fin-periodo-limpar').addEventListener('click',()=>{document.getElementById('fin-desde').value='';document.getElementById('fin-ate').value='';});
+  const RECEITA_LBL={contrato:'Receita bruta (contrato)',medicoes:'Receita (medições lançadas)',periodo:'Recebido no período'};
   // PDF da ficha da obra (mesmo conteúdo do DRE na tela)
   function drePdf(d){
     const sec=(titulo,total,arr)=>`<tr style="background:#f3f3f3;font-weight:700"><td>${titulo}</td><td class="r" style="color:#b91c1c">${brlD(total)}</td></tr>`
@@ -6815,7 +6816,7 @@
     const per=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:' · todo o período';
     finPrint('Obra — '+d.cliente,`<h1>${esc(d.cliente)}</h1><p class="sub">Resultado da obra · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²${per} · Raspadora Brasília</p>
       <div class="cards">
-        <div class="card"><div class="k">${d.periodo?'Recebido no período':'Receita (contrato)'}</div><div class="v" style="color:#12805c">${brlD(d.receita_bruta)}</div></div>
+        <div class="card"><div class="k">${RECEITA_LBL[d.receita_origem]||RECEITA_LBL.contrato}</div><div class="v" style="color:#12805c">${brlD(d.receita_bruta)}</div></div>
         <div class="card"><div class="k">Custo total</div><div class="v" style="color:#b91c1c">${brlD(custo)}</div></div>
         <div class="card"><div class="k">Lucro bruto</div><div class="v" style="color:${d.lucro_bruto>=0?'#12805c':'#b91c1c'}">${brlD(d.lucro_bruto)}</div></div>
         <div class="card"><div class="k">Margem de lucro</div><div class="v">${d.margem_lucro_percentual}%</div></div></div>

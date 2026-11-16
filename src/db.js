@@ -2404,6 +2404,12 @@ export const db = {
       else { maoobra_itens.push(item); custo_mao_obra += it.valor; }
     }
     let receita_bruta = obra.valor_contrato || 0;
+    let receita_origem = per ? 'periodo' : 'contrato';
+    if (!per && !receita_bruta) {   // contrato em branco → soma das medições/notas lançadas na obra
+      const { data: meds } = await sb('medicoes_obra').select('valor').eq('obra_id', obraId);
+      receita_bruta = (meds || []).reduce((t, x) => t + (x.valor || 0), 0);
+      receita_origem = 'medicoes';
+    }
     if (per) {   // recebido no período, mesma regra do relatório de Entradas e Saídas (líquido de imposto/retenção)
       const [{ data: meds }, { data: ents }] = await Promise.all([
         sb('medicoes_obra').select('valor,recebido,data_recebimento,data,forma_pagamento,imposto_valor,valor_retido').eq('obra_id', obraId),
@@ -2417,7 +2423,7 @@ export const db = {
     const lucro_bruto = receita_bruta - custo_direto;
     const margem = receita_bruta ? Math.round((lucro_bruto / receita_bruta) * 1000) / 10 : 0;
     return {
-      obra_id: obraId, periodo: per ? { desde, ate } : null, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
+      obra_id: obraId, periodo: per ? { desde, ate } : null, receita_origem, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
       receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra, custo_direto_refeicoes: custo_refeicoes,
       insumos_itens, maoobra_itens, refeicoes_itens,
       lucro_bruto, margem_lucro_percentual: margem,
