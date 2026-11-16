@@ -1162,7 +1162,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v266</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v267</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6157,8 +6157,8 @@
   document.getElementById('ext-next').addEventListener('click',()=>{EXT_STATE.mes++;if(EXT_STATE.mes>12){EXT_STATE.mes=1;EXT_STATE.ano++;}carregarExtrato();});
   document.getElementById('ext-pdf').addEventListener('click',()=>{
     const u=EXT_STATE.ultimo;if(!u||!u.tx.length){showToast('Carregue o extrato primeiro');return;}
-    const rows=u.tx.map(t=>{const v=Number(t.valor)||0;const cred=(t.tipo||'').toUpperCase()==='CREDITO';return `<tr><td>${extData(t.data||t.dataLote)}</td><td>${esc(t.descricao||'')}</td><td class="r" style="color:${cred?'#12805c':'#b3261e'}">${cred?'+':'−'}${brlN(v)}</td></tr>`;}).join('');
-    finPrint('Extrato — '+extContaLbl(),`<h1>Extrato — ${esc(extContaLbl())}</h1><p class="sub">${extMesLabel()} · saldo anterior ${brlN(Number(u.r.saldoAnterior)||0)} → atual ${brlN(Number(u.r.saldoAtual)||0)}</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>`);
+    const rows=u.tx.map(t=>{const v=Number(t.valor)||0;const cred=(t.tipo||'').toUpperCase()==='CREDITO';return `<tr><td>${extData(t.data||t.dataLote)}</td><td>${esc(t.descricao||'')}${t.descInfComplementar?`<div style="font-size:10px;color:#666">${esc(t.descInfComplementar)}</div>`:''}</td><td>${MOV_CAT_LABEL[t.categoria]||t.categoria||'—'}</td><td class="r" style="color:${cred?'#12805c':'#b3261e'}">${cred?'+':'−'}${brlN(v)}</td></tr>`;}).join('');
+    finPrint('Extrato — '+extContaLbl(),`<h1>Extrato — ${esc(extContaLbl())}</h1><p class="sub">${extMesLabel()} · saldo anterior ${brlN(Number(u.r.saldoAnterior)||0)} → atual ${brlN(Number(u.r.saldoAtual)||0)}</p><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>`);
   });
   document.getElementById('ext-importar').addEventListener('click',async e=>{
     const b=e.currentTarget,orig=b.textContent;b.disabled=true;b.textContent='Importando…';
