@@ -1169,7 +1169,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v271</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v272</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6796,6 +6796,8 @@
         ${dreItens(d.insumos_itens)}
         <div class="dre-line neg"><span>(−) Mão de obra (diárias + comissões)</span><b>${brlD(d.custo_direto_mao_obra)}</b></div>
         ${dreItens(d.maoobra_itens)}
+        <div class="dre-line neg"><span>(−) Refeições e vale-transporte</span><b>${brlD(d.custo_direto_refeicoes||0)}</b></div>
+        ${dreItens(d.refeicoes_itens)}
         <div class="dre-line total"><span>Lucro bruto</span><b>${brlD(d.lucro_bruto)}</b></div>
         <div class="dre-margem">Margem de lucro<b style="color:${cor}">${d.margem_lucro_percentual}%</b></div>
         <div id="dre-lancs" style="margin-top:14px"></div>`;
@@ -6809,7 +6811,7 @@
   function drePdf(d){
     const sec=(titulo,total,arr)=>`<tr style="background:#f3f3f3;font-weight:700"><td>${titulo}</td><td class="r" style="color:#b91c1c">${brlD(total)}</td></tr>`
       +((arr&&arr.length)?arr.map(i=>`<tr style="font-size:11px;color:#444"><td style="padding-left:22px">${esc(i.descricao)}</td><td class="r">${brlD(i.valor)}</td></tr>`).join(''):'<tr><td colspan="2" class="c" style="color:#888">sem itens lançados</td></tr>');
-    const custo=d.custo_direto_insumos+d.custo_direto_mao_obra;
+    const custo=d.custo_direto_insumos+d.custo_direto_mao_obra+(d.custo_direto_refeicoes||0);
     const per=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:' · todo o período';
     finPrint('Obra — '+d.cliente,`<h1>${esc(d.cliente)}</h1><p class="sub">Resultado da obra · ${esc(d.tipo_servico||'')} · ${d.metragem_m2} m²${per} · Raspadora Brasília</p>
       <div class="cards">
@@ -6819,7 +6821,8 @@
         <div class="card"><div class="k">Margem de lucro</div><div class="v">${d.margem_lucro_percentual}%</div></div></div>
       <table><thead><tr><th>Descrição</th><th>Valor</th></tr></thead><tbody>
         ${sec('(−) Materiais / Insumos',d.custo_direto_insumos,d.insumos_itens)}
-        ${sec('(−) Mão de obra (diárias + comissões)',d.custo_direto_mao_obra,d.maoobra_itens)}</tbody>
+        ${sec('(−) Mão de obra (diárias + comissões)',d.custo_direto_mao_obra,d.maoobra_itens)}
+        ${sec('(−) Refeições e vale-transporte',d.custo_direto_refeicoes||0,d.refeicoes_itens)}</tbody>
         <tfoot><tr><td>Lucro bruto</td><td class="r">${brlD(d.lucro_bruto)}</td></tr></tfoot></table>`);
   }
   // Lista editável dos lançamentos da obra dentro do popup "Ver resultado"

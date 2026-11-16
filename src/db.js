@@ -2394,9 +2394,14 @@ export const db = {
     if (!per && !insumos_itens.length && obra.custo_insumos) custo_insumos = obra.custo_insumos;   // fallback denormalizado
     if (!per && !maoobra_itens.length && obra.custo_mao_obra) custo_mao_obra = obra.custo_mao_obra;
     // + o que foi lançado no caixa com esta obra marcada
+    // refeições (almoço/janta) e vale-transporte do caixa ficam numa linha própria, fora da mão de obra
+    const refeicoes_itens = [];
+    let custo_refeicoes = 0;
     for (const it of (cx ? cx.itens : [])) {
-      (it.insumo ? insumos_itens : maoobra_itens).push({ descricao: it.descricao + ' (caixa ' + String(it.data || '').split('-').reverse().join('/') + ')', valor: it.valor });
-      if (it.insumo) custo_insumos += it.valor; else custo_mao_obra += it.valor;
+      const item = { descricao: it.descricao + ' (caixa ' + String(it.data || '').split('-').reverse().join('/') + ')', valor: it.valor };
+      if (it.insumo) { insumos_itens.push(item); custo_insumos += it.valor; }
+      else if (['ALIMENTACAO', 'JANTAR', 'VALE_TRANSPORTE'].includes(it.categoria)) { refeicoes_itens.push(item); custo_refeicoes += it.valor; }
+      else { maoobra_itens.push(item); custo_mao_obra += it.valor; }
     }
     let receita_bruta = obra.valor_contrato || 0;
     if (per) {   // recebido no período, mesma regra do relatório de Entradas e Saídas (líquido de imposto/retenção)
@@ -2408,13 +2413,13 @@ export const db = {
         .reduce((t, x) => t + Math.max(0, (x.valor || 0) - (x.imposto_valor || 0) - (x.valor_retido || 0)), 0)
         + (ents || []).filter(x => noPer(String(x.created_at || '').slice(0, 10))).reduce((t, x) => t + (x.valor || 0), 0);
     }
-    const custo_direto = custo_insumos + custo_mao_obra;
+    const custo_direto = custo_insumos + custo_mao_obra + custo_refeicoes;
     const lucro_bruto = receita_bruta - custo_direto;
     const margem = receita_bruta ? Math.round((lucro_bruto / receita_bruta) * 1000) / 10 : 0;
     return {
       obra_id: obraId, periodo: per ? { desde, ate } : null, cliente: obra.cliente, tipo_servico: obra.tipo_piso, metragem_m2: Number(obra.metragem_m2),
-      receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra,
-      insumos_itens, maoobra_itens,
+      receita_bruta, custo_direto_insumos: custo_insumos, custo_direto_mao_obra: custo_mao_obra, custo_direto_refeicoes: custo_refeicoes,
+      insumos_itens, maoobra_itens, refeicoes_itens,
       lucro_bruto, margem_lucro_percentual: margem,
     };
   },
