@@ -1169,7 +1169,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v277</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v278</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -6231,7 +6231,7 @@
       const leg=cats.map((c,i)=>`<div style="font-size:11px;margin:3px 0"><span class="dot" style="background:${GASTO_CORES[i%GASTO_CORES.length]}"></span>${esc(c.nome)} — ${brl(c.total)} (${Math.round(c.total/total*100)}%)</div>`).join('');
       return `<div style="flex:1;min-width:300px"><h3 style="font-size:12px;text-transform:uppercase;color:#ED7118">${titulo}</h3><div class="row2"><div>${donutSVG(cats,total)}</div><div>${leg}</div></div></div>`;
     };
-    const naoDiv=r.sem_obra_nao_dividido?`<p class="sub" style="color:#b91c1c">Sem dias no Cronograma neste período: ${brl(r.sem_obra_nao_dividido)} de gastos sem obra não entraram no custo.</p>`:'';
+    const gerais=r.despesas_gerais?`<p class="sub" style="margin-top:10px"><b>Despesas gerais do período (sem obra marcada): ${brl(r.despesas_gerais)}</b> — folha, impostos, combustível, loja etc. Não entram no custo das obras acima.</p>`:'';
     finPrint('Por serviço — '+rotulo,`<h1>Relatório por serviço — ${esc(rotulo)}</h1><p class="sub">${dtBR(desde)} a ${dtBR(ate)} · Raspadora Brasília</p>
       <div class="cards">
         <div class="card"><div class="k">Recebido</div><div class="v" style="color:#12805c">${brl(totRec)}</div></div>
@@ -6240,8 +6240,8 @@
       <div class="row2" style="align-items:flex-start;margin-bottom:18px">${pizza('Recebido por serviço','recebido',totRec)}${pizza('Custo por serviço','custo_total',totCus)}</div>
       <table><thead><tr><th>Serviço</th><th>Recebido</th><th>Custo total</th><th>Margem</th><th>Dias trabalhados</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td class="r">Total</td><td class="r">${brl(totRec)}</td><td class="r">${brl(totCus)}</td><td class="c">${marg(totRec,totRec-totCus)}</td><td class="c">${r.total_dias||'—'}</td></tr></tfoot></table>
-      ${naoDiv}
-      <p class="sub" style="margin-top:12px"><b>Custo total</b>: gastos pagos com a obra marcada + os demais gastos do período (combustível, alimentação, folha…) divididos pelas obras conforme a equipe no Cronograma. <b>Margem</b>: quanto sobrou do recebido. <b>Dias trabalhados</b>: dias do calendário com equipe na obra.</p>`);
+      ${gerais}
+      <p class="sub" style="margin-top:12px"><b>Custo total</b>: o mesmo custo do resultado de cada obra no período (diárias e produção da equipe, insumos, refeições, vale-transporte e lançamentos do caixa com a obra marcada). <b>Margem</b>: quanto sobrou do recebido. <b>Dias trabalhados</b>: dias do calendário com equipe na obra.</p>`);
   });
   let relmesModo='mes';
   document.querySelectorAll('#relmes-modo button').forEach(b=>b.addEventListener('click',()=>{

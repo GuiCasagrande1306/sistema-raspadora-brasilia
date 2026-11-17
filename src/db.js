@@ -1849,51 +1849,52 @@ export const db = {
   // Por serviço (categoria da obra): recebido × custo. Custo = o que SAIU do caixa (mesmo "Saiu" do Entradas e Saídas).
   // Direto: saída com obra marcada; categoria GILSON → Raspagem (equipe fora do cronograma).
   // Sem obra (combustível, alimentação, folha…): dividido pelos dias trabalhados no Cronograma no período.
+  // Custo de cada obra = MESMO custo do resultado da obra (dreObra no período): diárias/produção, insumos, refeições,
+  // vale-transporte e caixa com a obra marcada. Despesas pagas sem obra marcada NÃO entram nas obras: vão numa linha à parte.
   async relatorioServicos(desde, ate, hojeStr) {
     const r = await this.relatorioPeriodo(desde, ate, hojeStr);
-    const [obR, alR] = await Promise.all([
+    const [obR, alR, apR, lcR] = await Promise.all([
       sb('obras_financeiro').select('id,cliente,categoria_servico'),
-      todasPaginas(() => sb('cronograma_alocacoes').select('obra_id,data').gte('data', desde).lte('data', ate).order('id')).then(data => ({ data })),
+      todasPaginas(() => sb('cronograma_alocacoes').select('id,obra_id,data').gte('data', desde).lte('data', ate).order('id')),
+      sb('apontamentos_diarios').select('obra_id').gte('data', desde).lte('data', ate),
+      sb('lancamentos').select('obra_id').eq('tipo', 'saida').gte('created_at', desde).lte('created_at', ate + 'T23:59:59'),
     ]);
     if (obR.error) throw obR.error;
     const obra = Object.fromEntries((obR.data || []).map(o => [o.id, o]));
-    // calcula por obra (ou linha avulsa) e depois soma no serviço
     const und = {};
-    const U = (k, servico, nome, obra_id = null) => (und[k] ||= { obra_id, nome, servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, datas: new Set() });
+    const U = (k, servico, nome, obra_id = null) => (und[k] ||= { obra_id, nome, servico, recebido: 0, custo_total: 0, datas: new Set() });
     const UO = id => U(id, obra[id].categoria_servico || 'SEM_CATEGORIA', obra[id].cliente || '—', id);
     for (const e of r.entradas) {
       if (obra[e.obra_id]) UO(e.obra_id).recebido += e.valor;
       else if (e.obra_id) U('OBRA_EXCLUIDA', 'SEM_CATEGORIA', 'Obra excluída').recebido += e.valor;
       else U('SEM_OBRA', 'SEM_OBRA', 'Entradas sem obra').recebido += e.valor;
     }
-    let semObra = 0;
+    let despesas_gerais = 0;
     for (const x of r.saidas) {
-      if (!x.pago) continue;
-      if (obra[x.obra_id]) UO(x.obra_id).custo_direto += x.valor;
-      else if (x.cat === 'GILSON') U('GILSON', 'RASPAGEM', 'Equipe Gilson (sem obra marcada)').custo_direto += x.valor;
-      else semObra += x.valor;
+      if (!x.pago || obra[x.obra_id]) continue;   // com obra marcada → já está no custo da obra (dreObra)
+      if (x.cat === 'GILSON') U('GILSON', 'RASPAGEM', 'Equipe Gilson (sem obra marcada)').custo_total += x.valor;
+      else despesas_gerais += x.valor;
     }
-    const alocs = (alR.data || []).filter(a => obra[a.obra_id]);
-    for (const a of alocs) { const u = UO(a.obra_id); u.dias++; u.datas.add(a.data); }   // dias = pessoa-dia (peso do rateio); datas = dias do calendário
-    const totDias = alocs.length;
-    // rateio em centavos inteiros; o resto do arredondamento vai p/ quem tem mais dias (soma fecha exata)
-    if (totDias) {
-      const comDias = Object.values(und).filter(l => l.dias).sort((a, b) => b.dias - a.dias);
-      let distribuido = 0;
-      for (const l of comDias) { l.custo_dividido = Math.floor(semObra * l.dias / totDias); distribuido += l.custo_dividido; }
-      comDias[0].custo_dividido += semObra - distribuido;
+    const alocs = alR.filter(a => obra[a.obra_id]);
+    for (const a of alocs) UO(a.obra_id).datas.add(a.data);   // dias trabalhados = dias do calendário com equipe
+    // obras com algum movimento no período → custo pelo resultado da obra (em lotes p/ não estourar o tempo da função)
+    const ids = [...new Set([...r.entradas, ...r.saidas, ...alocs, ...(apR.data || []), ...(lcR.data || [])].map(x => x.obra_id).filter(id => obra[id]))];
+    for (let i = 0; i < ids.length; i += 12) {
+      const lote = await Promise.all(ids.slice(i, i + 12).map(id => this.dreObra(id, desde, ate)));
+      for (const d of lote) if (d) UO(d.obra_id).custo_total += d.custo_direto_insumos + d.custo_direto_mao_obra + (d.custo_direto_refeicoes || 0) + (d.custo_direto_vale || 0);
     }
-    const fecha = ({ datas, ...l }) => ({ ...l, dias_corridos: datas.size, custo_total: l.custo_direto + l.custo_dividido, resultado: l.recebido - l.custo_direto - l.custo_dividido, pct_dias: totDias ? l.dias / totDias : 0 });
+    const fecha = ({ datas, ...l }) => ({ ...l, dias_corridos: datas.size, resultado: l.recebido - l.custo_total });
     const ord = (a, b) => b.recebido - a.recebido || b.custo_total - a.custo_total;
     const porServ = {};
     for (const u of Object.values(und)) {
-      const s = (porServ[u.servico] ||= { servico: u.servico, recebido: 0, custo_direto: 0, custo_dividido: 0, dias: 0, datas: new Set(), obras: [] });
-      for (const k of ['recebido', 'custo_direto', 'custo_dividido', 'dias']) s[k] += u[k];
+      if (!u.recebido && !u.custo_total && !u.datas.size) continue;
+      const s = (porServ[u.servico] ||= { servico: u.servico, recebido: 0, custo_total: 0, datas: new Set(), obras: [] });
+      s.recebido += u.recebido; s.custo_total += u.custo_total;
       for (const d of u.datas) s.datas.add(d);
       s.obras.push(fecha(u));
     }
     const servicos = Object.values(porServ).map(s => ({ ...fecha(s), obras: s.obras.sort(ord) })).sort(ord);
-    return { desde, ate, servicos, sem_obra_nao_dividido: totDias ? 0 : semObra, total_dias: new Set(alocs.map(a => a.data)).size, total_recebido: r.total_entradas, total_custos: r.total_saidas_pagas };
+    return { desde, ate, servicos, despesas_gerais, total_dias: new Set(alocs.map(a => a.data)).size, total_recebido: r.total_entradas, total_custos: r.total_saidas_pagas };
   },
   // Totais PREVISTOS até o fim (tudo que ainda vai entrar/sair, sem teto de 30 dias — inclui parcelamento futuro).
   // Entradas: medições não recebidas + movimentações PREVISTO ENTRADA.
@@ -2355,10 +2356,13 @@ export const db = {
     // 1º nome repetido no dia (2 ANTONIOs) desempata pelos demais nomes.
     const nomes = id => semAcento((cmap[id] || {}).nome).split(/[^A-Z]+/).filter(t => t.length >= 3 && !['DAS', 'DOS'].includes(t));
     const jaNoCaixa = new Set();
+    const SOBRENOME_COMUM = new Set(['SILVA', 'SANTOS', 'SOUSA', 'SOUZA', 'OLIVEIRA', 'PEREIRA', 'LIMA', 'COSTA', 'ALVES', 'RODRIGUES', 'FERREIRA', 'GOMES', 'RIBEIRO', 'CARVALHO', 'ARAUJO', 'MARTINS', 'BATISTA', 'NUNES', 'CONCEICAO']);
     for (const it of (cx ? cx.itens : [])) {
       const cat = semAcento(it.categoria), desc = semAcento(it.descricao);
       const gratif = /GRATIFICA/.test(cat); if (!gratif && !/DIARIA/.test(cat)) continue;
-      let cand = alocs.filter(a => a.data === it.data && /GRATIFICA/i.test(a.funcao || '') === gratif && desc.includes(nomes(a.colaborador_id)[0] || '#'));
+      // casa pelo 1º nome ou por outro nome que não seja sobrenome comum (ex.: "DIÁRIA - PREGÃO" → ANTONIO (PREGÃO))
+      const casa = a => { const t = nomes(a.colaborador_id); return desc.includes(t[0] || '#') || t.slice(1).some(x => x.length >= 4 && !SOBRENOME_COMUM.has(x) && desc.includes(x)); };
+      let cand = alocs.filter(a => a.data === it.data && /GRATIFICA/i.test(a.funcao || '') === gratif && casa(a));
       const porPrimeiro = {};
       for (const a of cand) (porPrimeiro[nomes(a.colaborador_id)[0]] ||= []).push(a);
       cand = Object.values(porPrimeiro).flatMap(g => g.length > 1 ? g.filter(a => nomes(a.colaborador_id).slice(1).some(t => desc.includes(t))) : g);
