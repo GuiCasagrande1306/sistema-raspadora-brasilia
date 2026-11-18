@@ -2380,17 +2380,28 @@ export const db = {
       soma(c, 'producao', Math.round(m * (r.valor_m2 ? Number(r.valor_m2) : (c.comissao_por_m2 || 0))), m, r.data);
       if (!cronDia.has(r.colaborador_id + '|' + r.data)) soma(c, 'diaria', c.valor_diaria || 0, 0, r.data);
     }
+    // alocado no Cronograma sem função/valor (e sem produção no dia) também aparece, com R$ 0, pra não sumir da obra
+    const prodDia = new Set(apeq.map(r => r.colaborador_id + '|' + r.data));
     for (const a of alocs) {
       const c = cmap[a.colaborador_id] || { id: a.colaborador_id };
       const gratif = /GRATIFICA/i.test(a.funcao || '');
       if (gratif && /PEDREIRO/i.test(c.cargo || '') && !a.gratificacao_paga) continue;   // extra não pago não é custo
       if (jaNoCaixa.has(a.id)) continue;
+      if (!a.valor_diaria && !gratif) {
+        if (!prodDia.has(a.colaborador_id + '|' + a.data)) {
+          const g = (grupos[c.id + '|sem_valor'] ||= { nome: c.nome || a.colaborador_nome || 'Colaborador', tipo: 'sem_valor', n: 0, m2: 0, valor: 0, d0: null, d1: null });
+          g.n++; if (!g.d0 || a.data < g.d0) g.d0 = a.data; if (!g.d1 || a.data > g.d1) g.d1 = a.data;
+        }
+        continue;
+      }
       soma(c, gratif ? 'gratificacao' : 'diaria', a.valor_diaria || 0, 0, a.data);
     }
     const fmtM2 = v => (Math.round(v * 100) / 100).toLocaleString('pt-BR');
     for (const g of Object.values(grupos).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR') || a.tipo.localeCompare(b.tipo))) {
-      const det = g.tipo === 'producao' ? 'produção ' + fmtM2(g.m2) + ' m²' : g.tipo === 'diaria' ? g.n + (g.n > 1 ? ' diárias' : ' diária') : g.n + (g.n > 1 ? ' gratificações' : ' gratificação');
-      maoobra_itens.push({ descricao: g.nome + ' — ' + det, valor: g.valor, data: g.d0, data_fim: g.d1 !== g.d0 ? g.d1 : null });
+      const det = g.tipo === 'producao' ? 'produção ' + fmtM2(g.m2) + ' m²' : g.tipo === 'diaria' ? g.n + (g.n > 1 ? ' diárias' : ' diária')
+        : g.tipo === 'sem_valor' ? g.n + (g.n > 1 ? ' dias' : ' dia') + ' no Cronograma sem função/valor'
+        : g.n + (g.n > 1 ? ' gratificações' : ' gratificação');
+      maoobra_itens.push({ descricao: g.nome + ' — ' + det, valor: g.valor, data: g.d0, data_fim: g.d1 !== g.d0 ? g.d1 : null, sem_valor: g.tipo === 'sem_valor' || undefined });
     }
     for (const l of (lancs || [])) if (l.categoria !== 'insumo') maoobra_itens.push({ descricao: l.descricao || 'Mão de obra', valor: l.valor || 0, data: String(l.created_at || '').slice(0, 10) || null });
 

@@ -6780,7 +6780,7 @@
   const dreGrupos=arr=>{const g=[];for(const i of arr){let x=g.find(y=>y.sub===(i.sub||''));if(!x)g.push(x={sub:i.sub||'',itens:[],total:0});x.itens.push(i);x.total+=i.valor;}return g.sort((a,b)=>a.sub.localeCompare(b.sub,'pt-BR'));};
   const dreItens=(arr)=>(arr&&arr.length)
     ?`<div style="margin:1px 0 9px 20px;padding:3px 20px 3px 14px;border-left:2px solid var(--laranja-50)">${dreGrupos(arr).map(g=>(g.sub?`<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;font-weight:700;color:var(--ink);padding:5px 0 2px"><span>${esc(g.sub)}</span><span>${brlD(g.total)}</span></div>`:'')
-      +g.itens.map(i=>`<div style="display:grid;grid-template-columns:96px 1fr auto;gap:10px;font-size:12px;color:var(--ink-2);padding:3px 0"><span style="color:var(--ink-3);font-size:11px;white-space:nowrap">${i.data?dataItem(i):'—'}</span><span>${esc(i.descricao)}</span><span style="white-space:nowrap;color:var(--ink);font-weight:600">${brlD(i.valor)}</span></div>`).join('')).join('')}</div>`
+      +g.itens.map(i=>`<div style="display:grid;grid-template-columns:96px 1fr auto;gap:10px;font-size:12px;color:var(--ink-2);padding:3px 0"><span style="color:var(--ink-3);font-size:11px;white-space:nowrap">${i.data?dataItem(i):'—'}</span><span>${esc(i.descricao)}</span><span style="white-space:nowrap;color:${i.sem_valor?'#c2410c':'var(--ink)'};font-weight:600">${i.sem_valor?'definir função':brlD(i.valor)}</span></div>`).join('')).join('')}</div>`
     :'<div style="font-size:11.5px;color:var(--ink-3);margin:-3px 20px 9px 34px">— sem itens lançados nesta linha —</div>';
   async function abrirDre(id){
     openModal('ov-dre');document.getElementById('dre-body').innerHTML='<div class="sec">Carregando…</div>';
@@ -6829,7 +6829,7 @@
   function drePdf(d){
     const sec=(titulo,total,arr)=>`<tr style="background:#f3f3f3;font-weight:700"><td></td><td>${titulo}</td><td class="r" style="color:#b91c1c">${brlD(total)}</td></tr>`
       +((arr&&arr.length)?dreGrupos(arr).map(g=>(g.sub?`<tr style="font-size:11px;font-weight:700"><td></td><td style="padding-left:14px">${esc(g.sub)}</td><td class="r">${brlD(g.total)}</td></tr>`:'')
-        +g.itens.map(i=>`<tr style="font-size:11px;color:#444"><td style="white-space:nowrap">${i.data?dataItem(i):'—'}</td><td style="padding-left:${g.sub?32:22}px">${esc(i.descricao)}</td><td class="r">${brlD(i.valor)}</td></tr>`).join('')).join(''):'<tr><td colspan="3" class="c" style="color:#888">sem itens lançados</td></tr>');
+        +g.itens.map(i=>`<tr style="font-size:11px;color:#444"><td style="white-space:nowrap">${i.data?dataItem(i):'—'}</td><td style="padding-left:${g.sub?32:22}px">${esc(i.descricao)}</td><td class="r"${i.sem_valor?' style="color:#c2410c"':''}>${i.sem_valor?'definir função':brlD(i.valor)}</td></tr>`).join('')).join(''):'<tr><td colspan="3" class="c" style="color:#888">sem itens lançados</td></tr>');
     const custo=d.custo_direto_insumos+d.custo_direto_mao_obra+(d.custo_direto_refeicoes||0)+(d.custo_direto_vale||0);
     const per=d.periodo?` · ${dtBR(d.periodo.desde)} a ${dtBR(d.periodo.ate)}`:' · todo o período';
     finPrint('Obra — '+d.cliente,`<h1>${esc(d.cliente)}</h1><p class="sub">Resultado da obra · ${esc(d.tipo_servico||'')} · ${m2Txt(d)}${per} · Raspadora Brasília</p>
