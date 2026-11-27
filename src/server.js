@@ -663,6 +663,8 @@ const formaPag = v => (FORMAS_PAG.includes(v) ? v : null);
 const obraIdOuNull = v => (/^[0-9a-f-]{36}$/i.test(v || '') ? v : null);   // obra (opcional) da saída — custo direto por serviço
 // Administrativo (não vai a campo): fora do Cronograma Diário e do Vale-Transporte
 const isAdminCargo = cg => /ADMINISTR|ESCRIT|FINANC|GERENT|\bRH\b|SECRET/i.test(String(cg || ''));
+// administrativos que mesmo assim entram no Cronograma (p/ lançar falta) — pedido da Maressa 27/11: Victor Augusto
+const CRONOGRAMA_ADMIN_INCLUI = new Set(['fdbf36b8-2e92-4254-b649-8ae3dc655397']);
 const EMP_VALID = ['RB_PISOS', 'ECO_PISOS'];
 async function subirComprovante(prefixo, id, file) {
   if (!file || !USING_SUPABASE) return null;
@@ -893,16 +895,32 @@ app.get('/api/cronograma', async (req, res, next) => {
     ]);
     // Cronograma do Adelino: só Raspagem fica de fora. Limpeza e as demais (Fulget/Concreto/Cimento) aparecem.
     const FORA_CRONOGRAMA = ['RASPAGEM'];   // só Raspagem fica fora; Limpeza aparece no cronograma
-    const obrasAtivas = (obras || []).filter(o => o.coluna_kanban !== 'liquidado' && !FORA_CRONOGRAMA.includes(o.categoria_servico))
+    // obra concluída no painel de execução (liquidado) CONTINUA no Cronograma até a Joana marcar "concluída" lá (cronograma_concluida)
+    const obrasAtivas = (obras || []).filter(o => !FORA_CRONOGRAMA.includes(o.categoria_servico) && !(o.coluna_kanban === 'liquidado' && o.cronograma_concluida))
       .map(o => ({ id: o.id, cliente: o.cliente, endereco: o.endereco, responsavel: o.responsavel || o.equipe_responsavel || null, cor: o.cor || null, concluida: !!o.cronograma_concluida }));
     const nomeMap = Object.fromEntries((colaboradores || []).map(c => [c.id, c.nome]));
     const colabs = (colaboradores || [])
-      .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO' && !isAdminCargo(c.cargo))   // administrativo não vai pro cronograma
+      .filter(c => (c.status_colaborador || 'ATIVO') !== 'DESLIGADO' && (!isAdminCargo(c.cargo) || CRONOGRAMA_ADMIN_INCLUI.has(c.id)))   // administrativo não vai pro cronograma (exceto os da lista)
       .map(c => ({ id: c.id, nome: c.nome, cargo: c.cargo, is_diarista: c.is_diarista || false, status_colaborador: c.status_colaborador || 'ATIVO' }))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     const faltas = (faltasRaw || []).map(f => ({ id: f.id, colaborador_id: f.colaborador_id, colaborador_nome: nomeMap[f.colaborador_id] || '—', valor: f.valor, observacao: f.observacao || null }));
     const total = alocacoes.reduce((s, a) => s + (a.valor_diaria || 0), 0);
     res.json({ data, obras: obrasAtivas, colaboradores: colabs, alocacoes, faltas, total });
+  } catch (e) { next(e); }
+});
+// "+ Adicionar diarista" do Cronograma: CAMPO (Adelino) também cadastra — só diarista, só os campos do cadastro rápido
+app.post('/api/cronograma/diarista', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const nome = String(b.nome || '').trim(), cargo = String(b.cargo || '').trim();
+    if (!nome || !cargo) return res.status(400).json({ erro: 'nome e função são obrigatórios' });
+    res.status(201).json(await db.createColaborador({
+      nome, cargo, cpf: b.cpf || null, telefone: b.telefone || null,
+      empresa: EMP_VALID.includes(b.empresa) ? b.empresa : 'RB_PISOS',
+      status_colaborador: ['DIARIA', 'ATIVO'].includes(b.status_colaborador) ? b.status_colaborador : 'DIARIA',
+      data_admissao: /^\d{4}-\d{2}-\d{2}$/.test(b.data_admissao || '') ? b.data_admissao : null,
+      is_diarista: true,
+    }));
   } catch (e) { next(e); }
 });
 app.post('/api/cronograma/alocacao', async (req, res, next) => {

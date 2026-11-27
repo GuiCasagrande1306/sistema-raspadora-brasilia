@@ -1142,6 +1142,7 @@
         <div class="search docs-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="docs-q" placeholder="Buscar por nome ou CPF…"></div>
         <select id="docs-status" class="dash-sel"><option value="">Status: todos</option><option value="ATIVO">🟢 Ativo</option><option value="DIARIA">🟡 Diária</option><option value="FERIAS">🔵 Férias</option><option value="INSS">🟣 INSS</option><option value="DESLIGADO">🔴 Desligado</option></select>
         <label class="docs-toggle"><input type="checkbox" id="docs-pend"> Somente pendências</label>
+        <label class="docs-toggle"><input type="checkbox" id="docs-desligados"> Mostrar desligados</label>
       </div>
       <div id="docs-content" style="padding:18px 26px 96px;"></div>
     </section>
@@ -1169,7 +1170,7 @@
           </div>
         </form>
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v280</b></span>
+          <span style="font-size:12px;color:var(--ink-3)">Versão do app: <b id="app-versao">v281</b></span>
           <button type="button" class="btn-ghost" id="btn-forcar-update" style="font-size:12px;padding:5px 12px">↻ Atualizar agora</button>
         </div>
       </div>
@@ -5249,12 +5250,14 @@
   const folderSvg=ok=>ok
     ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="m9 14 2 2 4-4"/></svg>'
     :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M12 10v3M12 16h.01"/></svg>';
+  // desligados só aparecem com a caixinha "Mostrar desligados" ou com o filtro Status = Desligado
+  const semDesligados=l=>(document.getElementById('docs-desligados').checked||document.getElementById('docs-status').value==='DESLIGADO')?l:l.filter(c=>c.status_colaborador!=='DESLIGADO');
   async function renderDocs(){
     renderCrumb();const el=document.getElementById('docs-content');
     if(docsState.nivel==='empresas'){
       // Visão geral: TODOS os colaboradores das duas empresas + quadros por empresa abaixo
       const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
-      const lista=await api('/api/documentos/colaboradores?empresa=TODAS&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
+      const lista=await api('/api/documentos/colaboradores?empresa=TODAS&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:'')).then(semDesligados);
       const groupSel=docsViewMode==='quadro'?`<select id="docs-groupby" class="dash-sel"><option value="status_colaborador" ${docsGroupBy==='status_colaborador'?'selected':''}>Agrupar: Status</option><option value="farol" ${docsGroupBy==='farol'?'selected':''}>Agrupar: Farol</option></select>`:'';
       const colsBtn=docsViewMode==='lista'?`<button class="btn-ghost" id="docs-cols-btn" style="min-height:38px">⚙️ Colunas</button><div class="cols-menu hidden" id="docs-cols-menu"></div>`:'';
       const cards='<div class="empresa-grid">'+EMPRESAS.map(e=>{const n=lista.filter(c=>c.empresa===e.id).length;return `<div class="empresa-card" data-emp="${e.id}"><div class="ec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h6"/></svg></div><div><h4>${e.label}</h4><div class="dv">${n} colaborador${n===1?'':'es'} · documentos</div></div></div>`;}).join('')+'</div>';
@@ -5273,7 +5276,7 @@
       renderColabView(lista);
     }else if(docsState.nivel==='colaboradores'){
       const q=document.getElementById('docs-q').value,pend=document.getElementById('docs-pend').checked,st=document.getElementById('docs-status').value;
-      const lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
+      const lista=await api('/api/documentos/colaboradores?empresa='+docsState.empresa+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:'')).then(semDesligados);
       const groupSel=docsViewMode==='quadro'?`<select id="docs-groupby" class="dash-sel"><option value="status_colaborador" ${docsGroupBy==='status_colaborador'?'selected':''}>Agrupar: Status</option><option value="farol" ${docsGroupBy==='farol'?'selected':''}>Agrupar: Farol</option></select>`:'';
       const colsBtn=docsViewMode==='lista'?`<button class="btn-ghost" id="docs-cols-btn" style="min-height:38px">⚙️ Colunas</button><div class="cols-menu hidden" id="docs-cols-menu"></div>`:'';
       el.innerHTML=`<div class="colab-toolbar">
@@ -5366,6 +5369,7 @@
   const filtroNivel=()=>docsState.nivel==='colaboradores'||docsState.nivel==='empresas';
   ['docs-q','docs-status'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(filtroNivel())renderDocs();}));
   document.getElementById('docs-pend').addEventListener('change',()=>{if(filtroNivel())renderDocs();});
+  document.getElementById('docs-desligados').addEventListener('change',()=>{if(filtroNivel())renderDocs();});
   document.getElementById('docs-relatorio').addEventListener('click',async()=>{
     try{const r=await api('/api/documentos/relatorio-pendencias'+(docsState.empresa?'?empresa='+docsState.empresa:''));
       showToast(r.total_pendentes+' colaborador(es) com pendências');}catch(err){showToast('Erro no relatório');}});
@@ -5375,7 +5379,7 @@
       const pend=document.getElementById('docs-pend').checked;
       const st=document.getElementById('docs-status').value;
       const emp=(docsState.nivel==='colaboradores'&&docsState.empresa)?docsState.empresa:'TODAS';
-      const lista=await api('/api/documentos/colaboradores?empresa='+emp+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:''));
+      const lista=await api('/api/documentos/colaboradores?empresa='+emp+'&q='+encodeURIComponent(q)+'&pendencias='+pend+(st?'&status_colaborador='+st:'')).then(semDesligados);
       if(!lista.length){showToast('Nenhum colaborador para exportar');return;}
       const ordem={RB_PISOS:0,ECO_PISOS:1};
       const ord=lista.slice().sort((a,b)=>{const ea=ordem[a.empresa]??9,eb=ordem[b.empresa]??9;if(ea!==eb)return ea-eb;return (a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'});});
@@ -5420,7 +5424,7 @@
     const payload={nome:f.get('nome'),cpf:f.get('cpf')||null,telefone:f.get('telefone')||null,
       empresa:f.get('empresa')||'RB_PISOS',cargo:f.get('cargo'),status_colaborador:f.get('status_colaborador')||'DIARIA',
       data_admissao:f.get('data_admissao')||null,is_diarista:true};
-    try{await api('/api/dp/colaborador',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    try{await api('/api/cronograma/diarista',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});   // rota do Cronograma: CAMPO (Adelino) também cadastra
       e.target.reset();document.getElementById('ov-diarista').classList.remove('open');
       if(!document.getElementById('view-docs').classList.contains('hidden'))await loadDocs();
       if(!document.getElementById('view-cronograma').classList.contains('hidden'))await loadCronograma();
